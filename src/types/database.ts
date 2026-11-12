@@ -4,6 +4,9 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type MemberRole = "owner" | "admin" | "staff";
 export type PlanCode = "trial" | "starter" | "growth" | "business";
+export type OrderStatus = "pending" | "assigned" | "dispatched" | "completed" | "cancelled";
+export type PaymentType = "cash" | "transfer" | "credit";
+export type TripStatus = "draft" | "dispatched" | "completed" | "cancelled";
 
 export type Database = {
   public: {
@@ -279,6 +282,140 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      orders: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          order_no: string;
+          order_date: string;
+          customer_id: string;
+          status: OrderStatus;
+          payment_type: PaymentType;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      order_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          order_id: string;
+          product_id: string;
+          quantity: number;
+          unit_price: number;
+          returnable_item_id: string | null;
+          line_total: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_returnable_item_id_fkey";
+            columns: ["returnable_item_id"];
+            isOneToOne: false;
+            referencedRelation: "returnable_items";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      dispatch_trips: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          trip_no: string;
+          dispatch_date: string;
+          driver_name: string;
+          vehicle: string | null;
+          status: TripStatus;
+          note: string | null;
+          dispatched_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_trips_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dispatch_trips_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      dispatch_trip_orders: {
+        Row: { id: string; organization_id: string; trip_id: string; order_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_trip_orders_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "dispatch_trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dispatch_trip_orders_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: true;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       product_stock_levels: {
@@ -287,6 +424,46 @@ export type Database = {
           product_id: string;
           location_id: string;
           on_hand: number;
+        };
+        Relationships: [];
+      };
+      order_summaries: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          order_no: string;
+          order_date: string;
+          status: OrderStatus;
+          payment_type: PaymentType;
+          customer_id: string;
+          customer_name: string;
+          customer_area: string | null;
+          total_quantity: number;
+          total_amount: number;
+          has_returns: boolean;
+          trip_id: string | null;
+          trip_no: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      dispatch_trip_summaries: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          trip_no: string;
+          dispatch_date: string;
+          driver_name: string;
+          vehicle: string | null;
+          status: TripStatus;
+          dispatched_at: string | null;
+          created_at: string;
+          order_count: number;
+          total_quantity: number;
+          total_amount: number;
+          has_returns: boolean;
         };
         Relationships: [];
       };
@@ -380,6 +557,44 @@ export type Database = {
         };
         Returns: { id: string; receipt_no: string }[];
       };
+      create_order: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_order_date: string;
+          p_customer_id: string;
+          p_payment_type: PaymentType;
+          p_note: string | null;
+          p_items: Json;
+        };
+        Returns: { id: string; order_no: string }[];
+      };
+      update_order: {
+        Args: {
+          p_order_id: string;
+          p_order_date: string;
+          p_customer_id: string;
+          p_payment_type: PaymentType;
+          p_note: string | null;
+          p_items: Json;
+        };
+        Returns: undefined;
+      };
+      cancel_order: { Args: { p_order_id: string }; Returns: undefined };
+      create_dispatch_trip: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_dispatch_date: string;
+          p_driver_name: string;
+          p_vehicle: string | null;
+          p_note: string | null;
+          p_order_ids: string[];
+        };
+        Returns: { id: string; trip_no: string }[];
+      };
+      dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
+      cancel_dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
     };
     Enums: { member_role: MemberRole };
     CompositeTypes: Record<string, never>;

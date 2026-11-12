@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import type { ButtonVariant } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { idleState, type ActionState } from "@/lib/action-state";
 
@@ -8,13 +9,21 @@ type Props = {
   action: (previous: ActionState) => Promise<ActionState>;
   label: string;
   pendingLabel?: string;
-  variant?: "secondary" | "danger";
+  variant?: ButtonVariant;
+  size?: "md" | "sm";
   /** When set, the person must confirm before the action runs. */
   confirmMessage?: string;
 };
 
 /** A single button that runs a server action and shows any error beside it. */
-export function ActionButton({ action, label, pendingLabel, variant = "secondary", confirmMessage }: Props) {
+export function ActionButton({
+  action,
+  label,
+  pendingLabel,
+  variant = "secondary",
+  size = "sm",
+  confirmMessage
+}: Props) {
   const [state, formAction] = useActionState(action, idleState);
 
   return (
@@ -25,7 +34,7 @@ export function ActionButton({ action, label, pendingLabel, variant = "secondary
       }}
       className="flex flex-col items-end gap-1"
     >
-      <SubmitButton variant={variant} size="sm" pendingLabel={pendingLabel}>
+      <SubmitButton variant={variant} size={size} pendingLabel={pendingLabel}>
         {label}
       </SubmitButton>
       {!state.ok && state.message ? (

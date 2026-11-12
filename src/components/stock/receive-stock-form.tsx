@@ -55,7 +55,8 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
       <fieldset className="space-y-3">
         <legend className="text-lg font-extrabold uppercase tracking-wide">Products received</legend>
         {lines.map((key, index) => (
-          <div key={key} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2 sm:gap-3">
+          <div key={key} className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[1fr_7rem_auto] sm:gap-3">
+            <div className="col-span-2 sm:col-span-1">
             <SelectField label={index === 0 ? "Product" : `Product ${index + 1}`} name="productId" defaultValue="">
               <option value="">Choose a product</option>
               {products.map((product) => (
@@ -64,6 +65,7 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
                 </option>
               ))}
             </SelectField>
+            </div>
             <TextField
               label="Quantity"
               name="quantity"

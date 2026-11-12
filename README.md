@@ -43,7 +43,7 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
-| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, products and stock |
+| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders and dispatch |
 
 ## How the code is organised
 
@@ -69,7 +69,9 @@ These are what keep one business's data away from another's.
    business cannot read or write it.
 5. Stock is a ledger. Nothing edits a stock number; every change is a row in
    `stock_movements` and the stock on hand is the sum of those rows.
-6. Money the staff should not see (buying cost) lives in its own table that
+6. An order copies the price and the return rule from the product when it is
+   saved, so later product changes never rewrite an old order.
+7. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
 
 ## Roadmap
@@ -79,7 +81,7 @@ These are what keep one business's data away from another's.
 | 0 | Project setup | Done |
 | 1 | Businesses, sign-up, team invites, roles, plan limits, data separation | Done |
 | 2 | Products (with the per-product return choice), customers, receiving stock, stock levels | Done |
-| 3 | Orders and dispatch trips (no-return flow) | Next |
-| 4 | Returns on dispatch: expected vs actual, shortages, follow-ups | |
+| 3 | Orders (stock set aside on save) and dispatch trips with a loading list | Done |
+| 4 | Returns on dispatch: expected vs actual, shortages, follow-ups | Next |
 | 5 | Admin corrections, voids, audit log screen, daily operations report | |
 | 6 | Notifications per business, then billing | |

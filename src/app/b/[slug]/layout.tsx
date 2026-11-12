@@ -44,6 +44,8 @@ async function BusinessShell({
           <NavLink href={base} exact>
             Dashboard
           </NavLink>
+          <NavLink href={`${base}/orders`}>Orders</NavLink>
+          <NavLink href={`${base}/dispatch`}>Dispatch</NavLink>
           <NavLink href={`${base}/stock`}>Stock</NavLink>
           <NavLink href={`${base}/products`}>Products</NavLink>
           <NavLink href={`${base}/customers`}>Customers</NavLink>

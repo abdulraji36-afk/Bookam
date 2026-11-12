@@ -1,4 +1,4 @@
-import type { MemberRole } from "@/types/database";
+import type { MemberRole, OrderStatus, PaymentType, TripStatus } from "@/types/database";
 
 export const ROLE_LABELS: Record<MemberRole, string> = {
   owner: "Owner",
@@ -33,4 +33,30 @@ export function formatQuantity(quantity: number) {
 /** Today's date (YYYY-MM-DD) in the business's time zone. */
 export function todayIn(timeZone: string, now: number) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(now));
+}
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  pending: "Waiting for dispatch",
+  assigned: "On a trip",
+  dispatched: "Out · returns due",
+  completed: "Completed",
+  cancelled: "Cancelled"
+};
+
+export const TRIP_STATUS_LABELS: Record<TripStatus, string> = {
+  draft: "Not yet dispatched",
+  dispatched: "Out · returns due",
+  completed: "Completed",
+  cancelled: "Cancelled"
+};
+
+export const PAYMENT_LABELS: Record<PaymentType, string> = {
+  cash: "Cash",
+  transfer: "Bank transfer",
+  credit: "On credit"
+};
+
+/** Formats a date-only value (YYYY-MM-DD) without shifting it across time zones. */
+export function formatDay(isoDay: string) {
+  return formatDate(isoDay, "UTC");
 }

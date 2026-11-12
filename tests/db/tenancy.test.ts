@@ -4,7 +4,9 @@ import {
   addMember,
   as,
   createBusiness,
+  createOrder,
   createTestDb,
+  createTrip,
   createUser,
   invite,
   receiveStock,
@@ -28,7 +30,13 @@ const TENANT_TABLES = [
   "stock_receipt_items",
   "stock_movements",
   "product_stock_levels",
-  "product_stock_totals"
+  "product_stock_totals",
+  "orders",
+  "order_items",
+  "dispatch_trips",
+  "dispatch_trip_orders",
+  "order_summaries",
+  "dispatch_trip_summaries"
 ];
 
 describe("tenant isolation", () => {
@@ -57,8 +65,11 @@ describe("tenant isolation", () => {
         costPrice: 3000,
         returnItem: "Empty crate"
       });
-      await saveCustomer(db, owner, org.id, { name: "Mama Tunde Stores" });
+      const customer = await saveCustomer(db, owner, org.id, { name: "Mama Tunde Stores" });
+      await saveProduct(db, owner, org.id, { id: product, name: "Cola 50cl", sellingPrice: 4200, costPrice: 3000, returnItem: "Empty crate" });
       await receiveStock(db, owner, org.id, [{ product_id: product, quantity: 10 }]);
+      const order = await createOrder(db, owner, org.id, customer, [{ product_id: product, quantity: 2 }]);
+      await createTrip(db, owner, org.id, [order.id]);
     }
   });
 
@@ -120,10 +131,10 @@ describe("tenant isolation", () => {
   });
 
   it.each(TENANT_TABLES)("rejects direct writes to %s", async (table) => {
-    // The stock view is a summary and cannot be written to by anyone.
+    // Summary views cannot be written to by anyone.
     await expect(
       as(db, ada, (s) => s.query(`delete from public.${table}`))
-    ).rejects.toThrow(/permission denied|cannot delete from view/);
+    ).rejects.toThrow(/permission denied|cannot delete from view/i);
   });
 
   it("does not let a user edit their own email on their profile", async () => {

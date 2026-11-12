@@ -213,3 +213,54 @@ export async function receiveStock(
   );
   return rows[0];
 }
+
+type Line = { product_id: string; quantity: number };
+
+export async function createOrder(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  customerId: string,
+  items: Line[],
+  options: { locationId?: string; date?: string; payment?: "cash" | "transfer" | "credit" } = {}
+) {
+  const locationId = options.locationId ?? (await mainLocation(db, organizationId));
+  const rows = await as(db, userId, (s) =>
+    s.query<{ id: string; order_no: string }>(
+      `select * from public.create_order($1, $2, coalesce($3::date, public_today()), $4, $5, null, $6::jsonb)`,
+      [organizationId, locationId, options.date ?? null, customerId, options.payment ?? "cash", JSON.stringify(items)]
+    )
+  );
+  return rows[0];
+}
+
+export async function updateOrder(db: Db, userId: string, orderId: string, customerId: string, items: Line[]) {
+  await as(db, userId, (s) =>
+    s.query(`select public.update_order($1, public_today(), $2, 'cash', null, $3::jsonb)`, [
+      orderId,
+      customerId,
+      JSON.stringify(items)
+    ])
+  );
+}
+
+export async function createTrip(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  orderIds: string[],
+  options: { locationId?: string; driver?: string } = {}
+) {
+  const locationId = options.locationId ?? (await mainLocation(db, organizationId));
+  const rows = await as(db, userId, (s) =>
+    s.query<{ id: string; trip_no: string }>(
+      `select * from public.create_dispatch_trip($1, $2, public_today(), $3, 'LAG-123', null, $4::uuid[])`,
+      [organizationId, locationId, options.driver ?? "Musa", orderIds]
+    )
+  );
+  return rows[0];
+}
+
+export async function call(db: Db, userId: string, sql: string, params: unknown[] = []) {
+  return as(db, userId, (s) => s.query(sql, params));
+}

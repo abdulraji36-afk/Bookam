@@ -62,3 +62,24 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
     </div>
   );
 }
+
+/** A card whose content is a list running edge to edge under a heavy title bar. */
+export function ListCard({
+  title,
+  action,
+  children
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-md bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b-[3px] border-ink px-5 py-3">
+        <h2 className="text-lg font-extrabold uppercase tracking-wide">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}

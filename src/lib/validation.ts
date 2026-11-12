@@ -94,6 +94,38 @@ export const stockReceiptSchema = z.object({
     .max(200, "A single receipt can hold up to 200 products.")
 });
 
+const lineItems = (limitMessage: string) =>
+  z
+    .array(
+      z.object({
+        productId: z.uuid("Choose a product on every line."),
+        quantity: z.coerce
+          .number("Enter a quantity on every line.")
+          .positive("Quantities must be greater than zero.")
+          .max(9_999_999, "That quantity is too large.")
+      })
+    )
+    .min(1, "Add at least one product.")
+    .max(200, limitMessage);
+
+export const orderSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  orderDate: z.iso.date("Enter the order date."),
+  customerId: z.uuid("Choose a customer."),
+  paymentType: z.enum(["cash", "transfer", "credit"], "Choose how the customer is paying."),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  items: lineItems("A single order can hold up to 200 products.")
+});
+
+export const tripSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  dispatchDate: z.iso.date("Enter the dispatch date."),
+  driverName: z.string().trim().min(2, "Enter the driver's name.").max(80, "Use at most 80 characters."),
+  vehicle: z.string().trim().max(80, "Use at most 80 characters for the vehicle."),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  orderIds: z.array(z.uuid()).min(1, "Choose at least one order to put on the trip.").max(500)
+});
+
 export function firstIssue(error: z.ZodError) {
   return error.issues[0]?.message ?? "Please check the form and try again.";
 }

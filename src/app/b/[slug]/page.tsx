@@ -16,13 +16,16 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const count = (table: "memberships" | "products" | "customers") =>
     supabase.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true);
 
-  const [members, products, customers, received, stockRows, profile] = await Promise.all([
+  const [members, products, customers, received, stockRows, profile, waiting, loading, trips] = await Promise.all([
     count("memberships"),
     count("products"),
     count("customers"),
     supabase.from("stock_receipts").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
     getStockRows(supabase, org.id, null),
-    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
+    supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "pending"),
+    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "draft"),
+    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).in("status", ["dispatched", "completed"])
   ]);
 
   const firstName = profile.data?.full_name?.split(" ")[0];
@@ -43,7 +46,12 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       done: (received.count ?? 0) > 0,
       href: productCount > 0 ? `${base}/stock/receive` : undefined
     },
-    { label: "Record your first order and dispatch", upcoming: true }
+    {
+      label: "Record an order and dispatch it",
+      done: (trips.count ?? 0) > 0,
+      href: (received.count ?? 0) > 0 ? `${base}/orders/new` : undefined
+    },
+    { label: "Record what customers bring back", upcoming: true }
   ];
 
   return (
@@ -53,10 +61,10 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       </PageTitle>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Products" value={productCount} strong />
-        <StatTile label="Low stock" value={lowStock} />
-        <StatTile label="Customers" value={customers.count ?? 0} />
-        <StatTile label="Team members" value={teamCount} />
+        <StatTile label="Waiting for dispatch" value={waiting.count ?? 0} strong href={`${base}/orders`} />
+        <StatTile label="Trips loading" value={loading.count ?? 0} href={`${base}/dispatch`} />
+        <StatTile label="Low stock" value={lowStock} href={`${base}/stock`} />
+        <StatTile label="Customers" value={customers.count ?? 0} href={`${base}/customers`} />
       </div>
 
       <Card>
@@ -83,16 +91,31 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   );
 }
 
-function StatTile({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
+function StatTile({
+  label,
+  value,
+  strong,
+  href
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+  href: string;
+}) {
   return (
-    <div className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}>
+    <Link
+      href={href}
+      className={`block rounded-md border-2 border-transparent px-5 py-4 hover:border-accent ${
+        strong ? "bg-ink text-white" : "bg-white"
+      }`}
+    >
       <p className="text-5xl font-extrabold leading-none tabular-nums">{value}</p>
       <p
         className={`mt-2 text-sm font-bold uppercase tracking-wide ${strong ? "text-nav" : "text-ink-soft"}`}
       >
         {label}
       </p>
-    </div>
+    </Link>
   );
 }
 
