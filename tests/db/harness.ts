@@ -21,6 +21,10 @@ const SUPABASE_STUB = `
     select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
   $$;
   grant execute on function auth.uid() to anon, authenticated, service_role;
+  -- Test convenience: today's date in Lagos, callable by any role.
+  create function public_today() returns date language sql stable as $$
+    select (now() at time zone 'Africa/Lagos')::date;
+  $$;
 `;
 
 export type Db = PGlite;
@@ -132,4 +136,80 @@ export async function addMember(
     [organizationId, user.id]
   );
   return result.rows[0].id;
+}
+
+type ProductInput = {
+  id?: string | null;
+  name: string;
+  sku?: string | null;
+  unit?: string;
+  sellingPrice?: number | null;
+  costPrice?: number | null;
+  lowStock?: number | null;
+  returnItem?: string | null;
+};
+
+export async function saveProduct(db: Db, userId: string, organizationId: string, input: ProductInput) {
+  const rows = await as(db, userId, (s) =>
+    s.query<{ id: string }>(
+      `select public.save_product($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id`,
+      [
+        organizationId,
+        input.id ?? null,
+        input.name,
+        input.sku ?? null,
+        input.unit ?? "crate",
+        input.sellingPrice ?? null,
+        input.costPrice ?? null,
+        input.lowStock ?? null,
+        Boolean(input.returnItem),
+        input.returnItem ?? null
+      ]
+    )
+  );
+  return rows[0].id;
+}
+
+export async function saveCustomer(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  input: { id?: string | null; name: string; phone?: string; area?: string; address?: string }
+) {
+  const rows = await as(db, userId, (s) =>
+    s.query<{ id: string }>(`select public.save_customer($1, $2, $3, $4, $5, $6) as id`, [
+      organizationId,
+      input.id ?? null,
+      input.name,
+      input.phone ?? null,
+      input.area ?? null,
+      input.address ?? null
+    ])
+  );
+  return rows[0].id;
+}
+
+export async function mainLocation(db: Db, organizationId: string) {
+  const result = await db.query<{ id: string }>(
+    `select id from public.locations where organization_id = $1 and is_default`,
+    [organizationId]
+  );
+  return result.rows[0].id;
+}
+
+export async function receiveStock(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  items: { product_id: string; quantity: number }[],
+  options: { locationId?: string; date?: string } = {}
+) {
+  const locationId = options.locationId ?? (await mainLocation(db, organizationId));
+  const rows = await as(db, userId, (s) =>
+    s.query<{ id: string; receipt_no: string }>(
+      `select * from public.record_stock_receipt($1, $2, coalesce($3::date, public_today()), 'Supplier', 'REF-1', null, $4::jsonb)`,
+      [organizationId, locationId, options.date ?? null, JSON.stringify(items)]
+    )
+  );
+  return rows[0];
 }

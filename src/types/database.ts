@@ -145,8 +145,156 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      returnable_items: {
+        Row: { id: string; organization_id: string; name: string; created_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      products: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          sku: string | null;
+          unit: string;
+          selling_price: number | null;
+          low_stock_threshold: number;
+          returnable_item_id: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "products_returnable_item_id_fkey";
+            columns: ["returnable_item_id"];
+            isOneToOne: false;
+            referencedRelation: "returnable_items";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      product_costs: {
+        Row: { product_id: string; organization_id: string; cost_price: number; updated_at: string };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      customers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          phone: string | null;
+          area: string | null;
+          address: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      stock_receipts: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          receipt_no: string;
+          received_date: string;
+          supplier_name: string | null;
+          reference: string | null;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "stock_receipts_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_receipts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      stock_receipt_items: {
+        Row: {
+          id: string;
+          organization_id: string;
+          receipt_id: string;
+          product_id: string;
+          quantity: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "stock_receipt_items_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: false;
+            referencedRelation: "stock_receipts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_receipt_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      stock_movements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          product_id: string;
+          movement_type: "stock_in" | "sale" | "adjustment";
+          qty_in: number;
+          qty_out: number;
+          source_type: string;
+          source_id: string;
+          movement_date: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
-    Views: Record<string, never>;
+    Views: {
+      product_stock_levels: {
+        Row: {
+          organization_id: string;
+          product_id: string;
+          location_id: string;
+          on_hand: number;
+        };
+        Relationships: [];
+      };
+      product_stock_totals: {
+        Row: { organization_id: string; product_id: string; on_hand: number };
+        Relationships: [];
+      };
+    };
     Functions: {
       create_organization: {
         Args: { p_name: string; p_business_type?: string | null };
@@ -185,6 +333,52 @@ export type Database = {
       set_member_active: {
         Args: { p_membership_id: string; p_is_active: boolean };
         Returns: undefined;
+      };
+      save_product: {
+        Args: {
+          p_organization_id: string;
+          p_product_id: string | null;
+          p_name: string;
+          p_sku: string | null;
+          p_unit: string;
+          p_selling_price: number | null;
+          p_cost_price: number | null;
+          p_low_stock_threshold: number | null;
+          p_requires_return: boolean;
+          p_return_item_name: string | null;
+        };
+        Returns: string;
+      };
+      set_product_active: {
+        Args: { p_product_id: string; p_is_active: boolean };
+        Returns: undefined;
+      };
+      save_customer: {
+        Args: {
+          p_organization_id: string;
+          p_customer_id: string | null;
+          p_name: string;
+          p_phone: string | null;
+          p_area: string | null;
+          p_address: string | null;
+        };
+        Returns: string;
+      };
+      set_customer_active: {
+        Args: { p_customer_id: string; p_is_active: boolean };
+        Returns: undefined;
+      };
+      record_stock_receipt: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_received_date: string;
+          p_supplier_name: string | null;
+          p_reference: string | null;
+          p_note: string | null;
+          p_items: Json;
+        };
+        Returns: { id: string; receipt_no: string }[];
       };
     };
     Enums: { member_role: MemberRole };

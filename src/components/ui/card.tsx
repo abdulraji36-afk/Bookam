@@ -53,3 +53,12 @@ export function PageSkeleton() {
     </div>
   );
 }
+
+export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div className="rounded-md border-2 border-dashed border-field px-5 py-8 text-center">
+      <p className="text-lg font-extrabold uppercase tracking-wide">{title}</p>
+      {children ? <div className="mt-2 text-ink-soft">{children}</div> : null}
+    </div>
+  );
+}

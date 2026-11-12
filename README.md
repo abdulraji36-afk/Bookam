@@ -43,7 +43,7 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
-| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits |
+| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, products and stock |
 
 ## How the code is organised
 
@@ -67,6 +67,10 @@ These are what keep one business's data away from another's.
    caller's role first and writes its audit log row in the same transaction.
 4. Every new table gets a case in `tests/db/tenancy.test.ts` proving another
    business cannot read or write it.
+5. Stock is a ledger. Nothing edits a stock number; every change is a row in
+   `stock_movements` and the stock on hand is the sum of those rows.
+6. Money the staff should not see (buying cost) lives in its own table that
+   only owners and admins can read.
 
 ## Roadmap
 
@@ -74,8 +78,8 @@ These are what keep one business's data away from another's.
 | --- | --- | --- |
 | 0 | Project setup | Done |
 | 1 | Businesses, sign-up, team invites, roles, plan limits, data separation | Done |
-| 2 | Products, customers, stock-in, stock ledger, stock report | Next |
-| 3 | Orders and dispatch trips (no-return flow) | |
+| 2 | Products (with the per-product return choice), customers, receiving stock, stock levels | Done |
+| 3 | Orders and dispatch trips (no-return flow) | Next |
 | 4 | Returns on dispatch: expected vs actual, shortages, follow-ups | |
 | 5 | Admin corrections, voids, audit log screen, daily operations report | |
 | 6 | Notifications per business, then billing | |

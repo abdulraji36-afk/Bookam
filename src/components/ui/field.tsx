@@ -48,3 +48,31 @@ export function SelectField({ label, hint, id, name, children, ...props }: Selec
     </Field>
   );
 }
+
+type CheckboxProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+  label: string;
+  hint?: string;
+  name: string;
+};
+
+export function CheckboxField({ label, hint, id, name, ...props }: CheckboxProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  return (
+    <div className="flex items-start gap-3">
+      <input
+        id={inputId}
+        name={name}
+        type="checkbox"
+        className="mt-0.5 size-6 shrink-0 rounded border-2 border-field accent-ink"
+        {...props}
+      />
+      <div>
+        <label htmlFor={inputId} className="block font-bold text-ink">
+          {label}
+        </label>
+        {hint ? <p className="text-sm text-ink-soft">{hint}</p> : null}
+      </div>
+    </div>
+  );
+}

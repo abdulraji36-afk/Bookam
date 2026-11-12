@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { ROLE_LABELS } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
+import { getStockRows } from "@/lib/stock";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -12,30 +13,36 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const { supabase, org, role, user } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
-  const [members, locations, profile] = await Promise.all([
-    supabase
-      .from("memberships")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.id)
-      .eq("is_active", true),
-    supabase
-      .from("locations")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.id)
-      .eq("is_active", true),
+  const count = (table: "memberships" | "products" | "customers") =>
+    supabase.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true);
+
+  const [members, products, customers, received, stockRows, profile] = await Promise.all([
+    count("memberships"),
+    count("products"),
+    count("customers"),
+    supabase.from("stock_receipts").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
+    getStockRows(supabase, org.id, null),
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle()
   ]);
 
   const firstName = profile.data?.full_name?.split(" ")[0];
   const teamCount = members.count ?? 0;
+  const productCount = products.count ?? 0;
+  const lowStock = stockRows.filter((row) => row.isLow).length;
+  const manager = canManage(role);
   const steps = [
     { label: "Create your business", done: true },
+    { label: "Invite your team", done: teamCount > 1, href: manager ? `${base}/team` : undefined },
     {
-      label: "Invite your team",
-      done: teamCount > 1,
-      href: canManage(role) ? `${base}/team` : undefined
+      label: "Add the products you sell",
+      done: productCount > 0,
+      href: manager ? `${base}/products/new` : undefined
     },
-    { label: "Add your products and opening stock", upcoming: true },
+    {
+      label: "Record the stock you have",
+      done: (received.count ?? 0) > 0,
+      href: productCount > 0 ? `${base}/stock/receive` : undefined
+    },
     { label: "Record your first order and dispatch", upcoming: true }
   ];
 
@@ -45,9 +52,11 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         {firstName ? `Welcome, ${firstName}` : "Welcome"}
       </PageTitle>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StatTile label="Team members" value={teamCount} strong />
-        <StatTile label="Locations" value={locations.count ?? 0} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="Products" value={productCount} strong />
+        <StatTile label="Low stock" value={lowStock} />
+        <StatTile label="Customers" value={customers.count ?? 0} />
+        <StatTile label="Team members" value={teamCount} />
       </div>
 
       <Card>

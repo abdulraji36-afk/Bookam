@@ -7,11 +7,29 @@ import {
   createTestDb,
   createUser,
   invite,
+  receiveStock,
+  saveCustomer,
+  saveProduct,
   setPlan,
   type Db
 } from "./harness";
 
-const TENANT_TABLES = ["organizations", "locations", "memberships", "invitations", "audit_logs"];
+const TENANT_TABLES = [
+  "organizations",
+  "locations",
+  "memberships",
+  "invitations",
+  "audit_logs",
+  "returnable_items",
+  "products",
+  "product_costs",
+  "customers",
+  "stock_receipts",
+  "stock_receipt_items",
+  "stock_movements",
+  "product_stock_levels",
+  "product_stock_totals"
+];
 
 describe("tenant isolation", () => {
   let db: Db;
@@ -28,6 +46,20 @@ describe("tenant isolation", () => {
     bolaOrg = await createBusiness(db, bola, "Bola Gas");
     await invite(db, ada, adaOrg.id, "pending@example.com");
     await invite(db, bola, bolaOrg.id, "pending@example.com");
+
+    // Give both businesses a row in every business-owned table.
+    for (const [owner, org] of [
+      [ada, adaOrg],
+      [bola, bolaOrg]
+    ] as const) {
+      const product = await saveProduct(db, owner, org.id, {
+        name: "Cola 50cl",
+        costPrice: 3000,
+        returnItem: "Empty crate"
+      });
+      await saveCustomer(db, owner, org.id, { name: "Mama Tunde Stores" });
+      await receiveStock(db, owner, org.id, [{ product_id: product, quantity: 10 }]);
+    }
   });
 
   it("gives a new business a slug, a default location, an owner and a trial", async () => {
@@ -88,9 +120,10 @@ describe("tenant isolation", () => {
   });
 
   it.each(TENANT_TABLES)("rejects direct writes to %s", async (table) => {
+    // The stock view is a summary and cannot be written to by anyone.
     await expect(
       as(db, ada, (s) => s.query(`delete from public.${table}`))
-    ).rejects.toThrow(/permission denied/);
+    ).rejects.toThrow(/permission denied|cannot delete from view/);
   });
 
   it("does not let a user edit their own email on their profile", async () => {
