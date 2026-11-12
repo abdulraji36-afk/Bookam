@@ -12,8 +12,8 @@ export default function OnboardingPage() {
       <AccountBar />
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-10">
         <Card>
-          <h1 className="text-xl font-semibold">Set up your business</h1>
-          <p className="mb-5 mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-extrabold uppercase tracking-tight">Set up your business</h1>
+          <p className="mb-5 mt-1 text-sm text-ink-soft">
             This creates your workspace. You can invite your staff straight after.
           </p>
           <BusinessForm

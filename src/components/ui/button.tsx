@@ -1,26 +1,28 @@
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "inverse";
 
-const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600",
-  secondary:
-    "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 focus-visible:outline-slate-500",
-  danger: "border border-red-200 bg-white text-red-700 hover:bg-red-50 focus-visible:outline-red-600",
-  ghost: "text-slate-700 hover:bg-slate-100 focus-visible:outline-slate-500"
+const VARIANTS: Record<ButtonVariant, string> = {
+  primary: "bg-accent text-accent-ink hover:bg-accent-strong focus-visible:outline-ink",
+  secondary: "border-2 border-ink bg-white text-ink hover:bg-paper focus-visible:outline-ink",
+  danger: "border-2 border-danger bg-white text-danger hover:bg-danger-soft focus-visible:outline-danger",
+  ghost: "text-ink hover:bg-chip focus-visible:outline-ink",
+  // For use on the dark navy bars.
+  inverse: "border-2 border-white/40 text-white hover:bg-white/10 focus-visible:outline-white"
 };
 
-export function buttonClass(variant: Variant = "primary", size: "md" | "sm" = "md") {
+export function buttonClass(variant: ButtonVariant = "primary", size: "md" | "sm" = "md") {
   return [
-    "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors",
-    "focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
-    size === "md" ? "min-h-11 px-4 text-sm" : "min-h-9 px-3 text-sm",
+    "inline-flex items-center justify-center gap-2 rounded-md font-extrabold uppercase tracking-wide",
+    "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
+    "disabled:cursor-not-allowed disabled:opacity-60",
+    size === "md" ? "min-h-12 px-5 text-base" : "min-h-11 px-4 text-sm",
     VARIANTS[variant]
   ].join(" ");
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
+  variant?: ButtonVariant;
   size?: "md" | "sm";
 };
 

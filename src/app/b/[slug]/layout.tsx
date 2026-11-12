@@ -21,25 +21,26 @@ async function BusinessShell({
   const trialDays = org.plan_code === "trial" ? daysUntil(org.trial_ends_at, await requestNow()) : null;
 
   return (
-    <>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 pt-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <Logo href={base} />
-            <span className="hidden text-slate-300 sm:inline" aria-hidden>
-              /
-            </span>
+    <div className="flex flex-1 flex-col md:flex-row">
+      {/* A top bar on phones, a side menu from tablet width up. */}
+      <aside className="bg-ink text-white md:flex md:w-60 md:shrink-0 md:flex-col">
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 md:px-5 md:pt-6">
+          <div className="min-w-0">
+            <Logo href={base} tone="light" />
             <Link
               href="/businesses?all=1"
-              className="truncate text-sm font-medium text-slate-700 hover:text-slate-900"
               title="Switch business"
+              className="block truncate text-sm font-medium text-nav hover:text-white"
             >
               {org.name}
             </Link>
           </div>
-          <LogoutButton />
+          <div className="md:hidden">
+            <LogoutButton />
+          </div>
         </div>
-        <nav aria-label="Business" className="mx-auto flex w-full max-w-5xl gap-5 overflow-x-auto px-4">
+
+        <nav aria-label="Business" className="flex gap-1.5 overflow-x-auto px-3 py-3 md:flex-col md:py-5">
           <NavLink href={base} exact>
             Dashboard
           </NavLink>
@@ -50,18 +51,23 @@ async function BusinessShell({
             </>
           ) : null}
         </nav>
-      </header>
 
-      {trialDays !== null ? (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
-          {trialDays > 0
-            ? `Free trial: ${trialDays} day${trialDays === 1 ? "" : "s"} left.`
-            : "Your free trial has ended."}
+        <div className="mt-auto hidden px-3 pb-5 md:block">
+          <LogoutButton />
         </div>
-      ) : null}
+      </aside>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">{children}</main>
-    </>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {trialDays !== null ? (
+          <p className="bg-accent px-4 py-2 text-center text-sm font-bold text-accent-ink">
+            {trialDays > 0
+              ? `Free trial: ${trialDays} day${trialDays === 1 ? "" : "s"} left.`
+              : "Your free trial has ended."}
+          </p>
+        ) : null}
+        <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+      </div>
+    </div>
   );
 }
 

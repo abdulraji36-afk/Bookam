@@ -1,14 +1,14 @@
 import Link from "next/link";
 
-export function Logo({ href = "/" }: { href?: string }) {
+/** The wordmark. Use tone="light" on the dark navy bars. */
+export function Logo({ href = "/", tone = "dark" }: { href?: string; tone?: "dark" | "light" }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-2 text-lg font-semibold text-slate-900">
-      <span
-        aria-hidden
-        className="grid size-8 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white"
-      >
-        B
-      </span>
+    <Link
+      href={href}
+      className={`inline-block text-2xl font-extrabold uppercase tracking-wide ${
+        tone === "light" ? "text-white" : "text-ink"
+      }`}
+    >
       Bookam
     </Link>
   );

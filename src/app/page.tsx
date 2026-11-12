@@ -20,24 +20,24 @@ const POINTS = [
 export default function LandingPage() {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4">
-        <Logo />
-        <nav className="flex items-center gap-2">
-          <Link href="/login" className={buttonClass("ghost", "sm")}>
-            Log in
-          </Link>
-          <Link href="/signup" className={buttonClass("primary", "sm")}>
-            Start free
-          </Link>
-        </nav>
-      </header>
+      <div className="bg-ink text-white">
+        <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4">
+          <Logo tone="light" />
+          <nav className="flex items-center gap-2">
+            <Link href="/login" className={buttonClass("inverse", "sm")}>
+              Log in
+            </Link>
+            <Link href="/signup" className={buttonClass("primary", "sm")}>
+              Start free
+            </Link>
+          </nav>
+        </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16">
-        <section className="py-12 sm:py-20">
-          <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+        <section className="mx-auto w-full max-w-5xl px-4 pb-14 pt-10 sm:pb-20 sm:pt-16">
+          <h1 className="max-w-3xl text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-6xl">
             Orders, dispatch and returns for any depot, shop or warehouse.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-slate-600">
+          <p className="mt-5 max-w-xl text-lg text-nav">
             Bookam runs the daily movement of goods for your business. You decide which products must
             come back and which are simply sold.
           </p>
@@ -45,20 +45,22 @@ export default function LandingPage() {
             <Link href="/signup" className={buttonClass("primary")}>
               Start your 14-day free trial
             </Link>
-            <Link href="/login" className={buttonClass("secondary")}>
+            <Link href="/login" className={buttonClass("inverse")}>
               Log in
             </Link>
           </div>
         </section>
+      </div>
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          {POINTS.map((point) => (
-            <div key={point.title} className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="font-semibold text-slate-900">{point.title}</h2>
-              <p className="mt-2 text-sm text-slate-600">{point.body}</p>
-            </div>
-          ))}
-        </section>
+      <main className="mx-auto grid w-full max-w-5xl flex-1 content-start gap-4 px-4 py-8 sm:grid-cols-3 sm:py-10">
+        {POINTS.map((point) => (
+          <div key={point.title} className="rounded-md bg-white p-5">
+            <h2 className="border-b-[3px] border-ink pb-2 text-lg font-extrabold uppercase tracking-wide">
+              {point.title}
+            </h2>
+            <p className="mt-3 text-ink-soft">{point.body}</p>
+          </div>
+        ))}
       </main>
     </div>
   );

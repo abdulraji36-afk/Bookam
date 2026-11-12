@@ -49,8 +49,8 @@ async function Invitation({ params }: Pick<PageProps<"/invite/[token]">, "params
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold">Join {invitation.organization_name}</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-extrabold uppercase tracking-tight">Join {invitation.organization_name}</h1>
+        <p className="mt-1 text-sm text-ink-soft">
           You have been invited as <strong>{ROLE_LABELS[invitation.role]}</strong>, using the email{" "}
           <strong>{invitation.email}</strong>.
         </p>
@@ -82,15 +82,19 @@ async function Invitation({ params }: Pick<PageProps<"/invite/[token]">, "params
 
 export default function InvitePage({ params }: PageProps<"/invite/[token]">) {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
-      <div className="mb-6">
-        <Logo />
-      </div>
-      <Card>
-        <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-slate-100" />}>
-          <Invitation params={params} />
-        </Suspense>
-      </Card>
-    </main>
+    <>
+      <header className="bg-ink px-4 py-4">
+        <div className="mx-auto w-full max-w-md">
+          <Logo tone="light" />
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-md flex-1 px-4 py-8">
+        <Card>
+          <Suspense fallback={<div className="h-40 animate-pulse rounded-md bg-chip" />}>
+            <Invitation params={params} />
+          </Suspense>
+        </Card>
+      </main>
+    </>
   );
 }

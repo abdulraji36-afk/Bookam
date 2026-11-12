@@ -11,10 +11,10 @@ export function NavLink({ href, exact, children }: { href: string; exact?: boole
     <Link
       href={href}
       aria-current={isActive ? "page" : undefined}
-      className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium ${
+      className={`flex min-h-12 shrink-0 items-center whitespace-nowrap rounded-md px-3.5 ${
         isActive
-          ? "border-brand-600 text-brand-700"
-          : "border-transparent text-slate-600 hover:text-slate-900"
+          ? "bg-accent font-extrabold text-accent-ink"
+          : "font-semibold text-nav hover:bg-white/10 hover:text-white"
       }`}
     >
       {children}

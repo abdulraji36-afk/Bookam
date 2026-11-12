@@ -9,7 +9,7 @@ import {
 import { ActionButton } from "@/components/team/action-button";
 import { InviteForm } from "@/components/team/invite-form";
 import { RoleSelect } from "@/components/team/role-select";
-import { Badge, Card, CardHeader, PageSkeleton } from "@/components/ui/card";
+import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDate, ROLE_LABELS } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -46,14 +46,15 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {seatLimit === null
+      <PageTitle
+        sub={
+          seatLimit === null
             ? `${seatsUsed} team member${seatsUsed === 1 ? "" : "s"}, including open invitations.`
-            : `${seatsUsed} of ${seatLimit} team members used on the ${planResult.data?.name} plan, including open invitations.`}
-        </p>
-      </div>
+            : `${seatsUsed} of ${seatLimit} team members used on the ${planResult.data?.name} plan, including open invitations.`
+        }
+      >
+        Team
+      </PageTitle>
 
       <Card>
         <CardHeader
@@ -70,12 +71,12 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
       {invitations.length > 0 ? (
         <Card>
           <CardHeader title="Open invitations" />
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {invitations.map((invitation) => (
               <li key={invitation.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">{invitation.email}</p>
-                  <p className="text-sm text-slate-600">
+                  <p className="truncate text-sm font-medium text-ink">{invitation.email}</p>
+                  <p className="text-sm text-ink-soft">
                     {ROLE_LABELS[invitation.role]} · expires {formatDate(invitation.expires_at, org.timezone)}
                   </p>
                 </div>
@@ -93,7 +94,7 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
 
       <Card>
         <CardHeader title="People" />
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-line">
           {members.map((member) => {
             const name = member.profiles?.full_name || member.profiles?.email || "Unknown";
             const isSelf = member.user_id === user.id;
@@ -103,14 +104,14 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
             return (
               <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">
+                  <p className="truncate text-sm font-medium text-ink">
                     {name}
-                    {isSelf ? <span className="font-normal text-slate-500"> (you)</span> : null}
+                    {isSelf ? <span className="font-normal text-ink-soft"> (you)</span> : null}
                   </p>
-                  <p className="truncate text-sm text-slate-600">{member.profiles?.email}</p>
+                  <p className="truncate text-sm text-ink-soft">{member.profiles?.email}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!member.is_active ? <Badge tone="amber">Access removed</Badge> : null}
+                  {!member.is_active ? <Badge tone="accent">Access removed</Badge> : null}
                   {isOwner && member.role !== "owner" && member.is_active ? (
                     <RoleSelect
                       action={setMemberRoleAction.bind(null, org.slug, member.id)}
@@ -118,7 +119,7 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
                       memberName={name}
                     />
                   ) : (
-                    <Badge tone={member.role === "owner" ? "green" : "slate"}>
+                    <Badge tone={member.role === "owner" ? "solid" : "plain"}>
                       {ROLE_LABELS[member.role]}
                     </Badge>
                   )}

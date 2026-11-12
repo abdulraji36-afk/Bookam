@@ -22,13 +22,13 @@ export function RoleSelect({ action, role, memberName }: Props) {
         disabled={pending}
         aria-label={`Role for ${memberName}`}
         onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm"
+        className="min-h-11 rounded-md border-2 border-field bg-white px-2 text-sm font-bold"
       >
         <option value="admin">Admin</option>
         <option value="staff">Staff</option>
       </select>
       {!state.ok && state.message ? (
-        <p role="alert" className="text-xs text-red-700">
+        <p role="alert" className="text-xs text-danger">
           {state.message}
         </p>
       ) : null}

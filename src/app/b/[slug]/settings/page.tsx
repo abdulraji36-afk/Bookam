@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { createLocationAction, updateBusinessAction } from "@/app/actions/organizations";
 import { BusinessForm } from "@/components/business/business-form";
 import { LocationForm } from "@/components/business/location-form";
-import { Badge, Card, CardHeader, PageSkeleton } from "@/components/ui/card";
+import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { daysUntil } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -35,7 +35,7 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <PageTitle>Settings</PageTitle>
 
       <Card>
         <CardHeader title="Business details" />
@@ -52,10 +52,10 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
           title="Locations"
           description="Each store, depot or warehouse you keep stock in."
         />
-        <ul className="mb-4 divide-y divide-slate-100">
+        <ul className="mb-4 divide-y divide-line">
           {locations.map((location) => (
             <li key={location.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-              <span className="font-medium text-slate-900">{location.name}</span>
+              <span className="font-medium text-ink">{location.name}</span>
               {location.is_default ? <Badge>Main</Badge> : null}
             </li>
           ))}
@@ -67,22 +67,22 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
         <CardHeader title="Plan" />
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-slate-600">Current plan</dt>
-            <dd className="font-medium text-slate-900">
+            <dt className="text-ink-soft">Current plan</dt>
+            <dd className="font-medium text-ink">
               {plan?.name ?? org.plan_code}
               {trialDays !== null ? ` · ${trialDays} day${trialDays === 1 ? "" : "s"} left` : ""}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-600">Team members</dt>
-            <dd className="font-medium text-slate-900">{limit(plan?.max_members)}</dd>
+            <dt className="text-ink-soft">Team members</dt>
+            <dd className="font-medium text-ink">{limit(plan?.max_members)}</dd>
           </div>
           <div>
-            <dt className="text-slate-600">Locations</dt>
-            <dd className="font-medium text-slate-900">{limit(plan?.max_locations)}</dd>
+            <dt className="text-ink-soft">Locations</dt>
+            <dd className="font-medium text-ink">{limit(plan?.max_locations)}</dd>
           </div>
         </dl>
-        <p className="mt-4 text-sm text-slate-600">
+        <p className="mt-4 text-sm text-ink-soft">
           Currency {org.currency_code} · time zone {org.timezone}
         </p>
       </Card>

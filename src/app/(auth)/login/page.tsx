@@ -25,9 +25,9 @@ async function LoginCard({ searchParams }: Pick<PageProps<"/login">, "searchPara
         </div>
       ) : null}
       <LoginForm next={next} email={email} />
-      <p className="mt-5 text-sm text-slate-600">
+      <p className="mt-5 text-sm text-ink-soft">
         New to Bookam?{" "}
-        <Link href={signupHref} className="font-medium text-brand-700 underline">
+        <Link href={signupHref} className="font-extrabold text-ink underline decoration-accent decoration-2 underline-offset-4">
           Create an account
         </Link>
       </p>
@@ -38,8 +38,8 @@ async function LoginCard({ searchParams }: Pick<PageProps<"/login">, "searchPara
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <Card>
-      <h1 className="mb-5 text-xl font-semibold">Log in to Bookam</h1>
-      <Suspense fallback={<div className="h-56 animate-pulse rounded-lg bg-slate-100" />}>
+      <h1 className="mb-5 text-2xl font-extrabold uppercase tracking-tight">Log in</h1>
+      <Suspense fallback={<div className="h-56 animate-pulse rounded-md bg-chip" />}>
         <LoginCard searchParams={searchParams} />
       </Suspense>
     </Card>

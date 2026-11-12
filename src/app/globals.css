@@ -1,16 +1,26 @@
 @import "tailwindcss";
 
+/* "Bold depot" look: dark navy, amber actions, heavy type, big touch targets. */
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --color-brand-50: #ecfdf5;
-  --color-brand-100: #d1fae5;
-  --color-brand-600: #047857;
-  --color-brand-700: #065f46;
-  --color-brand-800: #064e3b;
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --color-ink: #0b1f33;
+  --color-ink-soft: #3d5166;
+  --color-paper: #eef1f4;
+  --color-line: #dde3e9;
+  --color-chip: #e3e8ed;
+  --color-field: #8fa0b2;
+  --color-nav: #c7d2de;
+  --color-accent: #f5a30a;
+  --color-accent-strong: #dc8f00;
+  --color-accent-ink: #1a1200;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-success: #17643a;
+  --color-success-soft: #e6f4ea;
 }
 
 body {
-  background: var(--color-slate-50);
-  color: var(--color-slate-900);
+  background: var(--color-paper);
+  color: var(--color-ink);
 }

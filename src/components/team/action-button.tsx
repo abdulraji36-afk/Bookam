@@ -29,7 +29,7 @@ export function ActionButton({ action, label, pendingLabel, variant = "secondary
         {label}
       </SubmitButton>
       {!state.ok && state.message ? (
-        <p role="alert" className="max-w-56 text-right text-xs text-red-700">
+        <p role="alert" className="max-w-56 text-right text-xs text-danger">
           {state.message}
         </p>
       ) : null}

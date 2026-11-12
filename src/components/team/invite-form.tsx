@@ -62,8 +62,8 @@ export function InviteForm({ action, businessName, canInviteAdmin }: Props) {
       {!state.ok && state.message ? <Alert tone="error">{state.message}</Alert> : null}
 
       {invite ? (
-        <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm text-emerald-900">
+        <div className="space-y-3 rounded-md border-2 border-ink bg-paper p-4">
+          <p className="text-sm font-medium text-ink">
             Send this link to <strong>{invite.email}</strong>. It works once, for 7 days, and is only
             shown now.
           </p>
@@ -72,7 +72,7 @@ export function InviteForm({ action, businessName, canInviteAdmin }: Props) {
             value={invite.link}
             aria-label="Invitation link"
             onFocus={(event) => event.currentTarget.select()}
-            className="block min-h-11 w-full rounded-lg border border-emerald-300 bg-white px-3 text-sm"
+            className="block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-sm font-medium"
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => copyLink(invite.link)}>

@@ -16,9 +16,9 @@ async function SignupCard({ searchParams }: Pick<PageProps<"/signup">, "searchPa
   return (
     <>
       <SignupForm next={next} email={email} />
-      <p className="mt-5 text-sm text-slate-600">
+      <p className="mt-5 text-sm text-ink-soft">
         Already have an account?{" "}
-        <Link href={loginHref} className="font-medium text-brand-700 underline">
+        <Link href={loginHref} className="font-extrabold text-ink underline decoration-accent decoration-2 underline-offset-4">
           Log in
         </Link>
       </p>
@@ -29,9 +29,9 @@ async function SignupCard({ searchParams }: Pick<PageProps<"/signup">, "searchPa
 export default function SignupPage({ searchParams }: PageProps<"/signup">) {
   return (
     <Card>
-      <h1 className="text-xl font-semibold">Create your account</h1>
-      <p className="mb-5 mt-1 text-sm text-slate-600">Free for 14 days. No card needed.</p>
-      <Suspense fallback={<div className="h-72 animate-pulse rounded-lg bg-slate-100" />}>
+      <h1 className="text-2xl font-extrabold uppercase tracking-tight">Create your account</h1>
+      <p className="mb-5 mt-1 text-sm text-ink-soft">Free for 14 days. No card needed.</p>
+      <Suspense fallback={<div className="h-72 animate-pulse rounded-md bg-chip" />}>
         <SignupCard searchParams={searchParams} />
       </Suspense>
     </Card>

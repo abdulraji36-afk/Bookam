@@ -1,19 +1,19 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
 const CONTROL =
-  "block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 " +
-  "placeholder:text-slate-400 focus:border-brand-600 focus:outline-2 focus:outline-brand-600/30";
+  "block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium text-ink " +
+  "placeholder:font-normal placeholder:text-ink-soft/70 focus:border-ink focus:outline-2 focus:outline-accent";
 
 type FieldProps = { label: string; hint?: string; children: ReactNode; htmlFor: string };
 
 export function Field({ label, hint, children, htmlFor }: FieldProps) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-800">
+      <label htmlFor={htmlFor} className="block text-sm font-bold text-ink">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-sm text-slate-500">{hint}</p> : null}
+      {hint ? <p className="text-sm text-ink-soft">{hint}</p> : null}
     </div>
   );
 }

@@ -36,15 +36,15 @@ async function BusinessList({ searchParams }: Pick<PageProps<"/businesses">, "se
         <li key={business.slug}>
           <Link
             href={`/b/${business.slug}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:border-brand-600"
+            className="flex items-center justify-between gap-3 rounded-md border-2 border-transparent bg-white p-4 hover:border-ink"
           >
             <span>
-              <span className="block font-medium text-slate-900">{business.name}</span>
+              <span className="block text-lg font-extrabold text-ink">{business.name}</span>
               {business.business_type ? (
-                <span className="text-sm text-slate-600">{business.business_type}</span>
+                <span className="text-sm text-ink-soft">{business.business_type}</span>
               ) : null}
             </span>
-            <Badge tone={business.role === "owner" ? "green" : "slate"}>{ROLE_LABELS[business.role]}</Badge>
+            <Badge tone={business.role === "owner" ? "solid" : "plain"}>{ROLE_LABELS[business.role]}</Badge>
           </Link>
         </li>
       ))}
@@ -58,7 +58,7 @@ export default function BusinessesPage({ searchParams }: PageProps<"/businesses"
       <AccountBar />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold">Your businesses</h1>
+          <h1 className="text-3xl font-extrabold uppercase tracking-tight">Your businesses</h1>
           <Link href="/onboarding" className={buttonClass("secondary", "sm")}>
             Add a business
           </Link>
