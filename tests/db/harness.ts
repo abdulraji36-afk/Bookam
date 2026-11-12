@@ -1,0 +1,135 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+
+const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
+
+// The minimum of Supabase's environment that our migrations rely on:
+// the three API roles, the auth schema, auth.users and auth.uid().
+const SUPABASE_STUB = `
+  create role anon nologin;
+  create role authenticated nologin;
+  create role service_role nologin bypassrls;
+  create schema auth;
+  grant usage on schema auth to anon, authenticated, service_role;
+  create table auth.users (
+    id uuid primary key default gen_random_uuid(),
+    email text unique,
+    raw_user_meta_data jsonb not null default '{}'::jsonb
+  );
+  create function auth.uid() returns uuid language sql stable as $$
+    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
+  $$;
+  grant execute on function auth.uid() to anon, authenticated, service_role;
+`;
+
+export type Db = PGlite;
+
+export async function createTestDb(): Promise<Db> {
+  const db = new PGlite();
+  await db.exec(SUPABASE_STUB);
+
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+
+  for (const file of files) {
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
+  }
+
+  return db;
+}
+
+/** Creates an auth user the way Supabase Auth would; the profile trigger runs. */
+export async function createUser(db: Db, email: string, fullName = "Test User") {
+  const result = await db.query<{ id: string }>(
+    `insert into auth.users (email, raw_user_meta_data)
+     values ($1, jsonb_build_object('full_name', $2::text))
+     returning id`,
+    [email, fullName]
+  );
+  return result.rows[0].id;
+}
+
+type Row = Record<string, unknown>;
+
+export type Session = {
+  query: <T extends Row = Row>(sql: string, params?: unknown[]) => Promise<T[]>;
+};
+
+/**
+ * Runs the callback as a signed-in user (or as an anonymous visitor when
+ * userId is null), with the same role switch PostgREST performs.
+ */
+export async function as<T>(
+  db: Db,
+  userId: string | null,
+  run: (session: Session) => Promise<T>
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [userId ?? ""]);
+    await tx.exec(`set local role ${userId ? "authenticated" : "anon"}`);
+
+    return run({
+      query: async <R extends Row = Row>(sql: string, params: unknown[] = []) =>
+        (await tx.query<R>(sql, params)).rows
+    });
+  });
+}
+
+export async function createBusiness(db: Db, ownerId: string, name: string) {
+  const rows = await as(db, ownerId, (s) =>
+    s.query<{ id: string; slug: string }>(`select * from public.create_organization($1)`, [name])
+  );
+  return rows[0];
+}
+
+export async function setPlan(db: Db, organizationId: string, planCode: string) {
+  await db.query(`update public.organizations set plan_code = $1 where id = $2`, [
+    planCode,
+    organizationId
+  ]);
+}
+
+export async function invite(
+  db: Db,
+  inviterId: string,
+  organizationId: string,
+  email: string,
+  role: "admin" | "staff" = "staff"
+) {
+  const rows = await as(db, inviterId, (s) =>
+    s.query<{ invitation_id: string; token: string }>(
+      `select * from public.invite_member($1, $2, $3)`,
+      [organizationId, email, role]
+    )
+  );
+  return rows[0];
+}
+
+export async function accept(db: Db, userId: string, token: string) {
+  const rows = await as(db, userId, (s) =>
+    s.query<{ organization_id: string; slug: string }>(
+      `select * from public.accept_invitation($1)`,
+      [token]
+    )
+  );
+  return rows[0];
+}
+
+/** Invites an existing user by their email and accepts on their behalf. */
+export async function addMember(
+  db: Db,
+  inviterId: string,
+  organizationId: string,
+  user: { id: string; email: string },
+  role: "admin" | "staff" = "staff"
+) {
+  const { token } = await invite(db, inviterId, organizationId, user.email, role);
+  await accept(db, user.id, token);
+  const result = await db.query<{ id: string }>(
+    `select id from public.memberships where organization_id = $1 and user_id = $2`,
+    [organizationId, user.id]
+  );
+  return result.rows[0].id;
+}
