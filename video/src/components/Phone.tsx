@@ -1,0 +1,65 @@
+import React from "react";
+import { C, FONT } from "../theme";
+import { LogoMark } from "./LogoMark";
+
+export const PHONE_W = 780;
+export const PHONE_H = 1340;
+
+/** A phone with the Bookam app chrome: navy header, business name, light body. */
+export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactNode }> = ({ children, overlay }) => (
+  <div style={{
+    width: PHONE_W, height: PHONE_H, borderRadius: 96, background: "#05080c", padding: 20,
+    boxShadow: "0 60px 120px rgba(0,0,0,0.55), 0 0 0 4px #2b3440 inset",
+  }}>
+    <div style={{
+      width: "100%", height: "100%", borderRadius: 78, overflow: "hidden", position: "relative",
+      background: C.paper, fontFamily: FONT, color: C.ink,
+    }}>
+      <div style={{
+        height: 210, background: C.ink, padding: "86px 44px 0", display: "flex", alignItems: "center", gap: 18,
+      }}>
+        <LogoMark size={64} frame={0} built />
+        <div style={{ color: "#fff", fontWeight: 900, fontSize: 40, letterSpacing: "0.04em" }}>BOOKAM</div>
+        <div style={{
+          marginLeft: "auto", color: C.nav, fontSize: 28, fontWeight: 600, background: "rgba(255,255,255,0.08)",
+          borderRadius: 30, padding: "10px 22px",
+        }}>Kano Road Depot</div>
+      </div>
+      <div style={{ position: "absolute", top: 26, left: "50%", width: 200, height: 50, marginLeft: -100, borderRadius: 30, background: "#05080c" }} />
+      <div style={{ position: "absolute", top: 210, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>{children}</div>
+      {overlay}
+    </div>
+  </div>
+);
+
+export const Chip: React.FC<{ bg: string; fg: string; children: React.ReactNode; size?: number }> = ({
+  bg, fg, children, size = 28,
+}) => (
+  <span style={{
+    background: bg, color: fg, borderRadius: 999, padding: `${size * 0.3}px ${size * 0.7}px`,
+    fontSize: size, fontWeight: 700, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 8,
+  }}>{children}</span>
+);
+
+export const Card: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
+  <div style={{
+    background: "#fff", borderRadius: 32, padding: 32, border: `2px solid ${C.line}`,
+    boxShadow: "0 10px 30px rgba(11,31,51,0.08)", ...style,
+  }}>{children}</div>
+);
+
+export const Avatar: React.FC<{ name: string; color: string; size?: number }> = ({ name, color, size = 76 }) => (
+  <div style={{
+    width: size, height: size, borderRadius: size / 2, background: color, color: "#fff", flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: size * 0.38,
+  }}>{name.split(" ").map((p) => p[0]).join("").slice(0, 2)}</div>
+);
+
+export const ScreenTitle: React.FC<{ title: string; right?: React.ReactNode }> = ({ title, right }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+    <div style={{ fontSize: 58, fontWeight: 850, letterSpacing: "-0.02em" }}>{title}</div>
+    {right}
+  </div>
+);
+
+export const naira = (n: number) => "₦" + Math.round(n).toLocaleString("en-NG");

@@ -1,0 +1,14 @@
+{
+  "hook": 1.437,
+  "manual": 1.411,
+  "accounting": 1.437,
+  "theft": 1.28,
+  "nocontrol": 1.567,
+  "reveal": 0.601,
+  "customers": 1.541,
+  "orders": 1.829,
+  "dispatch": 2.325,
+  "stock": 2.873,
+  "realtime": 2.978,
+  "cta": 5.851
+}

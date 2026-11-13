@@ -1,0 +1,26 @@
+{
+  "name": "bookam-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "voiceover": "python3 scripts/voiceover.py",
+    "music": "python3 scripts/music.py",
+    "render": "remotion render BookamPromo out/bookam-promo-raw.mp4 && npm run master",
+    "master": "ffmpeg -y -loglevel error -i out/bookam-promo-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-9x16.mp4",
+    "still": "remotion still BookamPromo out/still.png",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/caveat": "^5.3.0",
+    "@remotion/cli": "^4.0.543",
+    "@remotion/transitions": "^4.0.543",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remotion": "^4.0.543"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}
