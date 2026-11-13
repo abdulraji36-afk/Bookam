@@ -38,7 +38,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle
           sub={
             lowCount > 0

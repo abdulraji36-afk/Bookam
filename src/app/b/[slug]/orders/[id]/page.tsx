@@ -48,7 +48,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
   return (
     <div className="max-w-3xl space-y-6">
       {query.saved === "1" ? <Alert tone="success">Order saved. Its stock has been set aside.</Alert> : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub="Customer order">{order.order_no}</PageTitle>
         <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
       </div>

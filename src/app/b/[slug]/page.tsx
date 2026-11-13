@@ -120,7 +120,7 @@ function StatTile({
   return (
     <Link
       href={href}
-      className={`block rounded-md border-2 border-transparent px-5 py-4 hover:border-accent ${
+      className={`block rounded-md border-2 border-transparent px-5 py-4 transition-transform duration-150 hover:-translate-y-0.5 hover:border-accent active:translate-y-0 active:scale-[0.98] ${
         strong ? "bg-ink text-white" : "bg-white"
       }`}
     >

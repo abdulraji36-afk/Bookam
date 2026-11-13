@@ -18,9 +18,135 @@
   --color-danger-soft: #fdecea;
   --color-success: #17643a;
   --color-success-soft: #e6f4ea;
+
+  /* Motion: short and quiet. Things arrive; nothing bounces. */
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --animate-page-in: page-in 260ms var(--ease-out-soft) both;
+  --animate-pop-in: pop-in 180ms var(--ease-out-soft) both;
+  --animate-sheet-up: sheet-up 260ms var(--ease-out-soft) both;
+  --animate-fade-in: fade-in 200ms ease-out both;
+  --animate-pending: pending 900ms ease-in-out infinite;
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pending {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
 }
 
-body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* On screens with a side menu, keep room for the scrollbar so the page does
+     not jump sideways between short and long pages. Phones overlay theirs. */
+  @media (min-width: 768px) {
+    html {
+      scrollbar-gutter: stable;
+    }
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  /* Colour changes ease instead of snapping, everywhere. */
+  a,
+  button,
+  summary,
+  input,
+  select {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      opacity 150ms ease;
+  }
+
+  /* No 300ms tap delay or double-tap zoom on controls. */
+  a,
+  button,
+  summary,
+  label,
+  input,
+  select {
+    touch-action: manipulation;
+  }
+
+  /* A fold-out section eases open. */
+  details[open] > summary ~ * {
+    animation: var(--animate-pop-in);
+  }
+
+  dialog::backdrop {
+    background: rgb(11 31 51 / 0.6);
+    animation: var(--animate-fade-in);
+  }
+
+  /* People who ask their device for less motion get none. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* A page's title with its main action. On a phone the action goes full width. */
+  .page-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 639px) {
+    .page-head > a,
+    .page-head > div + div {
+      width: 100%;
+    }
+    .page-head > div + div > a {
+      flex: 1 1 0%;
+    }
+  }
+
+  /* Thin, dark scrollbar for the side menu. */
+  .menu-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
 }

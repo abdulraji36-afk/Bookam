@@ -38,7 +38,7 @@ async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "par
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub="The shops and people you deliver to.">Customers</PageTitle>
         <Link href={`${base}/new`} className={buttonClass("primary")}>
           + New customer

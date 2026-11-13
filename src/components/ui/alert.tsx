@@ -12,7 +12,7 @@ export function Alert({ tone = "info", children }: { tone?: Tone; children: Reac
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
-      className={`rounded-md border-2 px-3 py-2.5 text-sm font-semibold ${TONES[tone]}`}
+      className={`animate-pop-in rounded-md border-2 px-3 py-2.5 text-sm font-semibold ${TONES[tone]}`}
     >
       {children}
     </div>

@@ -98,7 +98,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub="Dispatch trip">{trip.trip_no}</PageTitle>
         <TripStatusBadge status={trip.status} />
       </div>

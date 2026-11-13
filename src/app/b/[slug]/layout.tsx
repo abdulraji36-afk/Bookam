@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import { MobileNav } from "@/components/business/mobile-nav";
+import type { NavItem } from "@/components/business/nav-items";
 import { NavLink } from "@/components/business/nav-link";
 import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
@@ -25,50 +27,57 @@ async function BusinessShell({
     .eq("organization_id", org.id);
   const trialDays = org.plan_code === "trial" ? daysUntil(org.trial_ends_at, await requestNow()) : null;
 
+  const manager = canManage(role);
+  const tracksReturns = Boolean(returnableCount);
+  const items: NavItem[] = [
+    { href: base, label: "Dashboard", icon: "dashboard", exact: true },
+    { href: `${base}/orders`, label: "Orders", icon: "orders" },
+    { href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch" },
+    ...(tracksReturns ? [{ href: `${base}/returns`, label: "Returns", icon: "returns" } as const] : []),
+    { href: `${base}/stock`, label: "Stock", icon: "stock" },
+    { href: `${base}/products`, label: "Products", icon: "products" },
+    { href: `${base}/customers`, label: "Customers", icon: "customers" },
+    { href: `${base}/reports/daily`, label: "Reports", icon: "reports" },
+    ...(manager
+      ? ([
+          { href: `${base}/team`, label: "Team", icon: "team" },
+          { href: `${base}/activity`, label: "Activity", icon: "activity" },
+          { href: `${base}/settings`, label: "Settings", icon: "settings" }
+        ] as const)
+      : [])
+  ];
+  // On a phone the first four are tabs; "Dashboard" is shortened to fit.
+  const tabs = items.slice(0, 4).map((item) => (item.icon === "dashboard" ? { ...item, label: "Home" } : item));
+
   return (
     <div className="flex flex-1 flex-col md:flex-row">
-      {/* A top bar on phones, a side menu from tablet width up. */}
-      <aside className="bg-ink text-white md:flex md:w-60 md:shrink-0 md:flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 pt-4 md:px-5 md:pt-6">
-          <div className="min-w-0">
-            <Logo href={base} tone="light" />
-            <Link
-              href="/businesses?all=1"
-              title="Switch business"
-              className="block truncate text-sm font-medium text-nav hover:text-white"
-            >
-              {org.name}
-            </Link>
-          </div>
-          <div className="md:hidden">
-            <LogoutButton />
-          </div>
+      {/* Tablet and up: a side menu that stays in place while the page scrolls. */}
+      <aside className="hidden bg-ink text-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col">
+        <div className="px-5 pb-2 pt-6">
+          <Logo href={base} tone="light" />
+          <Link
+            href="/businesses?all=1"
+            title="Switch business"
+            className="block truncate text-sm font-medium text-nav hover:text-white"
+          >
+            {org.name}
+          </Link>
         </div>
-
-        <nav aria-label="Business" className="flex gap-1.5 overflow-x-auto px-3 py-3 md:flex-col md:py-5">
-          <NavLink href={base} exact>
-            Dashboard
-          </NavLink>
-          <NavLink href={`${base}/orders`}>Orders</NavLink>
-          <NavLink href={`${base}/dispatch`}>Dispatch</NavLink>
-          {returnableCount ? <NavLink href={`${base}/returns`}>Returns</NavLink> : null}
-          <NavLink href={`${base}/stock`}>Stock</NavLink>
-          <NavLink href={`${base}/products`}>Products</NavLink>
-          <NavLink href={`${base}/customers`}>Customers</NavLink>
-          <NavLink href={`${base}/reports/daily`}>Reports</NavLink>
-          {canManage(role) ? (
-            <>
-              <NavLink href={`${base}/team`}>Team</NavLink>
-              <NavLink href={`${base}/activity`}>Activity</NavLink>
-              <NavLink href={`${base}/settings`}>Settings</NavLink>
-            </>
-          ) : null}
+        <nav aria-label="Business" className="menu-scroll flex-1 space-y-1 overflow-y-auto px-3 py-3">
+          {items.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
         </nav>
-
-        <div className="mt-auto hidden px-3 pb-5 md:block">
+        <div className="border-t border-white/10 px-3 py-4">
           <LogoutButton />
         </div>
       </aside>
+
+      {/* Phone: a slim bar that stays at the top; the menu is at the bottom. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-ink px-4 py-2.5 text-white md:hidden">
+        <Logo href={base} tone="light" />
+        <span className="min-w-0 truncate text-sm font-semibold text-nav">{org.name}</span>
+      </header>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {trialDays !== null ? (
@@ -78,8 +87,11 @@ async function BusinessShell({
               : "Your free trial has ended."}
           </p>
         ) : null}
-        <main className="w-full max-w-5xl flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        {/* Extra room at the bottom on phones so the tab bar never covers content. */}
+        <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">{children}</main>
       </div>
+
+      <MobileNav primary={tabs} more={items.slice(4)} businessName={org.name} />
     </div>
   );
 }

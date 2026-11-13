@@ -26,7 +26,7 @@ async function Products({ params }: Pick<PageProps<"/b/[slug]/products">, "param
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub="What you sell, and whether customers must bring something back.">Products</PageTitle>
         {manager ? (
           <Link href={`${base}/new`} className={buttonClass("primary")}>

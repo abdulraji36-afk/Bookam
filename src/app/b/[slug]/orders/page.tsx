@@ -36,7 +36,7 @@ async function Orders({ params }: Pick<PageProps<"/b/[slug]/orders">, "params">)
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub={`${waiting.length} waiting for dispatch.`}>Orders</PageTitle>
         <Link href={`${base}/orders/new`} className={buttonClass("primary")}>
           + New order

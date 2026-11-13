@@ -80,7 +80,7 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub={day === today ? "Today so far." : "What happened on this day."}>
           {formatDay(day)}
         </PageTitle>

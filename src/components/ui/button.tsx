@@ -14,8 +14,9 @@ const VARIANTS: Record<ButtonVariant, string> = {
 export function buttonClass(variant: ButtonVariant = "primary", size: "md" | "sm" = "md") {
   return [
     "inline-flex items-center justify-center gap-2 rounded-md font-extrabold uppercase tracking-wide",
-    "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2",
-    "disabled:cursor-not-allowed disabled:opacity-60",
+    "transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97]",
+    "focus-visible:outline-2 focus-visible:outline-offset-2",
+    "disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100",
     size === "md" ? "min-h-12 px-5 text-base" : "min-h-11 px-4 text-sm",
     VARIANTS[variant]
   ].join(" ");

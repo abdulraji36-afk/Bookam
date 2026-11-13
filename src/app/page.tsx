@@ -33,7 +33,7 @@ export default function LandingPage() {
           </nav>
         </header>
 
-        <section className="mx-auto w-full max-w-5xl px-4 pb-14 pt-10 sm:pb-20 sm:pt-16">
+        <section className="mx-auto w-full max-w-5xl animate-page-in px-4 pb-14 pt-10 sm:pb-20 sm:pt-16">
           <h1 className="max-w-3xl text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-6xl">
             Orders, dispatch and returns for any depot, shop or warehouse.
           </h1>
@@ -54,7 +54,7 @@ export default function LandingPage() {
 
       <main className="mx-auto grid w-full max-w-5xl flex-1 content-start gap-4 px-4 py-8 sm:grid-cols-3 sm:py-10">
         {POINTS.map((point) => (
-          <div key={point.title} className="rounded-md bg-white p-5">
+          <div key={point.title} className="animate-page-in rounded-md bg-white p-5">
             <h2 className="border-b-[3px] border-ink pb-2 text-lg font-extrabold uppercase tracking-wide">
               {point.title}
             </h2>

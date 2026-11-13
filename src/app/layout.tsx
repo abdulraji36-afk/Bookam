@@ -10,6 +10,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Lets the bottom tab bar sit clear of the home indicator on notched phones.
+  viewportFit: "cover",
   themeColor: "#0b1f33"
 };
 

@@ -77,7 +77,7 @@ async function Dispatch({ params }: Pick<PageProps<"/b/[slug]/dispatch">, "param
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub={`${waiting} order${waiting === 1 ? "" : "s"} waiting to be put on a trip.`}>
           Dispatch
         </PageTitle>

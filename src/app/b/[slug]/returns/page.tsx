@@ -84,7 +84,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
         </Alert>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="page-head">
         <PageTitle sub="What is in store, and what customers still have to bring back.">Returns</PageTitle>
         <div className="flex flex-wrap gap-2">
           <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
