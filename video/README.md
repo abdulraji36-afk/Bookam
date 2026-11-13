@@ -1,11 +1,22 @@
-# Bookam promo videos (Remotion)
+# Bookam videos (Remotion)
 
-Two vertical (1080×1920) cuts of the same promo, built from the same scenes:
+Vertical (1080×1920) awareness videos, all built from one shared set of scenes:
 
-| Composition | Length | Use it for |
+| Composition | Length | What it is |
 | --- | --- | --- |
-| `BookamPromoFull` | 49 s, natural pace | WhatsApp Status, the website, YouTube, sending to interested customers |
-| `BookamPromo` | 30 s, fast | Paid ads, TikTok/Reels feeds where people scroll quickly |
+| `BookamPromoFull` | 49 s | Main promo at a natural pace: WhatsApp Status, website, YouTube |
+| `BookamPromo` | 30 s | Main promo, fast cut for paid ads and short-form feeds |
+| `SoundFamiliar1` | 18 s | "Sound familiar?" 1/5: bought 120 crates, counted 97 → every stock movement with a name |
+| `SoundFamiliar2` | 19 s | 2/5: which driver took it? → the trip record (driver, vehicle, orders, who sent it) |
+| `SoundFamiliar3` | 18 s | 3/5: a page torn out of the order book → voided orders stay on record with a reason |
+| `SoundFamiliar4` | 18 s | 4/5: 9pm, still adding up → the daily report |
+| `SoundFamiliar5` | 18 s | 5/5: away from the depot → Telegram message for every order, trip and return |
+| `BookamReturnables` | 38 s | Crates, cylinders and pallets: who owes what, returns per trip, balances |
+
+Everything shown matches what Bookam actually records (see `supabase/migrations`): returnable
+balances are counted in items (crates, cylinders), not money; orders go Pending → Assigned →
+Dispatched → Completed; voids need a reason and keep the record; Telegram messages end "By <name>".
+Names and figures are made up.
 
 This is its own project with its own dependencies; the Next.js app ignores this folder.
 
@@ -27,19 +38,24 @@ This is its own project with its own dependencies; the Next.js app ignores this 
 ```bash
 npm install
 npm run studio          # live preview in the browser
-npm run render          # both cuts → out/bookam-promo-full-49s.mp4 and out/bookam-promo-30s.mp4
+npm run render          # both promo cuts → out/bookam-promo-full-49s.mp4 and out/bookam-promo-30s.mp4
 npm run render:full     # just the 49-second cut
+npm run render:series   # the five "Sound familiar?" episodes → out/sound-familiar-<n>.mp4
+npm run render:returns  # out/bookam-returnables.mp4
+npm run render:all      # everything
 ```
 
 Rendering needs ffmpeg on the PATH (the last step levels the audio to -14 LUFS for social platforms).
 
 ## Changing things
 
-- **Timing**: `src/timelines.json` holds every scene's start, length and voice start (frames, 30 fps) for both cuts.
+- **Timing**: `src/timelines.json` holds every scene's start, length and voice start (frames, 30 fps) for both promo cuts.
+  The series and returnables timelines (`src/series/timelines.json`) are generated from the voice lengths by
+  `python3 scripts/plan_series.py`; their scenes and screens live in `src/series/`.
   On-screen moments are tied to the spoken words (`public/<vo dir>/words.json`), so most animations follow the voice automatically.
 - **Words on screen**: captions live in each scene (`src/scenes/*`).
 - **Voiceover**: edit the lines in `scripts/voiceover.py`, then `pip install edge-tts` and
-  `python3 scripts/voiceover.py full` (or `short`). Add a voice name to switch voice, e.g.
+  `python3 scripts/voiceover.py full` (or `short`, `ep1`…`ep5`, `returns`; `npm run voiceover` does all of them). Add a voice name to switch voice, e.g.
   `python3 scripts/voiceover.py full en-NG-EzinneNeural` for the female Nigerian voice.
   Check the printed durations still fit `src/timelines.json`.
 - **Music and sound effects**: generated from scratch (royalty-free) by `scripts/music.py`

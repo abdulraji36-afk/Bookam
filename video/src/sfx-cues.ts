@@ -1,7 +1,7 @@
 import { CTA_PREROLL } from "./scenes/CallToAction";
 import { SceneKey, Timeline, sceneInfo } from "./timeline";
 
-type Cue = { at: number; name: string; vol: number };
+export type Cue = { at: number; name: string; vol: number };
 
 /**
  * Sound effects for a cut, in absolute frames. They follow the same cues the

@@ -1,10 +1,10 @@
 import React from "react";
 import { Audio, Sequence, interpolate, staticFile } from "remotion";
-import { buildSfx } from "./sfx-cues";
+import { Cue, buildSfx } from "./sfx-cues";
 import { SceneKey, useTimeline } from "./timeline";
 import { FPS } from "./theme";
 
-export const Soundtrack: React.FC = () => {
+export const Soundtrack: React.FC<{ sfx?: Cue[] }> = ({ sfx }) => {
   const tl = useTimeline();
   const keys = Object.keys(tl.scenes) as SceneKey[];
   // frames during which a voice line plays, used to duck the music under speech
@@ -24,7 +24,7 @@ export const Soundtrack: React.FC = () => {
           <Audio src={staticFile(`${tl.voDir}/${k}.mp3`)} />
         </Sequence>
       ))}
-      {buildSfx(tl).map((s, i) => (
+      {(sfx ?? buildSfx(tl)).map((s, i) => (
         <Sequence key={i} from={Math.max(0, Math.round(s.at))} layout="none">
           <Audio src={staticFile(`sfx/${s.name}.wav`)} volume={s.vol} />
         </Sequence>

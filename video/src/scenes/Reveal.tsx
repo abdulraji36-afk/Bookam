@@ -48,7 +48,7 @@ export const Reveal: React.FC = () => {
           fontFamily: FONT, fontSize: 50, fontWeight: 600, color: C.nav,
           opacity: tag, transform: `translateY(${(1 - tag) * 30}px)`, textAlign: "center", lineHeight: 1.3,
         }}>
-          Order &amp; dispatch software for<br />depots, shops and warehouses
+          {(S.sub ?? "Order & dispatch software for\ndepots, shops and warehouses").split("\n").map((l) => <div key={l}>{l}</div>)}
         </div>
       </AbsoluteFill>
       <AbsoluteFill style={{ background: "#fff", opacity: flash }} />

@@ -3,12 +3,15 @@
   "private": true,
   "scripts": {
     "studio": "remotion studio",
-    "voiceover": "python3 scripts/voiceover.py full && python3 scripts/voiceover.py short",
+    "voiceover": "for c in full short ep1 ep2 ep3 ep4 ep5 returns; do python3 scripts/voiceover.py $c || exit 1; done && python3 scripts/plan_series.py",
     "music": "python3 scripts/music.py",
     "render": "npm run render:full && npm run render:short",
     "render:full": "remotion render BookamPromoFull out/bookam-promo-full-raw.mp4 && ffmpeg -y -loglevel error -i out/bookam-promo-full-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-full-49s.mp4",
     "render:short": "remotion render BookamPromo out/bookam-promo-raw.mp4 && ffmpeg -y -loglevel error -i out/bookam-promo-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-30s.mp4",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "render:series": "remotion render SoundFamiliar1 out/sound-familiar-1-raw.mp4 && ffmpeg -y -loglevel error -i out/sound-familiar-1-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/sound-familiar-1.mp4 && remotion render SoundFamiliar2 out/sound-familiar-2-raw.mp4 && ffmpeg -y -loglevel error -i out/sound-familiar-2-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/sound-familiar-2.mp4 && remotion render SoundFamiliar3 out/sound-familiar-3-raw.mp4 && ffmpeg -y -loglevel error -i out/sound-familiar-3-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/sound-familiar-3.mp4 && remotion render SoundFamiliar4 out/sound-familiar-4-raw.mp4 && ffmpeg -y -loglevel error -i out/sound-familiar-4-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/sound-familiar-4.mp4 && remotion render SoundFamiliar5 out/sound-familiar-5-raw.mp4 && ffmpeg -y -loglevel error -i out/sound-familiar-5-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/sound-familiar-5.mp4",
+    "render:returns": "remotion render BookamReturnables out/bookam-returnables-raw.mp4 && ffmpeg -y -loglevel error -i out/bookam-returnables-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-returnables.mp4",
+    "render:all": "npm run render && npm run render:series && npm run render:returns"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

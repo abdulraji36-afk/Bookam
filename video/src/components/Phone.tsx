@@ -6,7 +6,7 @@ export const PHONE_W = 880;
 export const PHONE_H = 1560;
 
 /** A phone with the Bookam app chrome: navy header, business name, light body. */
-export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactNode }> = ({ children, overlay }) => (
+export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactNode; bare?: boolean }> = ({ children, overlay, bare }) => (
   <div style={{
     width: PHONE_W, height: PHONE_H, borderRadius: 96, background: "#05080c", padding: 20,
     boxShadow: "0 60px 120px rgba(0,0,0,0.55), 0 0 0 4px #2b3440 inset",
@@ -15,7 +15,7 @@ export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactN
       width: "100%", height: "100%", borderRadius: 78, overflow: "hidden", position: "relative",
       background: C.paper, fontFamily: FONT, color: C.ink,
     }}>
-      <div style={{
+      {bare ? null : <div style={{
         height: 220, background: C.ink, padding: "92px 46px 0", display: "flex", alignItems: "center", gap: 18,
       }}>
         <LogoMark size={70} frame={0} built />
@@ -24,9 +24,9 @@ export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactN
           marginLeft: "auto", color: C.nav, fontSize: 32, fontWeight: 600, background: "rgba(255,255,255,0.08)",
           borderRadius: 30, padding: "10px 22px",
         }}>Kano Road Depot</div>
-      </div>
-      <div style={{ position: "absolute", top: 26, left: "50%", width: 200, height: 50, marginLeft: -100, borderRadius: 30, background: "#05080c" }} />
-      <div style={{ position: "absolute", top: 220, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>{children}</div>
+      </div>}
+      <div style={{ position: "absolute", top: 26, left: "50%", width: 200, height: 50, marginLeft: -100, borderRadius: 30, background: "#05080c", zIndex: 30 }} />
+      <div style={{ position: "absolute", top: bare ? 0 : 220, left: 0, right: 0, bottom: 0, overflow: "hidden" }}>{children}</div>
       {overlay}
     </div>
   </div>

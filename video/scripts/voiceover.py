@@ -3,6 +3,8 @@
 Usage:
   python3 scripts/voiceover.py full            # 48-second version  -> public/vo-full/
   python3 scripts/voiceover.py short           # 30-second version  -> public/vo/
+  python3 scripts/voiceover.py ep1 ... ep5     # "Sound familiar?" episodes -> public/vo-ep<n>/
+  python3 scripts/voiceover.py returns         # returnable items video -> public/vo-returns/
   python3 scripts/voiceover.py full en-NG-EzinneNeural   # female voice
 
 Default voice is en-NG-AbeoNeural (male). Needs network access to
@@ -54,6 +56,47 @@ SETS = {
                    "Visit bookam dot online, or WhatsApp us today.",
         },
     },
+    # "Sound familiar?" series: problem -> stinger -> how Bookam handles it -> end card
+    "ep1": {"dir": "vo-ep1", "rate": "+0%", "lines": {
+        "problem": "You bought a hundred and twenty crates. Today you count ninety-seven. Where did the rest go?",
+        "familiar": "Sound familiar?",
+        "fix": "With Bookam, every crate in and out is recorded, with the name of who did it.",
+        "cta": "Bookam. Visit bookam dot online.",
+    }},
+    "ep2": {"dir": "vo-ep2", "rate": "+0%", "lines": {
+        "problem": "The goods left your depot this morning. Which driver took them? In which vehicle?",
+        "familiar": "Sound familiar?",
+        "fix": "With Bookam, every trip records the driver, the vehicle, the orders on board, and who sent it out.",
+        "cta": "Bookam. Visit bookam dot online.",
+    }},
+    "ep3": {"dir": "vo-ep3", "rate": "+0%", "lines": {
+        "problem": "A page is missing from your order book, and nobody knows what was written on it.",
+        "familiar": "Sound familiar?",
+        "fix": "With Bookam, records don't just disappear. A cancelled order stays on record, with a reason and a name.",
+        "cta": "Bookam. Visit bookam dot online.",
+    }},
+    "ep4": {"dir": "vo-ep4", "rate": "+0%", "lines": {
+        "problem": "It's nine p.m., and you're still adding up today's orders from the notebook.",
+        "familiar": "Sound familiar?",
+        "fix": "With Bookam, your daily report is ready. Orders, stock, trips and returns, in one place.",
+        "cta": "Bookam. Visit bookam dot online.",
+    }},
+    "ep5": {"dir": "vo-ep5", "rate": "+0%", "lines": {
+        "problem": "You're away from the depot. Do you really know what is happening there right now?",
+        "familiar": "Sound familiar?",
+        "fix": "With Bookam, you get a Telegram message for every new order, every trip, and every return, with who did it.",
+        "cta": "Bookam. Visit bookam dot online.",
+    }},
+    # Returnable items (crates, cylinders, pallets)
+    "returns": {"dir": "vo-returns", "rate": "+0%", "lines": {
+        "argument": "Your customer says he returned twenty crates. Your book says twelve. Who is right?",
+        "loss": "Crates, gas cylinders, pallets. Every one that doesn't come back is money lost.",
+        "reveal": "Bookam tracks every returnable item.",
+        "owes": "When an order goes out, Bookam knows exactly what the customer has to bring back.",
+        "tripback": "When the truck returns, record what came back, order by order.",
+        "balances": "Then see who still owes you, and how many you have in store.",
+        "cta": "Bookam. Every crate, every cylinder, accounted for. Visit bookam dot online, or WhatsApp us today.",
+    }},
 }
 
 SET = sys.argv[1] if len(sys.argv) > 1 else "full"

@@ -10,16 +10,21 @@ import { Wordmark } from "./Reveal";
 /** Frames this scene starts before the showcase ends, so the two cross-fade instead of cutting through black. */
 export const CTA_PREROLL = 12;
 
-export const CallToAction: React.FC = () => {
+export type CtaLine = { t: string; word: string; color: string };
+const PROMO_LINES: CtaLine[] = [
+  { t: "Every order.", word: "order", color: "#fff" },
+  { t: "Every product.", word: "product", color: "#fff" },
+  { t: "Every driver.", word: "driver", color: "#fff" },
+  { t: "Accounted for.", word: "accounted", color: C.accent },
+];
+
+/** End card. Each line appears as its `word` is spoken; with no lines it shows a short tagline instead. */
+export const CallToAction: React.FC<{ lines?: CtaLine[] }> = ({ lines: given = PROMO_LINES }) => {
   const frame = useCurrentFrame() - CTA_PREROLL;
   const S = useScene("cta");
   const fadeIn = ramp(frame, -CTA_PREROLL, 0);
-  const lines = [
-    { t: "Every order.", word: "order", color: "#fff" },
-    { t: "Every product.", word: "product", color: "#fff" },
-    { t: "Every driver.", word: "driver", color: "#fff" },
-    { t: "Accounted for.", word: "accounted", color: C.accent },
-  ].filter((l) => S.has(l.word));
+  const lines = given.filter((l) => S.has(l.word));
+  const tag = pop(frame, 14, 14);
   const visit = S.cue("visit", 0.7);
   const wa = S.has("whatsapp") ? S.cue("whatsapp") : visit + 10;
   const site = pop(frame, visit, 12);
@@ -28,12 +33,18 @@ export const CallToAction: React.FC = () => {
   return (
     <AbsoluteFill style={{ opacity: fadeIn }}>
       <NavyBackdrop glowY={30} />
-      <AbsoluteFill style={{ alignItems: "center", paddingTop: 250 }}>
+      <AbsoluteFill style={{ alignItems: "center", paddingTop: lines.length ? 250 : 560 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
           <LogoMark size={180} frame={frame + 4} />
           <Wordmark frame={frame} size={140} delay={4} />
         </div>
-        <div style={{ marginTop: 90, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {lines.length ? null : (
+          <div style={{
+            marginTop: 50, fontFamily: FONT, fontSize: 52, fontWeight: 600, color: C.nav, textAlign: "center", lineHeight: 1.3,
+            opacity: tag, transform: `translateY(${(1 - tag) * 30}px)`,
+          }}>Order &amp; dispatch software for<br />depots, shops and warehouses</div>
+        )}
+        <div style={{ marginTop: lines.length ? 90 : 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
           {lines.map((l) => {
             const p = pop(frame, S.cue(l.word) - 6, 12);
             return (

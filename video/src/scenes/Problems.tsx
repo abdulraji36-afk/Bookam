@@ -252,7 +252,7 @@ export const Accounting: React.FC = () => {
 };
 
 /* 4. Theft: a hand sneaks crates off the shelf ------------------------- */
-const Crate: React.FC<{ color?: string }> = ({ color = "#c0392b" }) => (
+export const Crate: React.FC<{ color?: string }> = ({ color = "#c0392b" }) => (
   <div style={{
     width: 200, height: 140, background: color, borderRadius: 14, position: "relative",
     boxShadow: "inset 0 -16px 0 rgba(0,0,0,0.25), 0 8px 0 rgba(0,0,0,0.2)",
@@ -286,9 +286,9 @@ const Hand: React.FC<{ x: number; y: number; grip: number }> = ({ x, y, grip }) 
   </div>
 );
 
-export const Theft: React.FC = () => {
+export const Theft: React.FC<{ k?: string }> = ({ k = "theft" }) => {
   const frame = useCurrentFrame();
-  const S = useScene("theft");
+  const S = useScene(k);
   const span = S.dur - 14;
   const L = Math.min(30, span * 0.42);
   const win = STOLEN.map((_, i) => 2 + (i * (span - L)) / (STOLEN.length - 1));
@@ -351,7 +351,7 @@ export const Theft: React.FC = () => {
         }}>23 missing</div>
       </div>
       <Caption
-        text={S.has("missing") ? "Goods go *missing* from your store" : "Goods *vanishing* from your store"}
+        text={S.caption ?? (S.has("missing") ? "Goods go *missing* from your store" : "Goods *vanishing* from your store")}
         color="#fff" highlight="#ff8a80" delay={S.vo - 2} top={CAPTION_TOP}
       />
     </AbsoluteFill>
@@ -380,14 +380,15 @@ const Person: React.FC<{ delay: number; name: string }> = ({ delay, name }) => {
   );
 };
 
-export const NoControl: React.FC = () => {
+export const NoControl: React.FC<{ k?: string }> = ({ k = "nocontrol" }) => {
   const frame = useCurrentFrame();
-  const S = useScene("nocontrol");
+  const S = useScene(k);
   const dur = S.dur;
   const truckX = interpolate(frame, [0, dur * 0.55], [-520, 1200], { extrapolateRight: "clamp" });
   const note = pop(frame, 10, 14);
   const fields: [string, number][] = [
-    ["Released by", S.cue("dispatched", 0.5)], ["Driver", S.cue("driver", 0.8)], ["Time", S.cue("took", 0.9)],
+    ["Released by", S.cue("dispatched", 0.5)], ["Driver", S.cue("driver", 0.8)],
+    S.has("vehicle") ? ["Vehicle", S.cue("vehicle")] : ["Time", S.cue("took", 0.9)],
   ];
   const c = ramp(frame, dur - 16, dur);
   const cEase = c * c;
@@ -429,7 +430,7 @@ export const NoControl: React.FC = () => {
             ))}
           </div>
         </Shaky>
-        <Caption text="Who *dispatched* what?" color={C.ink} highlight={C.danger} delay={S.vo} top={CAPTION_TOP} />
+        <Caption text={S.caption ?? "Who *dispatched* what?"} color={C.ink} highlight={C.danger} delay={S.vo} top={CAPTION_TOP} />
         <AbsoluteFill style={{
           background: "repeating-linear-gradient(35deg, rgba(0,0,0,0.25) 0 3px, transparent 3px 40px)", opacity: c,
         }} />

@@ -158,24 +158,42 @@ MEL = [  # (step, midi) over two bars: a little C-major pentatonic hook
 ]
 
 
-def compose(cut, out_name):
+def promo_times(cut):
+    """Cue times (seconds) for the main promo cuts, from src/timelines.json."""
     tl = json.load(open(os.path.join(HERE, "..", "src", "timelines.json")))[cut]
     words = json.load(open(os.path.join(ROOT, tl["voDir"], "words.json")))
-    sc = tl["scenes"]
-    sec = lambda frames: frames / 30.0
-    DUR = sec(tl["total"])
-    N = int(SR * DUR)
-    t_crumple = sec(sc["nocontrol"]["from"] + sc["nocontrol"]["dur"] - 16)
-    t_reveal = sec(sc["reveal"]["from"])
+    sc, sec = tl["scenes"], (lambda f: f / 30.0)
     meet = next(t for w, t in words["reveal"] if w.lower() == "meet")
-    t_groove = sec(sc["reveal"]["vo"]) + meet - 0.05
-    t_cta = sec(sc["cta"]["from"])
-    t_easy = sec(sc["easy"]["from"]) if "easy" in sc else None
+    return {
+        "dur": sec(tl["total"]),
+        "crumple": sec(sc["nocontrol"]["from"] + sc["nocontrol"]["dur"] - 16),
+        "reveal": sec(sc["reveal"]["from"]),
+        "groove": sec(sc["reveal"]["vo"]) + meet - 0.05,
+        "cta": sec(sc["cta"]["from"]),
+        "easy": sec(sc["easy"]["from"]) if "easy" in sc else None,
+    }
+
+
+def series_times(cut):
+    """Cue times for the "Sound familiar?" episodes and the returnables video."""
+    tl = json.load(open(os.path.join(HERE, "..", "src", "series", "timelines.json")))[cut]
+    sc, sec = tl["scenes"], (lambda f: f / 30.0)
+    hit = sc["familiar"]["from"] if "familiar" in sc else sc["reveal"]["from"]
+    groove = sc["fix"]["from"] + 6 if "fix" in sc else sc["reveal"]["vo"]
+    return {"dur": sec(tl["total"]), "crumple": sec(hit) - 0.5, "reveal": sec(hit),
+            "groove": sec(groove), "cta": sec(sc["cta"]["from"]), "easy": None}
+
+
+def compose(T, out_name):
+    DUR, t_crumple, t_reveal, t_groove, t_cta, t_easy = (
+        T["dur"], T["crumple"], T["reveal"], T["groove"], T["cta"], T["easy"])
+    N = int(SR * DUR)
     # pick a tempo near 110 BPM that puts the call to action exactly on a bar line
     bars_to_cta = max(1, round((t_cta - t_groove) / (240 / 110)))
     BAR = (t_cta - t_groove) / bars_to_cta
     BEAT = BAR / 4
     STEP = BEAT / 4
+    full_from = 2 if bars_to_cta >= 5 else 1
     print(f"{out_name}: {DUR:.1f}s, groove at {t_groove:.2f}s, {240 / BAR:.1f} BPM, CTA at {t_cta:.2f}s")
 
     mix = np.zeros((N, 2))
@@ -194,7 +212,7 @@ def compose(cut, out_name):
     for b in range(0, int(t_reveal / BEAT), 2):
         place(mix, kick(0.35, 90, 40), b * BEAT, 0.55)
         place(mix, kick(0.3, 80, 38), b * BEAT + 0.22, 0.35)
-    place(mix, noise_riser(1.6), t_crumple - 1.1, 0.35)
+    place(mix, noise_riser(1.6), max(0.0, t_crumple - 1.1), 0.35)
     rs = int(SR * 1.5)
     place(mix, np.sin(2 * np.pi * np.cumsum(np.linspace(200, 900, rs)) / SR) * np.linspace(0, 1, rs) ** 2, t_crumple - 1.0, 0.06)
 
@@ -208,7 +226,7 @@ def compose(cut, out_name):
         if b0 >= DUR - 1.0:
             break
         ch = PROG[bar % 4]
-        full = bar >= 2
+        full = bar >= full_from
         breakdown = t_easy is not None and t_easy - 0.1 <= b0 < t_cta - 0.01
         for s in range(16):
             at = b0 + s * STEP + (0.018 if s % 2 else 0.0)
@@ -259,8 +277,11 @@ def compose(cut, out_name):
     wavfile.write(os.path.join(ROOT, out_name), SR, (mix * 32767).astype(np.int16))
 
 
-compose("short", "music.wav")
-compose("full", "music-full.wav")
+compose(promo_times("short"), "music.wav")
+compose(promo_times("full"), "music-full.wav")
+for n in range(1, 6):
+    compose(series_times(f"ep{n}"), f"music-ep{n}.wav")
+compose(series_times("returns"), "music-returns.wav")
 
 # -------------------------------------------------------------------- sfx
 os.makedirs(os.path.join(ROOT, "sfx"), exist_ok=True)

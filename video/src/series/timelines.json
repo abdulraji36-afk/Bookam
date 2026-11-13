@@ -1,0 +1,185 @@
+{
+  "ep1": {
+    "id": "SoundFamiliar1",
+    "total": 533,
+    "voDir": "vo-ep1",
+    "music": "music-ep1.wav",
+    "scenes": {
+      "problem": {
+        "from": 0,
+        "dur": 211,
+        "vo": 10
+      },
+      "familiar": {
+        "from": 211,
+        "dur": 42,
+        "vo": 215
+      },
+      "fix": {
+        "from": 253,
+        "dur": 148,
+        "vo": 267
+      },
+      "cta": {
+        "from": 401,
+        "dur": 132,
+        "vo": 409
+      }
+    }
+  },
+  "ep2": {
+    "id": "SoundFamiliar2",
+    "total": 559,
+    "voDir": "vo-ep2",
+    "music": "music-ep2.wav",
+    "scenes": {
+      "problem": {
+        "from": 0,
+        "dur": 189,
+        "vo": 10
+      },
+      "familiar": {
+        "from": 189,
+        "dur": 42,
+        "vo": 193
+      },
+      "fix": {
+        "from": 231,
+        "dur": 196,
+        "vo": 245
+      },
+      "cta": {
+        "from": 427,
+        "dur": 132,
+        "vo": 435
+      }
+    }
+  },
+  "ep3": {
+    "id": "SoundFamiliar3",
+    "total": 534,
+    "voDir": "vo-ep3",
+    "music": "music-ep3.wav",
+    "scenes": {
+      "problem": {
+        "from": 0,
+        "dur": 142,
+        "vo": 10
+      },
+      "familiar": {
+        "from": 142,
+        "dur": 42,
+        "vo": 146
+      },
+      "fix": {
+        "from": 184,
+        "dur": 218,
+        "vo": 198
+      },
+      "cta": {
+        "from": 402,
+        "dur": 132,
+        "vo": 410
+      }
+    }
+  },
+  "ep4": {
+    "id": "SoundFamiliar4",
+    "total": 540,
+    "voDir": "vo-ep4",
+    "music": "music-ep4.wav",
+    "scenes": {
+      "problem": {
+        "from": 0,
+        "dur": 136,
+        "vo": 10
+      },
+      "familiar": {
+        "from": 136,
+        "dur": 42,
+        "vo": 140
+      },
+      "fix": {
+        "from": 178,
+        "dur": 230,
+        "vo": 192
+      },
+      "cta": {
+        "from": 408,
+        "dur": 132,
+        "vo": 416
+      }
+    }
+  },
+  "ep5": {
+    "id": "SoundFamiliar5",
+    "total": 533,
+    "voDir": "vo-ep5",
+    "music": "music-ep5.wav",
+    "scenes": {
+      "problem": {
+        "from": 0,
+        "dur": 149,
+        "vo": 10
+      },
+      "familiar": {
+        "from": 149,
+        "dur": 42,
+        "vo": 153
+      },
+      "fix": {
+        "from": 191,
+        "dur": 210,
+        "vo": 205
+      },
+      "cta": {
+        "from": 401,
+        "dur": 132,
+        "vo": 409
+      }
+    }
+  },
+  "returns": {
+    "id": "BookamReturnables",
+    "total": 1127,
+    "voDir": "vo-returns",
+    "music": "music-returns.wav",
+    "scenes": {
+      "argument": {
+        "from": 0,
+        "dur": 196,
+        "vo": 10
+      },
+      "loss": {
+        "from": 196,
+        "dur": 185,
+        "vo": 200
+      },
+      "reveal": {
+        "from": 381,
+        "dur": 95,
+        "vo": 407
+      },
+      "owes": {
+        "from": 476,
+        "dur": 141,
+        "vo": 490
+      },
+      "tripback": {
+        "from": 617,
+        "dur": 122,
+        "vo": 625
+      },
+      "balances": {
+        "from": 739,
+        "dur": 105,
+        "vo": 747
+      },
+      "cta": {
+        "from": 844,
+        "dur": 283,
+        "vo": 854
+      }
+    }
+  }
+}

@@ -8,13 +8,15 @@ import { SceneKey, useScene, useTimeline } from "../timeline";
 import { C, FONT } from "../theme";
 import { Truck } from "./Problems";
 
-type ScreenProps = { f: number };
-type Feature = {
+export type ScreenProps = { f: number };
+export type Feature = {
   key: SceneKey;
   caption: string;
   Screen: React.FC<ScreenProps>;
   /** camera push towards a point of the phone (percent), starting at a spoken word */
   zoom?: { word: string; fallback: number; z: number; x: number; y: number };
+  /** show the screen without the Bookam app header (e.g. a Telegram chat) */
+  bare?: boolean;
 };
 
 const FEATURES: Feature[] = [
@@ -33,10 +35,10 @@ const FEATURES: Feature[] = [
 
 const PHONE_TOP = 440;
 
-export const Showcase: React.FC<{ from: number; dur: number }> = ({ from, dur }) => {
+export const Showcase: React.FC<{ from: number; dur: number; features?: Feature[] }> = ({ from, dur, features = FEATURES }) => {
   const frame = useCurrentFrame();
   const tl = useTimeline();
-  const feats = FEATURES.filter((x) => tl.scenes[x.key]).map((x) => {
+  const feats = features.filter((x) => tl.scenes[x.key]).map((x) => {
     const sc = tl.scenes[x.key]!;
     return { ...x, s: sc.from - from, e: sc.from - from + sc.dur };
   });
@@ -51,7 +53,7 @@ export const Showcase: React.FC<{ from: number; dur: number }> = ({ from, dur })
         transform: `translateY(${(1 - enter) * 1500 + exit * 260}px) scale(${1 - exit * 0.35})`, opacity: 1 - exit,
       }}>
         <ZoomRig feature={active} frame={frame}>
-          <Phone overlay={tl.scenes.realtime ? <Notifications frame={frame - feats.find((x) => x.key === "realtime")!.s} /> : null}>
+          <Phone bare={active.bare} overlay={tl.scenes.realtime ? <Notifications frame={frame - feats.find((x) => x.key === "realtime")!.s} /> : null}>
             {feats.map(({ s, e, Screen, key }, i) => {
               if (frame < s - 1 || frame > e + 12) return null;
               const inP = i === 0 ? 1 : pop(frame, s, 16);
@@ -78,7 +80,7 @@ export const Showcase: React.FC<{ from: number; dur: number }> = ({ from, dur })
           </AbsoluteFill>
         ) : null,
       )}
-      <div style={{ position: "absolute", top: 395, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 16 }}>
+      <div style={{ position: "absolute", top: 395, left: 0, right: 0, display: feats.length > 1 ? "flex" : "none", justifyContent: "center", gap: 16 }}>
         {feats.map(({ s, e, key }) => (
           <div key={key} style={{
             width: frame >= s && frame < e ? 90 : 26, height: 14, borderRadius: 7,
@@ -108,11 +110,11 @@ const ZoomRig: React.FC<{ feature: Feature & { s: number; e: number }; frame: nu
 };
 
 /* Customers: list fills, then a search finds one customer's full record -- */
-const CUSTOMERS = [
+const CUSTOMERS: { n: string; p: string; b: number; u?: string; c: string }[] = [
   { n: "Chinedu Okafor", p: "0803 412 9921", b: 0, c: "#1f6fb2" },
-  { n: "Aisha Bello", p: "0806 220 4417", b: 12000, c: "#8e44ad" },
+  { n: "Aisha Bello", p: "0806 220 4417", b: 8, u: "crates", c: "#8e44ad" },
   { n: "Tunde Bakare", p: "0812 775 0193", b: 0, c: "#17643a" },
-  { n: "Ngozi Eze", p: "0909 340 1182", b: 4500, c: "#c0392b" },
+  { n: "Ngozi Eze", p: "0909 340 1182", b: 2, u: "cylinders", c: "#c0392b" },
   { n: "Emeka Obi", p: "0705 118 6630", b: 0, c: "#d35400" },
   { n: "Fatima Yusuf", p: "0817 902 3345", b: 0, c: "#16a085" },
 ];
@@ -155,8 +157,8 @@ function Customers({ f }: ScreenProps) {
                 <div style={{ fontSize: 40, fontWeight: 750 }}>{c.n}</div>
                 <div style={{ fontSize: 30, color: C.inkSoft }}>{c.p}</div>
               </div>
-              {c.b ? <Chip bg="#fff4dc" fg={C.accentStrong} size={28}>Owes {naira(c.b)}</Chip>
-                : <Chip bg={C.successSoft} fg={C.success} size={28}>Settled</Chip>}
+              {c.b ? <Chip bg="#fff4dc" fg={C.accentStrong} size={28}>Owes {c.b} {c.u}</Chip>
+                : <Chip bg={C.successSoft} fg={C.success} size={28}>Nothing owed</Chip>}
             </div>
           </div>
         );
@@ -164,7 +166,7 @@ function Customers({ f }: ScreenProps) {
       {search ? (
         <div style={{ opacity: detail, transform: `translateY(${(1 - detail) * 80}px)` }}>
           <Card style={{ marginTop: 6 }}>
-            {[["Orders", "23"], ["Crates out", "20"], ["Last order", "Today, 10:15 AM"], ["Balance", "Owes ₦12,000"]].map(([k, v]) => (
+            {[["Orders", "23"], ["Area", "Kano Road"], ["Last order", "Today, 10:15 AM"], ["Crates to bring back", "8"]].map(([k, v]) => (
               <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 36, padding: "10px 0", borderBottom: `2px solid ${C.line}` }}>
                 <span style={{ color: C.inkSoft }}>{k}</span><span style={{ fontWeight: 800 }}>{v}</span>
               </div>
@@ -180,10 +182,10 @@ function Customers({ f }: ScreenProps) {
 function Orders({ f }: ScreenProps) {
   const S = useScene("orders");
   const steps = [
-    { label: "Booked", at: 4 },
-    { label: "Confirmed", at: S.cue("automatically", 0.45) },
+    { label: "Pending", at: 4 },
+    { label: "Assigned", at: S.cue("automatically", 0.45) },
     { label: "Dispatched", at: S.cue("booking", 0.75) },
-    ...(S.has("delivery") ? [{ label: "Delivered", at: S.cue("delivery", 1) }] : []),
+    ...(S.has("delivery") ? [{ label: "Completed", at: S.cue("delivery", 1) }] : []),
   ];
   const cur = steps.filter((s) => f >= s.at).length - 1;
   const done = cur === steps.length - 1;
@@ -237,7 +239,7 @@ function Orders({ f }: ScreenProps) {
           <span>Total</span><span>{naira(260000)}</span>
         </div>
       </Card>
-      {[["#1043", "Emeka Obi · 8 crates"], ["#1044", "Ngozi Eze · 2 gas cylinders"], ["#1045", "Fatima Yusuf · 5 bags rice"]].map(([id, what], i) => {
+      {[["#1043", "Emeka Obi · 8 crates", "Assigned"], ["#1044", "Ngozi Eze · 2 gas cylinders", "Pending"], ["#1045", "Fatima Yusuf · 5 bags rice", "Pending"]].map(([id, what, st], i) => {
         const p = pop(f, S.dur * 0.35 + i * 7, 13);
         return (
           <div key={id} style={{
@@ -245,7 +247,7 @@ function Orders({ f }: ScreenProps) {
             border: `3px solid ${C.line}`, padding: "22px 28px", fontSize: 34, opacity: p, transform: `translateY(${(1 - p) * 60}px)`,
           }}>
             <span style={{ fontWeight: 800 }}>{id}</span><span style={{ flex: 1 }}>{what}</span>
-            <Chip bg="#e3effa" fg={C.chart} size={26}>Auto</Chip>
+            <Chip bg={st === "Assigned" ? "#e3effa" : "#fff4dc"} fg={st === "Assigned" ? C.chart : C.accentStrong} size={26}>{st}</Chip>
           </div>
         );
       })}
@@ -374,8 +376,6 @@ function Stock({ f }: ScreenProps) {
 /* Real-time report + who-did-what activity log ------------------------- */
 function Realtime({ f }: ScreenProps) {
   const S = useScene("realtime");
-  const bars = [0.42, 0.55, 0.48, 0.7, 0.62, 0.8, 1];
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
   const sales = interpolate(f, [4, S.dur * 0.45], [0, 1240500], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const logAt = Math.min(S.cue("full", 0.5) - 6, Math.round(S.dur * 0.35));
   const log = [
@@ -387,15 +387,15 @@ function Realtime({ f }: ScreenProps) {
     <div>
       <ScreenTitle title="Daily report" right={<Chip bg="#ffe9e7" fg={C.danger}>● Live</Chip>} />
       <Card style={{ padding: 34 }}>
-        <div style={{ fontSize: 32, color: C.inkSoft, fontWeight: 600 }}>Today's sales</div>
+        <div style={{ fontSize: 32, color: C.inkSoft, fontWeight: 600 }}>Order value today</div>
         <div style={{ fontSize: 88, fontWeight: 900, letterSpacing: "-0.02em" }}>{naira(sales)}</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 20, height: 230, marginTop: 16 }}>
-          {bars.map((b, i) => {
-            const p = pop(f, 6 + i * 3, 14);
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 22 }}>
+          {[["Orders", "14"], ["Trips out", "4"], ["Deliveries in", "1"]].map(([k, v], i) => {
+            const p = pop(f, 8 + i * 4, 13);
             return (
-              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                <div style={{ width: "100%", height: 180 * b * p, borderRadius: 10, background: i === bars.length - 1 ? C.accent : C.chart, opacity: i === bars.length - 1 ? 1 : 0.85 }} />
-                <div style={{ fontSize: 26, color: C.inkSoft, fontWeight: 700 }}>{days[i]}</div>
+              <div key={k} style={{ background: C.paper, borderRadius: 22, padding: "20px 18px", transform: `scale(${p})`, opacity: p }}>
+                <div style={{ fontSize: 60, fontWeight: 900 }}>{v}</div>
+                <div style={{ fontSize: 26, color: C.inkSoft, fontWeight: 700 }}>{k}</div>
               </div>
             );
           })}
@@ -427,9 +427,9 @@ const Notifications: React.FC<{ frame: number }> = ({ frame }) => {
   if (frame < 0 || frame > S.dur + 10) return null;
   const gap = S.dur >= 110 ? 30 : 34;
   const alerts = [
-    { at: 10, title: "Order #1042 dispatched", body: "By Musa Ibrahim · Driver: Tunde Bakare" },
-    { at: 10 + gap, title: "12 crates returned", body: "Chinedu Okafor · stock updated" },
-    ...(S.dur >= 110 ? [{ at: 10 + gap * 2, title: "Daily report ready", body: "Sales today: ₦1,240,500" }] : []),
+    { at: 10, title: "Trip TRP-0007 dispatched", body: "Driver Tunde Bakare (LAG 482 KJ) · By Musa" },
+    { at: 10 + gap, title: "Returns recorded for TRP-0007", body: "12 came back of 20 expected · By Musa" },
+    ...(S.dur >= 110 ? [{ at: 10 + gap * 2, title: "New order ORD-0046", body: "Emeka Obi · 8 crates · By Bola" }] : []),
   ];
   return (
     <>
@@ -464,7 +464,7 @@ const TILES = [
   { t: "New order", bg: C.accent, fg: C.ink, icon: "M12 5v14M5 12h14" },
   { t: "Dispatch", bg: C.ink, fg: "#fff", icon: "M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a2 2 0 1 0 0-.1M17 19a2 2 0 1 0 0-.1" },
   { t: "Record return", bg: C.success, fg: "#fff", icon: "M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3" },
-  { t: "Count stock", bg: C.chart, fg: "#fff", icon: "M4 7h16v13H4zM4 7l2-3h12l2 3M9 12h6" },
+  { t: "Receive stock", bg: C.chart, fg: "#fff", icon: "M4 7h16v13H4zM4 7l2-3h12l2 3M12 10v6M9 13l3 3 3-3" },
 ];
 function Easy({ f }: ScreenProps) {
   const S = useScene("easy");
@@ -520,7 +520,7 @@ function Easy({ f }: ScreenProps) {
         opacity: toast, transform: `translateY(${(1 - toast) * 40}px) scale(${0.9 + toast * 0.1})`, zIndex: 5,
       }}>
         <div style={{ background: C.success, color: "#fff", borderRadius: 999, padding: "30px 50px", fontSize: 52, fontWeight: 900, boxShadow: "0 24px 60px rgba(23,100,58,0.5)" }}>
-          ✓ Dispatched in 2 taps
+          ✓ Trip dispatched
         </div>
       </div>
       {/* the finger */}
