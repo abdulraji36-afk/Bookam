@@ -16,7 +16,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const count = (table: "memberships" | "products" | "customers") =>
     supabase.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true);
 
-  const [members, products, customers, received, stockRows, profile, waiting, loading, trips] = await Promise.all([
+  const [members, products, customers, received, stockRows, profile, waiting, loading, trips, returnables, returned] = await Promise.all([
     count("memberships"),
     count("products"),
     count("customers"),
@@ -25,7 +25,9 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "pending"),
     supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "draft"),
-    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).in("status", ["dispatched", "completed"])
+    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).in("status", ["dispatched", "completed"]),
+    supabase.from("returnable_totals").select("owed").eq("organization_id", org.id),
+    supabase.from("trip_return_lines").select("id", { count: "exact", head: true }).eq("organization_id", org.id)
   ]);
 
   const firstName = profile.data?.full_name?.split(" ")[0];
@@ -33,6 +35,8 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const productCount = products.count ?? 0;
   const lowStock = stockRows.filter((row) => row.isLow).length;
   const manager = canManage(role);
+  const tracksReturns = (returnables.data ?? []).length > 0;
+  const owedBack = (returnables.data ?? []).reduce((sum, item) => sum + Number(item.owed), 0);
   const steps = [
     { label: "Create your business", done: true },
     { label: "Invite your team", done: teamCount > 1, href: manager ? `${base}/team` : undefined },
@@ -51,7 +55,15 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       done: (trips.count ?? 0) > 0,
       href: (received.count ?? 0) > 0 ? `${base}/orders/new` : undefined
     },
-    { label: "Record what customers bring back", upcoming: true }
+    ...(tracksReturns
+      ? [
+          {
+            label: "Record what customers bring back",
+            done: (returned.count ?? 0) > 0,
+            href: (trips.count ?? 0) > 0 ? `${base}/returns` : undefined
+          }
+        ]
+      : [])
   ];
 
   return (
@@ -64,7 +76,11 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         <StatTile label="Waiting for dispatch" value={waiting.count ?? 0} strong href={`${base}/orders`} />
         <StatTile label="Trips loading" value={loading.count ?? 0} href={`${base}/dispatch`} />
         <StatTile label="Low stock" value={lowStock} href={`${base}/stock`} />
-        <StatTile label="Customers" value={customers.count ?? 0} href={`${base}/customers`} />
+        {tracksReturns ? (
+          <StatTile label="Owed back by customers" value={owedBack} href={`${base}/returns`} />
+        ) : (
+          <StatTile label="Customers" value={customers.count ?? 0} href={`${base}/customers`} />
+        )}
       </div>
 
       <Card>
@@ -82,7 +98,6 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
                 )}
               </span>
               {step.done ? <Badge tone="solid">Done</Badge> : null}
-              {step.upcoming ? <Badge>Coming soon</Badge> : null}
             </li>
           ))}
         </ol>

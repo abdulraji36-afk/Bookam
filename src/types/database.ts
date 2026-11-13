@@ -7,6 +7,19 @@ export type PlanCode = "trial" | "starter" | "growth" | "business";
 export type OrderStatus = "pending" | "assigned" | "dispatched" | "completed" | "cancelled";
 export type PaymentType = "cash" | "transfer" | "credit";
 export type TripStatus = "draft" | "dispatched" | "completed" | "cancelled";
+export type ReturnableMovementType =
+  | "dispatch"
+  | "trip_return"
+  | "supplier_exchange"
+  | "adjustment"
+  | "opening_debt";
+export type ReturnableAdjustmentReason =
+  | "customer_return"
+  | "purchase"
+  | "opening_count"
+  | "correction"
+  | "damaged_or_lost"
+  | "given_to_customer";
 
 export type Database = {
   public: {
@@ -372,6 +385,8 @@ export type Database = {
           status: TripStatus;
           note: string | null;
           dispatched_at: string | null;
+          returned_date: string | null;
+          returns_recorded_at: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -415,6 +430,101 @@ export type Database = {
             referencedColumns: ["id"];
           }
         ];
+      };
+      returnable_movements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          returnable_item_id: string;
+          location_id: string | null;
+          customer_id: string | null;
+          holding_delta: number;
+          owed_delta: number;
+          movement_type: ReturnableMovementType;
+          source_type: string;
+          source_id: string;
+          movement_date: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "returnable_movements_returnable_item_id_fkey";
+            columns: ["returnable_item_id"];
+            isOneToOne: false;
+            referencedRelation: "returnable_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "returnable_movements_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      trip_return_lines: {
+        Row: {
+          id: string;
+          organization_id: string;
+          trip_id: string;
+          order_id: string;
+          returnable_item_id: string;
+          expected_quantity: number;
+          returned_quantity: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "trip_return_lines_returnable_item_id_fkey";
+            columns: ["returnable_item_id"];
+            isOneToOne: false;
+            referencedRelation: "returnable_items";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      supplier_exchanges: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          exchange_no: string;
+          exchange_date: string;
+          returnable_item_id: string;
+          quantity_taken: number;
+          supplier_name: string | null;
+          reference: string | null;
+          received_by: string | null;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      returnable_adjustments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          adjustment_date: string;
+          returnable_item_id: string;
+          quantity_delta: number;
+          reason: ReturnableAdjustmentReason;
+          customer_id: string | null;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
       };
     };
     Views: {
@@ -464,6 +574,38 @@ export type Database = {
           total_quantity: number;
           total_amount: number;
           has_returns: boolean;
+        };
+        Relationships: [];
+      };
+      returnable_totals: {
+        Row: {
+          organization_id: string;
+          returnable_item_id: string;
+          name: string;
+          holding: number;
+          owed: number;
+          credit: number;
+        };
+        Relationships: [];
+      };
+      returnable_holdings: {
+        Row: {
+          organization_id: string;
+          returnable_item_id: string;
+          location_id: string;
+          holding: number;
+        };
+        Relationships: [];
+      };
+      customer_returnable_balances: {
+        Row: {
+          organization_id: string;
+          customer_id: string;
+          customer_name: string;
+          customer_area: string | null;
+          returnable_item_id: string;
+          returnable_name: string;
+          owed: number;
         };
         Relationships: [];
       };
@@ -595,6 +737,48 @@ export type Database = {
       };
       dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
       cancel_dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
+      record_trip_returns: {
+        Args: { p_trip_id: string; p_returned_date: string; p_returns: Json };
+        Returns: undefined;
+      };
+      record_supplier_exchange: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_exchange_date: string;
+          p_returnable_item_id: string;
+          p_quantity: number;
+          p_supplier_name: string | null;
+          p_reference: string | null;
+          p_received_by: string | null;
+          p_note: string | null;
+        };
+        Returns: { id: string; exchange_no: string }[];
+      };
+      record_returnable_adjustment: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_adjustment_date: string;
+          p_returnable_item_id: string;
+          p_direction: "add" | "subtract";
+          p_quantity: number;
+          p_reason: ReturnableAdjustmentReason;
+          p_customer_id: string | null;
+          p_note: string | null;
+        };
+        Returns: string;
+      };
+      record_customer_opening_debt: {
+        Args: {
+          p_organization_id: string;
+          p_customer_id: string;
+          p_returnable_item_id: string;
+          p_quantity: number;
+          p_note: string | null;
+        };
+        Returns: undefined;
+      };
     };
     Enums: { member_role: MemberRole };
     CompositeTypes: Record<string, never>;

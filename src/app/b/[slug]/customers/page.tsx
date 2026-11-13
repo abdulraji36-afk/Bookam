@@ -5,6 +5,7 @@ import { setCustomerActiveAction } from "@/app/actions/catalog";
 import { ActionButton } from "@/components/team/action-button";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { describeOwed } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Customers" };
@@ -15,13 +16,25 @@ async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "par
   const base = `/b/${org.slug}/customers`;
   const manager = canManage(role);
 
-  const { data } = await supabase
-    .from("customers")
-    .select("id, name, phone, area, is_active")
-    .eq("organization_id", org.id)
-    .order("is_active", { ascending: false })
-    .order("name");
+  const [{ data }, { data: balanceData }] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, name, phone, area, is_active")
+      .eq("organization_id", org.id)
+      .order("is_active", { ascending: false })
+      .order("name"),
+    supabase
+      .from("customer_returnable_balances")
+      .select("customer_id, returnable_name, owed")
+      .eq("organization_id", org.id)
+  ]);
   const customers = data ?? [];
+  const balances = new Map<string, { returnable_name: string; owed: number }[]>();
+  for (const balance of balanceData ?? []) {
+    const list = balances.get(balance.customer_id) ?? [];
+    list.push({ returnable_name: balance.returnable_name, owed: Number(balance.owed) });
+    balances.set(balance.customer_id, list);
+  }
 
   return (
     <div className="space-y-6">
@@ -48,6 +61,11 @@ async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "par
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {(balances.get(customer.id) ?? []).map((balance) => (
+                    <Badge key={balance.returnable_name} tone={balance.owed > 0 ? "solid" : "plain"}>
+                      {balance.returnable_name}: {describeOwed(balance.owed)}
+                    </Badge>
+                  ))}
                   {!customer.is_active ? <Badge tone="accent">Switched off</Badge> : null}
                   {manager ? (
                     <>

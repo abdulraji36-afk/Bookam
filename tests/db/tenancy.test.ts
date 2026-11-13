@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   accept,
   addMember,
+  adjust,
   as,
+  call,
   createBusiness,
   createOrder,
   createTestDb,
@@ -10,6 +12,7 @@ import {
   createUser,
   invite,
   receiveStock,
+  returnableId,
   saveCustomer,
   saveProduct,
   setPlan,
@@ -36,7 +39,14 @@ const TENANT_TABLES = [
   "dispatch_trips",
   "dispatch_trip_orders",
   "order_summaries",
-  "dispatch_trip_summaries"
+  "dispatch_trip_summaries",
+  "returnable_movements",
+  "trip_return_lines",
+  "supplier_exchanges",
+  "returnable_adjustments",
+  "returnable_totals",
+  "returnable_holdings",
+  "customer_returnable_balances"
 ];
 
 describe("tenant isolation", () => {
@@ -69,7 +79,20 @@ describe("tenant isolation", () => {
       await saveProduct(db, owner, org.id, { id: product, name: "Cola 50cl", sellingPrice: 4200, costPrice: 3000, returnItem: "Empty crate" });
       await receiveStock(db, owner, org.id, [{ product_id: product, quantity: 10 }]);
       const order = await createOrder(db, owner, org.id, customer, [{ product_id: product, quantity: 2 }]);
-      await createTrip(db, owner, org.id, [order.id]);
+      const trip = await createTrip(db, owner, org.id, [order.id]);
+      const crate = await returnableId(db, org.id, "Empty crate");
+      await adjust(db, owner, org.id, { returnableId: crate, direction: "add", quantity: 20, reason: "opening_count" });
+      await call(db, owner, `select public.dispatch_trip($1)`, [trip.id]);
+      await call(db, owner, `select public.record_trip_returns($1, public_today(), $2::jsonb)`, [
+        trip.id,
+        JSON.stringify([{ order_id: order.id, returnable_item_id: crate, quantity: 1 }])
+      ]);
+      await call(
+        db,
+        owner,
+        `select public.record_supplier_exchange($1, (select id from public.locations where organization_id = $1 and is_default), public_today(), $2, 5, null, null, null, null)`,
+        [org.id, crate]
+      );
     }
   });
 

@@ -16,8 +16,13 @@ async function BusinessShell({
   children: ReactNode;
 }) {
   const { slug } = await params;
-  const { org, role } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
+  // A business that only sells outright never sees the Returns page.
+  const { count: returnableCount } = await supabase
+    .from("returnable_items")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", org.id);
   const trialDays = org.plan_code === "trial" ? daysUntil(org.trial_ends_at, await requestNow()) : null;
 
   return (
@@ -46,6 +51,7 @@ async function BusinessShell({
           </NavLink>
           <NavLink href={`${base}/orders`}>Orders</NavLink>
           <NavLink href={`${base}/dispatch`}>Dispatch</NavLink>
+          {returnableCount ? <NavLink href={`${base}/returns`}>Returns</NavLink> : null}
           <NavLink href={`${base}/stock`}>Stock</NavLink>
           <NavLink href={`${base}/products`}>Products</NavLink>
           <NavLink href={`${base}/customers`}>Customers</NavLink>

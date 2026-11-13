@@ -43,7 +43,7 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
-| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders and dispatch |
+| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch and returns |
 
 ## How the code is organised
 
@@ -71,7 +71,10 @@ These are what keep one business's data away from another's.
    `stock_movements` and the stock on hand is the sum of those rows.
 6. An order copies the price and the return rule from the product when it is
    saved, so later product changes never rewrite an old order.
-7. Money the staff should not see (buying cost) lives in its own table that
+7. Returnables are a ledger too. `returnable_movements` holds two running
+   counts per item: what is in store and what each customer owes. A customer
+   balance below zero means the business is holding some for them.
+8. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
 
 ## Roadmap
@@ -82,6 +85,6 @@ These are what keep one business's data away from another's.
 | 1 | Businesses, sign-up, team invites, roles, plan limits, data separation | Done |
 | 2 | Products (with the per-product return choice), customers, receiving stock, stock levels | Done |
 | 3 | Orders (stock set aside on save) and dispatch trips with a loading list | Done |
-| 4 | Returns on dispatch: expected vs actual, shortages, follow-ups | Next |
-| 5 | Admin corrections, voids, audit log screen, daily operations report | |
+| 4 | Returns: trip returns, customer balances, supplier exchange, add/subtract adjustments | Done |
+| 5 | Admin corrections, voids, audit log screen, daily operations report | Next |
 | 6 | Notifications per business, then billing | |

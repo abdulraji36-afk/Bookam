@@ -126,6 +126,59 @@ export const tripSchema = z.object({
   orderIds: z.array(z.uuid()).min(1, "Choose at least one order to put on the trip.").max(500)
 });
 
+const quantity = z.coerce
+  .number("Enter a quantity.")
+  .positive("Enter a quantity greater than zero.")
+  .max(9_999_999, "That quantity is too large.");
+
+export const tripReturnsSchema = z.object({
+  returnedDate: z.iso.date("Enter the date the trip came back."),
+  returns: z
+    .array(
+      z.object({
+        orderId: z.uuid(),
+        returnableItemId: z.uuid(),
+        quantity: z.coerce
+          .number("Enter a number for every customer.")
+          .min(0, "A returned quantity cannot be less than zero.")
+          .max(9_999_999, "That quantity is too large.")
+      })
+    )
+    .min(1, "There is nothing to record for this trip.")
+});
+
+export const supplierExchangeSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  exchangeDate: z.iso.date("Enter the date."),
+  returnableItemId: z.uuid("Choose what the supplier took."),
+  quantity,
+  supplierName: z.string().trim().max(80, "Use at most 80 characters for the supplier."),
+  reference: z.string().trim().max(80, "Use at most 80 characters for the reference."),
+  receivedBy: z.string().trim().max(80, "Use at most 80 characters."),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+});
+
+export const returnableAdjustmentSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  adjustmentDate: z.iso.date("Enter the date."),
+  returnableItemId: z.uuid("Choose what you are adjusting."),
+  direction: z.enum(["add", "subtract"], "Choose whether to add or subtract."),
+  quantity,
+  reason: z.enum(
+    ["customer_return", "purchase", "opening_count", "correction", "damaged_or_lost", "given_to_customer"],
+    "Choose a reason."
+  ),
+  customerId: z.union([z.uuid(), z.literal("")]),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+});
+
+export const openingDebtSchema = z.object({
+  customerId: z.uuid("Choose the customer."),
+  returnableItemId: z.uuid("Choose what they owe."),
+  quantity,
+  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+});
+
 export function firstIssue(error: z.ZodError) {
   return error.issues[0]?.message ?? "Please check the form and try again.";
 }

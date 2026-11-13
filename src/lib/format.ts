@@ -1,4 +1,11 @@
-import type { MemberRole, OrderStatus, PaymentType, TripStatus } from "@/types/database";
+import type {
+  MemberRole,
+  OrderStatus,
+  PaymentType,
+  ReturnableAdjustmentReason,
+  ReturnableMovementType,
+  TripStatus
+} from "@/types/database";
 
 export const ROLE_LABELS: Record<MemberRole, string> = {
   owner: "Owner",
@@ -59,4 +66,30 @@ export const PAYMENT_LABELS: Record<PaymentType, string> = {
 /** Formats a date-only value (YYYY-MM-DD) without shifting it across time zones. */
 export function formatDay(isoDay: string) {
   return formatDate(isoDay, "UTC");
+}
+
+export const MOVEMENT_LABELS: Record<ReturnableMovementType, string> = {
+  dispatch: "Sent out with an order",
+  trip_return: "Came back with a trip",
+  supplier_exchange: "Taken by the supplier",
+  adjustment: "Adjustment",
+  opening_debt: "Old debt recorded"
+};
+
+export const ADD_REASONS: [ReturnableAdjustmentReason, string][] = [
+  ["customer_return", "A customer brought them back"],
+  ["purchase", "Bought new ones"],
+  ["opening_count", "Opening count (already in store)"],
+  ["correction", "The count was wrong"]
+];
+
+export const SUBTRACT_REASONS: [ReturnableAdjustmentReason, string][] = [
+  ["damaged_or_lost", "Damaged or lost"],
+  ["given_to_customer", "Given back to a customer"],
+  ["correction", "The count was wrong"]
+];
+
+/** "12 owed" / "5 in credit" for a customer's returnable balance. */
+export function describeOwed(owed: number) {
+  return owed >= 0 ? `${formatQuantity(owed)} owed` : `${formatQuantity(-owed)} in credit`;
 }

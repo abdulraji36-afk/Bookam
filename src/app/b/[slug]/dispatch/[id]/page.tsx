@@ -3,13 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { cancelTripAction, dispatchTripAction } from "@/app/actions/orders";
+import { recordTripReturnsAction } from "@/app/actions/returns";
 import { OrderStatusBadge, TripStatusBadge } from "@/components/orders/status-badge";
+import { TripReturnsForm, type ReturnLine } from "@/components/returns/trip-returns-form";
 import { ActionButton } from "@/components/team/action-button";
-import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDay, formatQuantity } from "@/lib/format";
+import { Badge, Card, CardHeader, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { formatDay, formatQuantity, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
+import { requestNow } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Dispatch trip" };
 
@@ -18,18 +20,24 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
   const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
-  const [tripResult, ordersResult] = await Promise.all([
+  const [tripResult, ordersResult, returnLinesResult] = await Promise.all([
     supabase
       .from("dispatch_trips")
-      .select("id, trip_no, dispatch_date, driver_name, vehicle, status, note, locations (name), profiles (full_name)")
+      .select(
+        "id, trip_no, dispatch_date, returned_date, driver_name, vehicle, status, note, locations (name), profiles (full_name)"
+      )
       .eq("organization_id", org.id)
       .eq("id", id)
       .maybeSingle(),
     supabase
       .from("dispatch_trip_orders")
       .select(
-        "orders (id, order_no, status, customers (name, area), order_items (quantity, products (id, name, unit), returnable_items (name)))"
+        "orders (id, order_no, status, customers (name, area), order_items (quantity, products (id, name, unit), returnable_items (id, name)))"
       )
+      .eq("trip_id", id),
+    supabase
+      .from("trip_return_lines")
+      .select("id, order_id, expected_quantity, returned_quantity, returnable_items (name)")
       .eq("trip_id", id)
   ]);
   const trip = tripResult.data;
@@ -52,10 +60,32 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     }
   }
 
+  // One line per customer and returnable item: what the trip should bring back.
+  const expectedReturns: ReturnLine[] = [];
+  for (const order of orders) {
+    const byItem = new Map<string, ReturnLine>();
+    for (const item of order.order_items) {
+      if (!item.returnable_items) continue;
+      const line = byItem.get(item.returnable_items.id) ?? {
+        orderId: order.id,
+        returnableItemId: item.returnable_items.id,
+        customerName: order.customers?.name ?? "Customer",
+        returnableName: item.returnable_items.name,
+        expected: 0
+      };
+      line.expected += Number(item.quantity);
+      byItem.set(item.returnable_items.id, line);
+    }
+    expectedReturns.push(...byItem.values());
+  }
+  const customerByOrder = new Map(orders.map((order) => [order.id, order.customers?.name ?? "Customer"]));
+  const returnLines = returnLinesResult.data ?? [];
+
   const details = [
     ["Driver", trip.driver_name],
     ["Vehicle", trip.vehicle],
     ["Dispatch date", formatDay(trip.dispatch_date)],
+    ["Came back", trip.returned_date ? formatDay(trip.returned_date) : null],
     ["Leaving from", trip.locations?.name],
     ["Created by", trip.profiles?.full_name],
     ["Note", trip.note]
@@ -67,13 +97,6 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
         <PageTitle sub="Dispatch trip">{trip.trip_no}</PageTitle>
         <TripStatusBadge status={trip.status} />
       </div>
-
-      {trip.status === "dispatched" ? (
-        <Alert tone="info">
-          This trip is out with returns to collect. Recording what comes back is the next feature being
-          built.
-        </Alert>
-      ) : null}
 
       <Card>
         <dl className="grid gap-4 sm:grid-cols-2">
@@ -146,6 +169,49 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
           </ul>
         )}
       </ListCard>
+
+      {trip.status === "dispatched" && expectedReturns.length > 0 ? (
+        <Card>
+          <CardHeader
+            title="Record what came back"
+            description="Each box starts at the full amount. Change only the ones that came back short or over."
+          />
+          <TripReturnsForm
+            action={recordTripReturnsAction.bind(null, org.slug, trip.id)}
+            lines={expectedReturns}
+            today={todayIn(org.timezone, await requestNow())}
+            dispatchDate={trip.dispatch_date}
+          />
+        </Card>
+      ) : null}
+
+      {returnLines.length > 0 ? (
+        <ListCard title="What came back">
+          <ul className="divide-y divide-line">
+            {returnLines.map((line) => {
+              const short = Number(line.expected_quantity) - Number(line.returned_quantity);
+              return (
+                <li key={line.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                  <span className="min-w-0">
+                    <span className="block font-extrabold">{customerByOrder.get(line.order_id)}</span>
+                    <span className="text-sm font-medium text-ink-soft">
+                      Returned {formatQuantity(Number(line.returned_quantity))} of{" "}
+                      {formatQuantity(Number(line.expected_quantity))} {line.returnable_items?.name}
+                    </span>
+                  </span>
+                  {short > 0 ? (
+                    <Badge tone="accent">Short by {formatQuantity(short)}</Badge>
+                  ) : short < 0 ? (
+                    <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
+                  ) : (
+                    <Badge>All back</Badge>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </ListCard>
+      ) : null}
 
       <div className="flex flex-wrap items-start gap-3">
         <Link href={`${base}/dispatch`} className={buttonClass("secondary")}>

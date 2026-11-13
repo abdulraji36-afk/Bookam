@@ -264,3 +264,65 @@ export async function createTrip(
 export async function call(db: Db, userId: string, sql: string, params: unknown[] = []) {
   return as(db, userId, (s) => s.query(sql, params));
 }
+
+/**
+ * The total "in store" and the net "owed by customers" (what is owed minus
+ * what is held for customers in credit) for one returnable item.
+ */
+export async function returnableTotals(db: Db, organizationId: string, name: string) {
+  const result = await db.query<{ holding: string; owed: string; credit: string }>(
+    `select holding::text, owed::text, credit::text from public.returnable_totals
+     where organization_id = $1 and name = $2`,
+    [organizationId, name]
+  );
+  const row = result.rows[0];
+  return { holding: Number(row.holding), owed: Number(row.owed) - Number(row.credit) };
+}
+
+export async function owedBy(db: Db, customerId: string) {
+  const result = await db.query<{ owed: string }>(
+    `select coalesce(sum(owed_delta), 0)::text as owed from public.returnable_movements where customer_id = $1`,
+    [customerId]
+  );
+  return Number(result.rows[0].owed);
+}
+
+export async function returnableId(db: Db, organizationId: string, name: string) {
+  const result = await db.query<{ id: string }>(
+    `select id from public.returnable_items where organization_id = $1 and name = $2`,
+    [organizationId, name]
+  );
+  return result.rows[0].id;
+}
+
+export async function adjust(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  input: {
+    returnableId: string;
+    direction: "add" | "subtract";
+    quantity: number;
+    reason: string;
+    customerId?: string | null;
+    note?: string | null;
+    locationId?: string;
+  }
+) {
+  const locationId = input.locationId ?? (await mainLocation(db, organizationId));
+  return as(db, userId, (s) =>
+    s.query(
+      `select public.record_returnable_adjustment($1, $2, public_today(), $3, $4, $5, $6::public.returnable_adjustment_reason, $7, $8)`,
+      [
+        organizationId,
+        locationId,
+        input.returnableId,
+        input.direction,
+        input.quantity,
+        input.reason,
+        input.customerId ?? null,
+        input.note ?? null
+      ]
+    )
+  );
+}
