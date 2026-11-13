@@ -30,7 +30,7 @@ This is its own project with its own dependencies; the Next.js app ignores this 
 | 8.5–11.1 s | A hand sneaks crates off the shelf, stock 120 → 97 | "Goods go missing from your store and warehouse," |
 | 11.1–14.9 s | Unfilled delivery note, then the page crumples | "and nobody knows who dispatched what, or which driver took it." |
 | 14.9–18.1 s | "There's a better way." then the logo builds | "There's a better way. Meet Bookam." |
-| 18.1–38.7 s | Phone: customers (search), orders (step tracker), dispatch (who + driver, signed off), stock (returns go back on the shelf), live report + alerts, quick actions (dispatch in 2 taps) | One line per feature |
+| 18.1–38.7 s | Phone: customers (search), orders (Pending → Completed), dispatch (who + driver, signed off), stock (returns go back on the shelf), live report + alerts, quick actions (dispatch a trip) | One line per feature |
 | 38.7–49 s | Logo, tagline, bookam.online, WhatsApp 0815 282 3719 | "Bookam. Every order, every product, every driver, accounted for. Visit bookam dot online, or WhatsApp us today." |
 
 ## Commands
