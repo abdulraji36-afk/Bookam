@@ -34,7 +34,11 @@ const ACTION_LABELS: Record<string, string> = {
   void_stock_receipt: "Voided a stock receipt",
   void_supplier_exchange: "Voided a supplier exchange",
   void_returnable_adjustment: "Voided an adjustment",
-  correct_trip_return: "Corrected a returned figure"
+  correct_trip_return: "Corrected a returned figure",
+  connect_telegram: "Connected Telegram",
+  disconnect_telegram: "Disconnected Telegram",
+  enable_notifications: "Resumed notifications",
+  disable_notifications: "Paused notifications"
 };
 
 export function describeAction(action: string) {

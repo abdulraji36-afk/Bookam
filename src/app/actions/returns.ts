@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { describeDbError, type ActionState } from "@/lib/action-state";
+import { ADD_REASONS, formatQuantity, SUBTRACT_REASONS } from "@/lib/format";
+import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import type { ServerClient } from "@/lib/supabase/server";
 import {
   firstIssue,
   openingDebtSchema,
@@ -16,13 +19,18 @@ import {
 const idSchema = z.uuid();
 const text = (formData: FormData, name: string) => String(formData.get(name) ?? "");
 
+async function returnableName(supabase: ServerClient, id: string) {
+  const { data } = await supabase.from("returnable_items").select("name").eq("id", id).maybeSingle();
+  return data?.name ?? "returnables";
+}
+
 export async function recordTripReturnsAction(
   slug: string,
   tripId: string,
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   // One row per customer and returnable item, sent as parallel fields.
@@ -51,6 +59,20 @@ export async function recordTripReturnsAction(
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, async () => {
+    const [{ data: trip }, { data: lines }] = await Promise.all([
+      supabase.from("dispatch_trips").select("trip_no").eq("id", tripId).maybeSingle(),
+      supabase.from("trip_return_lines").select("expected_quantity, returned_quantity").eq("trip_id", tripId)
+    ]);
+    if (!trip) return [];
+    const expected = (lines ?? []).reduce((sum, line) => sum + Number(line.expected_quantity), 0);
+    const returned = (lines ?? []).reduce((sum, line) => sum + Number(line.returned_quantity), 0);
+    return [
+      `Returns recorded for trip ${trip.trip_no}`,
+      `${formatQuantity(returned)} came back of ${formatQuantity(expected)} expected`,
+      returned < expected && `Short by ${formatQuantity(expected - returned)}. It stays on the customers' balances.`
+    ];
+  });
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Returns recorded. The trip is complete." };
 }
@@ -88,6 +110,12 @@ export async function recordSupplierExchangeAction(
   const exchange = data?.[0];
   if (error || !exchange) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, async () => [
+    `Supplier exchange ${exchange.exchange_no}`,
+    `The supplier took ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
+    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
+  ]);
+
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/returns?saved=${encodeURIComponent(exchange.exchange_no)}`);
 }
@@ -124,6 +152,14 @@ export async function recordAdjustmentAction(
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, async () => {
+    const reason = new Map([...ADD_REASONS, ...SUBTRACT_REASONS]).get(parsed.data.reason);
+    return [
+      `${parsed.data.direction === "add" ? "Added" : "Subtracted"} ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
+      `Reason: ${reason}`,
+      parsed.data.note && `Note: ${parsed.data.note}`
+    ];
+  });
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/returns?saved=adjustment`);
 }

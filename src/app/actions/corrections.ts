@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { describeDbError, type ActionState } from "@/lib/action-state";
+import { formatQuantity } from "@/lib/format";
+import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import type { ServerClient } from "@/lib/supabase/server";
 
 const idSchema = z.uuid();
 const reasonSchema = z
@@ -25,13 +28,30 @@ const VOIDS: Record<VoidFunction, { argument: string; done: string }> = {
   void_returnable_adjustment: { argument: "p_adjustment_id", done: "Adjustment voided." }
 };
 
+/** "order ORD-…", "stock receipt STK-…": what was voided, for the notification. */
+async function describeVoided(supabase: ServerClient, fn: VoidFunction, id: string) {
+  if (fn === "void_order") {
+    const { data } = await supabase.from("orders").select("order_no").eq("id", id).maybeSingle();
+    return `order ${data?.order_no ?? ""}`.trim();
+  }
+  if (fn === "void_stock_receipt") {
+    const { data } = await supabase.from("stock_receipts").select("receipt_no").eq("id", id).maybeSingle();
+    return `stock receipt ${data?.receipt_no ?? ""}`.trim();
+  }
+  if (fn === "void_supplier_exchange") {
+    const { data } = await supabase.from("supplier_exchanges").select("exchange_no").eq("id", id).maybeSingle();
+    return `supplier exchange ${data?.exchange_no ?? ""}`.trim();
+  }
+  return "a returnables adjustment";
+}
+
 async function runVoid(
   fn: VoidFunction,
   slug: string,
   id: string,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(id).success) return { ok: false, message: "Record not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
@@ -42,6 +62,10 @@ async function runVoid(
   const { error } = await supabase.rpc(fn, args as never);
   if (error) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, async () => [
+    `VOIDED: ${await describeVoided(supabase, fn, id)}`,
+    `Reason: ${reason.data}`
+  ]);
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: VOIDS[fn].done };
 }
@@ -68,7 +92,7 @@ export async function correctTripReturnAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(lineId).success) return { ok: false, message: "Return record not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
@@ -88,6 +112,10 @@ export async function correctTripReturnAction(
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, () => [
+    `CORRECTED: a returned figure is now ${formatQuantity(quantity.data)}`,
+    `Reason: ${reason.data}`
+  ]);
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Figure corrected." };
 }

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { describeDbError, type ActionState } from "@/lib/action-state";
-import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import { formatMoney, formatQuantity } from "@/lib/format";
+import { notify } from "@/lib/notify";
+import { MANAGER_ROLES, requireOrg, type OrgContext } from "@/lib/org";
 import { firstIssue, orderSchema, tripSchema } from "@/lib/validation";
 
 const idSchema = z.uuid();
@@ -16,6 +18,21 @@ function readLines(formData: FormData) {
   return productIds
     .map((productId, index) => ({ productId, quantity: quantities[index] ?? "" }))
     .filter((item) => item.productId !== "" || item.quantity.trim() !== "");
+}
+
+/** "Mama Tunde: 40 items, ₦168,000" for an order, read back after saving. */
+async function orderLines(context: Pick<OrgContext, "supabase" | "org">, orderId: string, heading: (orderNo: string) => string) {
+  const { data } = await context.supabase
+    .from("order_summaries")
+    .select("order_no, customer_name, total_quantity, total_amount, has_returns")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!data) return [];
+  return [
+    heading(data.order_no),
+    `${data.customer_name}: ${formatQuantity(Number(data.total_quantity))} items, ${formatMoney(Number(data.total_amount), context.org.currency_code)}`,
+    data.has_returns && "Returns are due on this order."
+  ];
 }
 
 function readOrder(formData: FormData) {
@@ -54,6 +71,7 @@ export async function saveOrderAction(
     const order = data?.[0];
     if (error || !order) return { ok: false, message: describeDbError(error) };
 
+    notify({ supabase, org }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
     revalidatePath(`/b/${slug}`, "layout");
     redirect(`/b/${slug}/orders/${order.id}?saved=1`);
   }
@@ -70,6 +88,7 @@ export async function saveOrderAction(
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
+  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Order ${no} was changed`));
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/orders/${orderId}?saved=1`);
 }
@@ -79,11 +98,15 @@ export async function cancelOrderAction(
   orderId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug);
   if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const { error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
   if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, () =>
+    orderLines({ supabase, org }, orderId, (no) => `Order ${no} cancelled. Its stock was put back.`)
+  );
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Order cancelled and stock put back." };
@@ -127,11 +150,25 @@ export async function dispatchTripAction(
   tripId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   const { error } = await supabase.rpc("dispatch_trip", { p_trip_id: tripId });
   if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, async () => {
+    const { data } = await supabase
+      .from("dispatch_trip_summaries")
+      .select("trip_no, driver_name, vehicle, order_count, total_quantity, has_returns")
+      .eq("id", tripId)
+      .maybeSingle();
+    if (!data) return [];
+    return [
+      `Trip ${data.trip_no} dispatched`,
+      `Driver ${data.driver_name}${data.vehicle ? ` (${data.vehicle})` : ""}: ${data.order_count} order${data.order_count === 1 ? "" : "s"}, ${formatQuantity(Number(data.total_quantity))} items`,
+      data.has_returns && "Returns to collect on this trip."
+    ];
+  });
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Trip dispatched." };
@@ -142,11 +179,16 @@ export async function cancelTripAction(
   tripId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   const { error } = await supabase.rpc("cancel_dispatch_trip", { p_trip_id: tripId });
   if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, async () => {
+    const { data } = await supabase.from("dispatch_trips").select("trip_no").eq("id", tripId).maybeSingle();
+    return data ? [`Trip ${data.trip_no} cancelled before leaving. Its orders are waiting again.`] : [];
+  });
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Trip cancelled. Its orders are waiting for dispatch again." };

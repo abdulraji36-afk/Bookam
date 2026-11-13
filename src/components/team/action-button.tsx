@@ -13,6 +13,8 @@ type Props = {
   size?: "md" | "sm";
   /** When set, the person must confirm before the action runs. */
   confirmMessage?: string;
+  /** Also show the message when the action succeeds. */
+  showSuccess?: boolean;
 };
 
 /** A single button that runs a server action and shows any error beside it. */
@@ -22,7 +24,8 @@ export function ActionButton({
   pendingLabel,
   variant = "secondary",
   size = "sm",
-  confirmMessage
+  confirmMessage,
+  showSuccess
 }: Props) {
   const [state, formAction] = useActionState(action, idleState);
 
@@ -39,6 +42,11 @@ export function ActionButton({
       </SubmitButton>
       {!state.ok && state.message ? (
         <p role="alert" className="max-w-56 text-right text-xs text-danger">
+          {state.message}
+        </p>
+      ) : null}
+      {showSuccess && state.ok && state.message ? (
+        <p role="status" className="max-w-56 text-right text-xs font-semibold text-success">
           {state.message}
         </p>
       ) : null}

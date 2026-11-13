@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { describeDbError, type ActionState } from "@/lib/action-state";
+import { formatQuantity } from "@/lib/format";
+import { notify } from "@/lib/notify";
 import { requireOrg } from "@/lib/org";
 import { firstIssue, stockReceiptSchema } from "@/lib/validation";
 
@@ -45,6 +47,13 @@ export async function recordStockReceiptAction(
 
   const receipt = data?.[0];
   if (error || !receipt) return { ok: false, message: describeDbError(error) };
+
+  const total = parsed.data.items.reduce((sum, item) => sum + item.quantity, 0);
+  notify({ supabase, org }, () => [
+    `Stock received ${receipt.receipt_no}`,
+    `${parsed.data.items.length} product${parsed.data.items.length === 1 ? "" : "s"}, ${formatQuantity(total)} items in total`,
+    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
+  ]);
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/stock/receipts/${receipt.id}?saved=1`);

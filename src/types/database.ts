@@ -562,6 +562,20 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      organization_notifications: {
+        // The chat id and link code hash are not readable through the API.
+        Row: {
+          organization_id: string;
+          telegram_chat_title: string | null;
+          telegram_linked_at: string | null;
+          is_enabled: boolean;
+          link_code_expires_at: string | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       product_stock_levels: {
@@ -850,6 +864,20 @@ export type Database = {
           closing: number;
           owed_closing: number;
         }[];
+      };
+      start_telegram_link: { Args: { p_organization_id: string }; Returns: string };
+      complete_telegram_link: {
+        Args: { p_code: string; p_chat_id: number; p_chat_title: string | null };
+        Returns: string | null;
+      };
+      disconnect_telegram: { Args: { p_organization_id: string }; Returns: undefined };
+      set_notifications_enabled: {
+        Args: { p_organization_id: string; p_is_enabled: boolean };
+        Returns: undefined;
+      };
+      get_notification_target: {
+        Args: { p_organization_id: string };
+        Returns: { chat_id: number; actor_name: string }[];
       };
     };
     Enums: { member_role: MemberRole };

@@ -80,6 +80,25 @@ These are what keep one business's data away from another's.
 9. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
 
+## Telegram notifications
+
+One bot serves every business; each business links its own group from its
+Settings page. To switch the feature on for a deployment:
+
+1. In Telegram, message `@BotFather`, send `/newbot` and follow the steps. It
+   gives you a bot username and a token.
+2. Set these environment variables on the host and redeploy:
+   - `TELEGRAM_BOT_TOKEN`: the token from BotFather (keep it secret)
+   - `TELEGRAM_BOT_USERNAME`: the bot's username, without the `@`
+   - `TELEGRAM_WEBHOOK_SECRET`: any long random string you make up
+3. Tell Telegram where to send messages, once, by opening this address in a
+   browser with your own values filled in:
+   `https://api.telegram.org/bot<TOKEN>/setWebhook?url=<APP ADDRESS>/api/telegram/webhook&secret_token=<WEBHOOK SECRET>`
+
+Messages are sent after an action has finished, so a slow or unreachable
+Telegram never delays or fails the action. A message that fails to send is
+logged and not retried.
+
 ## Releasing a change that includes a migration
 
 Run the new file from `supabase/migrations` against the hosted database
@@ -97,4 +116,5 @@ version of the app, so the database can always go first.
 | 3 | Orders (stock set aside on save) and dispatch trips with a loading list | Done |
 | 4 | Returns: trip returns, customer balances, supplier exchange, add/subtract adjustments | Done |
 | 5 | Voids and corrections with reasons, activity log screen, daily report | Done |
-| 6 | Notifications per business, then billing | Next |
+| 6a | Telegram notifications, linked per business | Done |
+| 6b | Billing for the plans, and what happens when a trial ends | Next |

@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import {
+  disconnectTelegramAction,
+  refreshNotificationsAction,
+  sendTestNotificationAction,
+  setNotificationsEnabledAction,
+  startTelegramLinkAction
+} from "@/app/actions/notifications";
 import { createLocationAction, updateBusinessAction } from "@/app/actions/organizations";
 import { BusinessForm } from "@/components/business/business-form";
 import { LocationForm } from "@/components/business/location-form";
+import { TelegramConnect } from "@/components/settings/telegram-connect";
+import { ActionButton } from "@/components/team/action-button";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { daysUntil } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import { getTelegramConfig } from "@/lib/telegram";
 import { requestNow } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -14,7 +24,7 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
   const { slug } = await params;
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
 
-  const [locationsResult, planResult] = await Promise.all([
+  const [locationsResult, planResult, notificationsResult] = await Promise.all([
     supabase
       .from("locations")
       .select("id, name, is_default")
@@ -25,8 +35,15 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
       .from("plans")
       .select("name, max_members, max_locations")
       .eq("code", org.plan_code)
+      .maybeSingle(),
+    supabase
+      .from("organization_notifications")
+      .select("telegram_chat_title, telegram_linked_at, is_enabled")
+      .eq("organization_id", org.id)
       .maybeSingle()
   ]);
+  const telegram = notificationsResult.data;
+  const telegramReady = getTelegramConfig() !== null;
 
   const locations = locationsResult.data ?? [];
   const plan = planResult.data;
@@ -61,6 +78,52 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
           ))}
         </ul>
         <LocationForm action={createLocationAction.bind(null, org.slug)} />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Telegram notifications"
+          description="Get a message in a Telegram group whenever an order, dispatch, return or stock change is recorded."
+        />
+        {!telegramReady ? (
+          <p className="font-medium text-ink-soft">Telegram notifications are not available yet.</p>
+        ) : telegram?.telegram_linked_at ? (
+          <div className="space-y-4">
+            <p className="font-semibold">
+              Connected to {telegram.telegram_chat_title ?? "a Telegram chat"}.{" "}
+              {telegram.is_enabled ? (
+                <Badge tone="solid">On</Badge>
+              ) : (
+                <Badge tone="accent">Paused</Badge>
+              )}
+            </p>
+            <div className="flex flex-wrap items-start gap-2">
+              {telegram.is_enabled ? (
+                <ActionButton
+                  action={sendTestNotificationAction.bind(null, org.slug)}
+                  label="Send a test message"
+                  pendingLabel="Sending…"
+                  showSuccess
+                />
+              ) : null}
+              <ActionButton
+                action={setNotificationsEnabledAction.bind(null, org.slug, !telegram.is_enabled)}
+                label={telegram.is_enabled ? "Pause" : "Resume"}
+              />
+              <ActionButton
+                action={disconnectTelegramAction.bind(null, org.slug)}
+                label="Disconnect"
+                variant="danger"
+                confirmMessage="Disconnect Telegram? Messages will stop until you connect a chat again."
+              />
+            </div>
+          </div>
+        ) : (
+          <TelegramConnect
+            startAction={startTelegramLinkAction.bind(null, org.slug)}
+            refreshAction={refreshNotificationsAction.bind(null, org.slug)}
+          />
+        )}
       </Card>
 
       <Card>
