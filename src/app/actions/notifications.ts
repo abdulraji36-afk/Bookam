@@ -13,7 +13,7 @@ export async function startTelegramLinkAction(
 ): Promise<ActionState<TelegramLinks>> {
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   const config = getTelegramConfig();
-  if (!config) return { ok: false, message: "Telegram is not set up for Bookam yet." };
+  if (!config) return { ok: false, message: "Telegram is not set up for BukAm yet." };
 
   const { data: code, error } = await supabase.rpc("start_telegram_link", { p_organization_id: org.id });
   if (error || !code) return { ok: false, message: describeDbError(error) };
@@ -45,7 +45,7 @@ export async function sendTestNotificationAction(slug: string, _previous: Action
 
   const sent = await sendTelegramMessage(
     Number(target.chat_id),
-    `${org.name}\nThis is a test message from Bookam. Notifications are working.\nBy ${target.actor_name}`
+    `${org.name}\nThis is a test message from BukAm. Notifications are working.\nBy ${target.actor_name}`
   );
   return sent
     ? { ok: true, message: "Test message sent. Check your Telegram chat." }

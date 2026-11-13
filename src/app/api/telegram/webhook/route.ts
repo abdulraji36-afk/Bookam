@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const code = text.match(/^\/start(?:@\w+)?\s+([0-9a-f]{32})$/)?.[1];
   if (!code) {
-    await sendTelegramMessage(chatId, "To connect this chat to your business, open the link on the Settings page in Bookam.");
+    await sendTelegramMessage(chatId, "To connect this chat to your business, open the link on the Settings page in BukAm.");
     return done;
   }
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     chatId,
     businessName
       ? `Connected to ${businessName}. Orders, dispatches, returns and stock changes will be posted here.`
-      : "That link has expired or was already used. Create a new one on the Settings page in Bookam."
+      : "That link has expired or was already used. Create a new one on the Settings page in BukAm."
   );
   return done;
 }

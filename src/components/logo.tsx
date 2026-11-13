@@ -12,17 +12,20 @@ export function LogoMark({ className = "size-8" }: { className?: string }) {
   );
 }
 
-/** The mark with the wordmark. Use tone="light" on the dark navy bars. */
+/**
+ * The mark with the wordmark. The name is written "BukAm", so it keeps its
+ * own capitals. Use tone="light" on the dark navy bars.
+ */
 export function Logo({ href = "/", tone = "dark" }: { href?: string; tone?: "dark" | "light" }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-2.5 text-2xl font-extrabold uppercase tracking-wide ${
+      className={`inline-flex items-center gap-2.5 text-2xl font-extrabold tracking-tight ${
         tone === "light" ? "text-white" : "text-ink"
       }`}
     >
       <LogoMark />
-      Bookam
+      BukAm
     </Link>
   );
 }

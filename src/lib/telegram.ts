@@ -1,6 +1,6 @@
 import "server-only";
 
-/** Settings for the one Bookam bot that serves every business. */
+/** Settings for the one BukAm bot that serves every business. */
 export function getTelegramConfig() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const username = process.env.TELEGRAM_BOT_USERNAME?.replace(/^@/, "");

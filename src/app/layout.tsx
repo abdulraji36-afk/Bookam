@@ -3,7 +3,7 @@ import "@fontsource-variable/archivo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Bookam", template: "%s · Bookam" },
+  title: { default: "BukAm", template: "%s · BukAm" },
   description: "Orders, dispatch and returns tracking for depots, shops and warehouses."
 };
 

@@ -35,7 +35,7 @@ async function Adjust({ params }: Pick<PageProps<"/b/[slug]/returns/adjust">, "p
           <Card>
             <CardHeader
               title="A customer already owed some"
-              description="Use this once per customer when you start, for what they owed before you began using Bookam. It does not change the count in store."
+              description="Use this once per customer when you start, for what they owed before you began using BukAm. It does not change the count in store."
             />
             <OpeningDebtForm
               action={recordOpeningDebtAction.bind(null, org.slug)}

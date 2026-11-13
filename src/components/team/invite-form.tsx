@@ -83,7 +83,7 @@ export function InviteForm({ action, businessName, canInviteAdmin }: Props) {
               target="_blank"
               rel="noreferrer"
               href={`https://wa.me/?text=${encodeURIComponent(
-                `You have been invited to join ${businessName} on Bookam. Open this link to join: ${invite.link}`
+                `You have been invited to join ${businessName} on BukAm. Open this link to join: ${invite.link}`
               )}`}
             >
               Share on WhatsApp

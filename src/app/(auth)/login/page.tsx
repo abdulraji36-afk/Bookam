@@ -26,7 +26,7 @@ async function LoginCard({ searchParams }: Pick<PageProps<"/login">, "searchPara
       ) : null}
       <LoginForm next={next} email={email} />
       <p className="mt-5 text-sm text-ink-soft">
-        New to Bookam?{" "}
+        New to BukAm?{" "}
         <Link href={signupHref} className="font-extrabold text-ink underline decoration-accent decoration-2 underline-offset-4">
           Create an account
         </Link>

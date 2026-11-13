@@ -38,7 +38,7 @@ export default function LandingPage() {
             Orders, dispatch and returns for any depot, shop or warehouse.
           </h1>
           <p className="mt-5 max-w-xl text-lg text-nav">
-            Bookam runs the daily movement of goods for your business. You decide which products must
+            BukAm runs the daily movement of goods for your business. You decide which products must
             come back and which are simply sold.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">

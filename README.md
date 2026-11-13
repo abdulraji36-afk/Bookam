@@ -1,10 +1,10 @@
-# Bookam
+# BukAm
 
 Order and dispatch software for depots, shops and warehouses. Each business
 decides, product by product, whether customers must bring something back
 (crates, cylinders, pallets) or whether a dispatch simply completes the sale.
 
-Bookam is a multi-business rebuild of the single-shop Bilikis Store app.
+BukAm is a multi-business rebuild of the single-shop Bilikis Store app.
 
 ## Stack
 
@@ -98,6 +98,17 @@ Settings page. To switch the feature on for a deployment:
 Messages are sent after an action has finished, so a slow or unreachable
 Telegram never delays or fails the action. A message that fails to send is
 logged and not retried.
+
+## Moving to a new web address
+
+When the app's address changes (for example to a custom domain), three
+places must be told, or sign-up emails and Telegram stop working:
+
+1. The host: set `NEXT_PUBLIC_SITE_URL` to the new address and redeploy.
+2. Supabase, under Authentication → URL Configuration: set the Site URL to
+   the new address and add `<new address>/**` to the redirect URLs.
+3. Telegram, if it is set up: open the `setWebhook` address from the section
+   above again, with the new app address in it.
 
 ## Releasing a change that includes a migration
 
