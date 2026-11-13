@@ -27,7 +27,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     getStockRows(supabase, org.id, selected?.id ?? null),
     supabase
       .from("stock_receipts")
-      .select("id, receipt_no, received_date, supplier_name, locations (name), stock_receipt_items (quantity)")
+      .select("id, receipt_no, received_date, supplier_name, voided_at, locations (name), stock_receipt_items (quantity)")
       .eq("organization_id", org.id)
       .order("received_date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -120,7 +120,11 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
                           .join(" · ")}
                       </span>
                     </span>
-                    <span className="font-extrabold tabular-nums">+{formatQuantity(total)}</span>
+                    {receipt.voided_at ? (
+                      <Badge tone="accent">Voided</Badge>
+                    ) : (
+                      <span className="font-extrabold tabular-nums">+{formatQuantity(total)}</span>
+                    )}
                   </Link>
                 </li>
               );

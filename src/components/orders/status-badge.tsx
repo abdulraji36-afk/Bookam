@@ -17,7 +17,8 @@ const TRIP_TONES: Record<TripStatus, "plain" | "solid" | "accent"> = {
   cancelled: "plain"
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function OrderStatusBadge({ status, voided }: { status: OrderStatus; voided?: boolean }) {
+  if (voided) return <Badge tone="accent">Voided</Badge>;
   return <Badge tone={ORDER_TONES[status]}>{ORDER_STATUS_LABELS[status]}</Badge>;
 }
 

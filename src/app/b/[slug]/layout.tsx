@@ -55,9 +55,11 @@ async function BusinessShell({
           <NavLink href={`${base}/stock`}>Stock</NavLink>
           <NavLink href={`${base}/products`}>Products</NavLink>
           <NavLink href={`${base}/customers`}>Customers</NavLink>
+          <NavLink href={`${base}/reports/daily`}>Reports</NavLink>
           {canManage(role) ? (
             <>
               <NavLink href={`${base}/team`}>Team</NavLink>
+              <NavLink href={`${base}/activity`}>Activity</NavLink>
               <NavLink href={`${base}/settings`}>Settings</NavLink>
             </>
           ) : null}

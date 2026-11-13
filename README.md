@@ -43,7 +43,7 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
-| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch and returns |
+| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch, returns, voids and reports |
 
 ## How the code is organised
 
@@ -74,8 +74,18 @@ These are what keep one business's data away from another's.
 7. Returnables are a ledger too. `returnable_movements` holds two running
    counts per item: what is in store and what each customer owes. A customer
    balance below zero means the business is holding some for them.
-8. Money the staff should not see (buying cost) lives in its own table that
+8. Mistakes are undone, not edited. A void (owners and admins only, with a
+   reason) reverses a record's effect on stock and returnables, keeps the
+   record marked as voided, and writes what it was to the audit log.
+9. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
+
+## Releasing a change that includes a migration
+
+Run the new file from `supabase/migrations` against the hosted database
+before the new app code goes live (`npx supabase db push`, or paste it into
+the Supabase SQL editor). Migrations are written to work with the previous
+version of the app, so the database can always go first.
 
 ## Roadmap
 
@@ -86,5 +96,5 @@ These are what keep one business's data away from another's.
 | 2 | Products (with the per-product return choice), customers, receiving stock, stock levels | Done |
 | 3 | Orders (stock set aside on save) and dispatch trips with a loading list | Done |
 | 4 | Returns: trip returns, customer balances, supplier exchange, add/subtract adjustments | Done |
-| 5 | Admin corrections, voids, audit log screen, daily operations report | Next |
-| 6 | Notifications per business, then billing | |
+| 5 | Voids and corrections with reasons, activity log screen, daily report | Done |
+| 6 | Notifications per business, then billing | Next |

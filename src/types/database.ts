@@ -159,7 +159,15 @@ export type Database = {
         };
         Insert: never;
         Update: never;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       returnable_items: {
         Row: { id: string; organization_id: string; name: string; created_at: string };
@@ -229,6 +237,9 @@ export type Database = {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
         };
         Insert: never;
         Update: never;
@@ -243,6 +254,13 @@ export type Database = {
           {
             foreignKeyName: "stock_receipts_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_receipts_voided_by_fkey";
+            columns: ["voided_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -309,6 +327,10 @@ export type Database = {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
+          voided_from_status: string | null;
         };
         Insert: never;
         Update: never;
@@ -330,6 +352,13 @@ export type Database = {
           {
             foreignKeyName: "orders_created_by_fkey";
             columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_voided_by_fkey";
+            columns: ["voided_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -475,6 +504,7 @@ export type Database = {
           returnable_item_id: string;
           expected_quantity: number;
           returned_quantity: number;
+          corrected_at: string | null;
         };
         Insert: never;
         Update: never;
@@ -503,6 +533,9 @@ export type Database = {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
         };
         Insert: never;
         Update: never;
@@ -521,6 +554,9 @@ export type Database = {
           note: string | null;
           created_by: string | null;
           created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
         };
         Insert: never;
         Update: never;
@@ -555,6 +591,7 @@ export type Database = {
           trip_id: string | null;
           trip_no: string | null;
           created_at: string;
+          voided_at: string | null;
         };
         Relationships: [];
       };
@@ -778,6 +815,41 @@ export type Database = {
           p_note: string | null;
         };
         Returns: undefined;
+      };
+      void_order: { Args: { p_order_id: string; p_reason: string }; Returns: undefined };
+      void_stock_receipt: { Args: { p_receipt_id: string; p_reason: string }; Returns: undefined };
+      void_supplier_exchange: { Args: { p_exchange_id: string; p_reason: string }; Returns: undefined };
+      void_returnable_adjustment: {
+        Args: { p_adjustment_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      correct_trip_return: {
+        Args: { p_line_id: string; p_returned_quantity: number; p_reason: string };
+        Returns: undefined;
+      };
+      daily_stock_report: {
+        Args: { p_organization_id: string; p_date: string };
+        Returns: {
+          product_id: string;
+          name: string;
+          unit: string;
+          opening: number;
+          received: number;
+          sold: number;
+          closing: number;
+        }[];
+      };
+      daily_returnables_report: {
+        Args: { p_organization_id: string; p_date: string };
+        Returns: {
+          returnable_item_id: string;
+          name: string;
+          opening: number;
+          came_in: number;
+          went_out: number;
+          closing: number;
+          owed_closing: number;
+        }[];
       };
     };
     Enums: { member_role: MemberRole };

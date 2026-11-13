@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { voidAdjustmentAction, voidSupplierExchangeAction } from "@/app/actions/corrections";
+import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
@@ -22,6 +24,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
+  const manager = canManage(role);
 
   const [totalsResult, tripsResult, balancesResult, activityResult] = await Promise.all([
     supabase.from("returnable_totals").select("returnable_item_id, name, holding, owed, credit").eq("organization_id", org.id).order("name"),
@@ -40,7 +43,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
     supabase
       .from("returnable_movements")
       .select(
-        "id, movement_date, movement_type, source_id, holding_delta, owed_delta, returnable_items (name), customers (name)"
+        "id, movement_date, movement_type, source_type, source_id, holding_delta, owed_delta, returnable_items (name), customers (name)"
       )
       .eq("organization_id", org.id)
       .order("created_at", { ascending: false })
@@ -87,7 +90,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
           <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
             Supplier exchange
           </Link>
-          {canManage(role) ? (
+          {manager ? (
             <Link href={`${base}/returns/adjust`} className={buttonClass("secondary")}>
               Add or subtract
             </Link>
@@ -176,7 +179,8 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
         <ListCard title="Latest activity">
           <ul className="divide-y divide-line">
             {activity.map((movement) => (
-              <li key={movement.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3">
+              <li key={movement.id} className="space-y-2 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <span className="min-w-0">
                   <span className="block font-extrabold">
                     {MOVEMENT_LABELS[movement.movement_type]}
@@ -196,6 +200,25 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
                     <span className="block text-ink-soft">Owed {signed(Number(movement.owed_delta))}</span>
                   ) : null}
                 </span>
+                </div>
+                {manager && movement.source_type === "supplier_exchange" ? (
+                  <ReasonForm
+                    compact
+                    action={voidSupplierExchangeAction.bind(null, org.slug, movement.source_id)}
+                    trigger="Void this exchange"
+                    explanation="Use this when the exchange was recorded by mistake. The quantity goes back into the store count."
+                    submitLabel="Void exchange"
+                  />
+                ) : null}
+                {manager && movement.source_type === "returnable_adjustment" ? (
+                  <ReasonForm
+                    compact
+                    action={voidAdjustmentAction.bind(null, org.slug, movement.source_id)}
+                    trigger="Void this adjustment"
+                    explanation="Use this when the adjustment was recorded by mistake. Its effect on the store count, and on the customer's balance if one was named, is reversed."
+                    submitLabel="Void adjustment"
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

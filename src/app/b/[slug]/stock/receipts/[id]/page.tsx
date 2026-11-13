@@ -2,22 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { voidStockReceiptAction } from "@/app/actions/corrections";
+import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDate, formatQuantity } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Stock receipt" };
 
 async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/receipts/[id]">) {
   const [{ slug, id }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
 
   const { data: receipt } = await supabase
     .from("stock_receipts")
     .select(
-      "receipt_no, received_date, supplier_name, reference, note, locations (name), profiles (full_name), stock_receipt_items (id, quantity, products (name, unit))"
+      "id, receipt_no, received_date, supplier_name, reference, note, voided_at, void_reason, locations (name), profiles!stock_receipts_created_by_fkey (full_name), stock_receipt_items (id, quantity, products (name, unit))"
     )
     .eq("organization_id", org.id)
     .eq("id", id)
@@ -35,7 +37,14 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
 
   return (
     <div className="max-w-3xl space-y-6">
-      {query.saved === "1" ? <Alert tone="success">Saved. The stock below has been added.</Alert> : null}
+      {query.saved === "1" && !receipt.voided_at ? (
+        <Alert tone="success">Saved. The stock below has been added.</Alert>
+      ) : null}
+      {receipt.voided_at ? (
+        <Alert tone="error">
+          This receipt was voided and its stock taken back out. Reason: {receipt.void_reason}
+        </Alert>
+      ) : null}
       <PageTitle sub="Stock received">{receipt.receipt_no}</PageTitle>
 
       <Card>
@@ -72,6 +81,15 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
           + Receive more
         </Link>
       </div>
+
+      {canManage(role) && !receipt.voided_at ? (
+        <ReasonForm
+          action={voidStockReceiptAction.bind(null, org.slug, receipt.id)}
+          trigger="Void this receipt"
+          explanation="Use this when the delivery was recorded by mistake. Its quantities are taken back out of stock. It cannot be voided once that stock has been sold."
+          submitLabel="Void receipt"
+        />
+      ) : null}
     </div>
   );
 }

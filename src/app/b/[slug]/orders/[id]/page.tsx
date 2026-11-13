@@ -2,27 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { voidOrderAction } from "@/app/actions/corrections";
 import { cancelOrderAction } from "@/app/actions/orders";
+import { ReasonForm } from "@/components/corrections/reason-form";
 import { OrderStatusBadge } from "@/components/orders/status-badge";
 import { ActionButton } from "@/components/team/action-button";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDay, formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Order" };
 
 async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]">) {
   const [{ slug, id }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
   const [orderResult, summaryResult] = await Promise.all([
     supabase
       .from("orders")
       .select(
-        "id, order_no, order_date, status, payment_type, note, customers (name, area, phone), locations (name), profiles (full_name), order_items (id, quantity, unit_price, line_total, products (name, unit), returnable_items (name))"
+        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, quantity, unit_price, line_total, products (name, unit), returnable_items (name))"
       )
       .eq("organization_id", org.id)
       .eq("id", id)
@@ -48,8 +50,14 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
       {query.saved === "1" ? <Alert tone="success">Order saved. Its stock has been set aside.</Alert> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PageTitle sub="Customer order">{order.order_no}</PageTitle>
-        <OrderStatusBadge status={order.status} />
+        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
       </div>
+
+      {order.voided_at ? (
+        <Alert tone="error">
+          This order was voided. Its stock and returns were reversed. Reason: {order.void_reason}
+        </Alert>
+      ) : null}
 
       <Card>
         <dl className="grid gap-4 sm:grid-cols-2">
@@ -128,6 +136,15 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
           </>
         ) : null}
       </div>
+
+      {canManage(role) && order.status !== "cancelled" ? (
+        <ReasonForm
+          action={voidOrderAction.bind(null, org.slug, order.id)}
+          trigger="Void this order"
+          explanation="Use this when the order should never have been recorded. Its stock goes back, the customer no longer owes anything for it, and any returns recorded against it are taken back out. The order stays on record, marked as voided."
+          submitLabel="Void order"
+        />
+      ) : null}
     </div>
   );
 }

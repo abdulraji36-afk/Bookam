@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { correctTripReturnAction } from "@/app/actions/corrections";
 import { cancelTripAction, dispatchTripAction } from "@/app/actions/orders";
 import { recordTripReturnsAction } from "@/app/actions/returns";
 import { OrderStatusBadge, TripStatusBadge } from "@/components/orders/status-badge";
+import { ReasonForm } from "@/components/corrections/reason-form";
 import { TripReturnsForm, type ReturnLine } from "@/components/returns/trip-returns-form";
 import { ActionButton } from "@/components/team/action-button";
 import { buttonClass } from "@/components/ui/button";
@@ -37,17 +39,20 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
       .eq("trip_id", id),
     supabase
       .from("trip_return_lines")
-      .select("id, order_id, expected_quantity, returned_quantity, returnable_items (name)")
+      .select("id, order_id, expected_quantity, returned_quantity, corrected_at, returnable_items (name)")
       .eq("trip_id", id)
   ]);
   const trip = tripResult.data;
   if (!trip) notFound();
   const orders = (ordersResult.data ?? []).flatMap((row) => (row.orders ? [row.orders] : []));
+  // An order still on a trip but cancelled was voided after the trip was built.
+  const liveOrders = orders.filter((order) => order.status !== "cancelled");
+  const manager = canManage(role);
 
   // The loading list: how much of each product goes on the vehicle in total.
   const load = new Map<string, { name: string; unit: string; quantity: number }>();
   const returnsDue = new Map<string, number>();
-  for (const order of orders) {
+  for (const order of liveOrders) {
     for (const item of order.order_items) {
       if (!item.products) continue;
       const quantity = Number(item.quantity);
@@ -62,7 +67,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
 
   // One line per customer and returnable item: what the trip should bring back.
   const expectedReturns: ReturnLine[] = [];
-  for (const order of orders) {
+  for (const order of liveOrders) {
     const byItem = new Map<string, ReturnLine>();
     for (const item of order.order_items) {
       if (!item.returnable_items) continue;
@@ -133,7 +138,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
         </ListCard>
       ) : null}
 
-      <ListCard title={orders.length === 1 ? "1 order" : `${orders.length} orders`}>
+      <ListCard title={liveOrders.length === 1 ? "1 order" : `${liveOrders.length} orders`}>
         {orders.length === 0 ? (
           <p className="px-5 py-4 font-medium text-ink-soft">
             The orders were sent back to the waiting list when this trip was cancelled.
@@ -160,7 +165,9 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
                       {hasReturns ? <Badge tone="solid">Return due</Badge> : <Badge>No return</Badge>}
-                      {trip.status !== "draft" ? <OrderStatusBadge status={order.status} /> : null}
+                      {trip.status !== "draft" ? (
+                        <OrderStatusBadge status={order.status} voided={order.status === "cancelled"} />
+                      ) : null}
                     </span>
                   </Link>
                 </li>
@@ -191,21 +198,37 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
             {returnLines.map((line) => {
               const short = Number(line.expected_quantity) - Number(line.returned_quantity);
               return (
-                <li key={line.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-                  <span className="min-w-0">
-                    <span className="block font-extrabold">{customerByOrder.get(line.order_id)}</span>
-                    <span className="text-sm font-medium text-ink-soft">
-                      Returned {formatQuantity(Number(line.returned_quantity))} of{" "}
-                      {formatQuantity(Number(line.expected_quantity))} {line.returnable_items?.name}
+                <li key={line.id} className="space-y-2 px-5 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="min-w-0">
+                      <span className="block font-extrabold">{customerByOrder.get(line.order_id)}</span>
+                      <span className="text-sm font-medium text-ink-soft">
+                        Returned {formatQuantity(Number(line.returned_quantity))} of{" "}
+                        {formatQuantity(Number(line.expected_quantity))} {line.returnable_items?.name}
+                        {line.corrected_at ? " · corrected" : ""}
+                      </span>
                     </span>
-                  </span>
-                  {short > 0 ? (
-                    <Badge tone="accent">Short by {formatQuantity(short)}</Badge>
-                  ) : short < 0 ? (
-                    <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
-                  ) : (
-                    <Badge>All back</Badge>
-                  )}
+                    {short > 0 ? (
+                      <Badge tone="accent">Short by {formatQuantity(short)}</Badge>
+                    ) : short < 0 ? (
+                      <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
+                    ) : (
+                      <Badge>All back</Badge>
+                    )}
+                  </div>
+                  {manager ? (
+                    <ReasonForm
+                      compact
+                      action={correctTripReturnAction.bind(null, org.slug, line.id)}
+                      trigger="Correct this figure"
+                      explanation="Enter the number that actually came back. The difference moves between the store count and this customer's balance."
+                      submitLabel="Save correction"
+                      quantity={{
+                        label: `Returned by ${customerByOrder.get(line.order_id)}`,
+                        current: Number(line.returned_quantity)
+                      }}
+                    />
+                  ) : null}
                 </li>
               );
             })}
@@ -227,7 +250,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
               size="md"
               confirmMessage={`Send ${trip.trip_no} out now? Its orders can no longer be changed after this.`}
             />
-            {canManage(role) ? (
+            {manager ? (
               <ActionButton
                 action={cancelTripAction.bind(null, org.slug, trip.id)}
                 label="Cancel trip"

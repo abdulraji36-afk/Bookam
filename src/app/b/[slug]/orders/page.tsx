@@ -9,7 +9,7 @@ import { requireOrg } from "@/lib/org";
 export const metadata: Metadata = { title: "Orders" };
 
 const COLUMNS =
-  "id, order_no, order_date, status, customer_name, customer_area, total_quantity, total_amount, has_returns";
+  "id, order_no, order_date, status, customer_name, customer_area, total_quantity, total_amount, has_returns, voided_at";
 
 async function Orders({ params }: Pick<PageProps<"/b/[slug]/orders">, "params">) {
   const { slug } = await params;

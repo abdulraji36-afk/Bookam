@@ -14,6 +14,7 @@ export type OrderRowData = {
   total_quantity: number;
   total_amount: number;
   has_returns: boolean;
+  voided_at: string | null;
 };
 
 export function OrderRow({ order, base, currency }: { order: OrderRowData; base: string; currency: string }) {
@@ -35,7 +36,7 @@ export function OrderRow({ order, base, currency }: { order: OrderRowData; base:
         </span>
         <span className="flex flex-wrap items-center gap-2">
           {order.has_returns ? <Badge tone="solid">Return due</Badge> : <Badge>No return</Badge>}
-          <OrderStatusBadge status={order.status} />
+          <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
         </span>
       </Link>
     </li>
