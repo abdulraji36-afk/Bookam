@@ -59,7 +59,7 @@ export function MobileNav({ primary, more, businessName }: Props) {
         <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
           <div aria-hidden className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-chip" />
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-lg font-extrabold uppercase tracking-wide">{businessName}</p>
+            <p className="min-w-0 truncate text-lg font-extrabold">{businessName}</p>
             <button
               type="button"
               onClick={close}

@@ -55,7 +55,7 @@ export default function LandingPage() {
       <main className="mx-auto grid w-full max-w-5xl flex-1 content-start gap-4 px-4 py-8 sm:grid-cols-3 sm:py-10">
         {POINTS.map((point) => (
           <div key={point.title} className="animate-page-in rounded-md bg-white p-5">
-            <h2 className="border-b-[3px] border-ink pb-2 text-lg font-extrabold uppercase tracking-wide">
+            <h2 className="border-b-[3px] border-ink pb-2 text-lg font-extrabold">
               {point.title}
             </h2>
             <p className="mt-3 text-ink-soft">{point.body}</p>

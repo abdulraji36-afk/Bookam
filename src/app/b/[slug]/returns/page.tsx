@@ -101,7 +101,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
       <div className="grid gap-4 sm:grid-cols-2">
         {totals.map((item) => (
           <section key={item.returnable_item_id} className="overflow-hidden rounded-md bg-white">
-            <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold uppercase tracking-wide">
+            <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold">
               {item.name}
             </h2>
             <dl className="grid grid-cols-2 divide-x divide-line">

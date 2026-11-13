@@ -164,7 +164,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
                       </span>
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
-                      {hasReturns ? <Badge tone="solid">Return due</Badge> : <Badge>No return</Badge>}
+                      {hasReturns && trip.status === "draft" ? <Badge tone="solid">Return due</Badge> : null}
                       {trip.status !== "draft" ? (
                         <OrderStatusBadge status={order.status} voided={order.status === "cancelled"} />
                       ) : null}
@@ -213,7 +213,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
                     ) : short < 0 ? (
                       <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
                     ) : (
-                      <Badge>All back</Badge>
+                      <Badge tone="success">All back</Badge>
                     )}
                   </div>
                   {manager ? (

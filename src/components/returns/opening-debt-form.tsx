@@ -3,6 +3,7 @@
 import type { Choice } from "@/components/returns/exchange-form";
 import { FormMessage } from "@/components/ui/alert";
 import { SelectField, TextField } from "@/components/ui/field";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
@@ -19,14 +20,12 @@ export function OpeningDebtForm({ action, returnables, customers }: Props) {
   return (
     <form {...form} className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
-        <SelectField label="Customer" name="customerId" defaultValue="" required>
-          <option value="">Choose a customer</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-            </option>
-          ))}
-        </SelectField>
+        <SearchSelect
+          label="Customer"
+          name="customerId"
+          placeholder="Type a name to search"
+          options={customers.map((customer) => ({ value: customer.id, label: customer.name }))}
+        />
         {returnables.length > 1 ? (
           <SelectField label="What do they owe?" name="returnableItemId" defaultValue={returnables[0].id}>
             {returnables.map((item) => (

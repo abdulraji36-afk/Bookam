@@ -10,7 +10,7 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 export function CardHeader({ title, description }: { title: string; description?: string }) {
   return (
     <header className="-mx-5 -mt-5 mb-5 sm:-mx-6 sm:-mt-6">
-      <h2 className="border-b-[3px] border-ink px-5 py-3.5 text-lg font-extrabold uppercase tracking-wide sm:px-6">
+      <h2 className="border-b-[3px] border-ink px-5 py-3.5 text-lg font-extrabold sm:px-6">
         {title}
       </h2>
       {description ? <p className="px-5 pt-4 text-sm text-ink-soft sm:px-6">{description}</p> : null}
@@ -18,18 +18,20 @@ export function CardHeader({ title, description }: { title: string; description?
   );
 }
 
-type BadgeTone = "plain" | "solid" | "accent";
+type BadgeTone = "plain" | "solid" | "accent" | "success" | "danger";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  plain: "bg-chip text-ink",
+  plain: "bg-chip text-ink-soft",
   solid: "bg-ink text-white",
-  accent: "bg-accent text-accent-ink"
+  accent: "bg-accent text-accent-ink",
+  success: "bg-success-soft text-success",
+  danger: "bg-danger-soft text-danger"
 };
 
 export function Badge({ children, tone = "plain" }: { children: ReactNode; tone?: BadgeTone }) {
   return (
     <span
-      className={`inline-flex shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-xs font-extrabold uppercase tracking-wide ${BADGE_TONES[tone]}`}
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${BADGE_TONES[tone]}`}
     >
       {children}
     </span>
@@ -57,7 +59,7 @@ export function PageSkeleton() {
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="rounded-md border-2 border-dashed border-field px-5 py-8 text-center">
-      <p className="text-lg font-extrabold uppercase tracking-wide">{title}</p>
+      <p className="text-lg font-extrabold">{title}</p>
       {children ? <div className="mt-2 text-ink-soft">{children}</div> : null}
     </div>
   );
@@ -76,7 +78,7 @@ export function ListCard({
   return (
     <section className="overflow-hidden rounded-md bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b-[3px] border-ink px-5 py-3">
-        <h2 className="text-lg font-extrabold uppercase tracking-wide">{title}</h2>
+        <h2 className="text-lg font-extrabold">{title}</h2>
         {action}
       </div>
       {children}

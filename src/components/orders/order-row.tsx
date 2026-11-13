@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { OrderStatusBadge } from "@/components/orders/status-badge";
-import { Badge } from "@/components/ui/card";
 import { formatDay, formatMoney, formatQuantity } from "@/lib/format";
 import type { OrderStatus } from "@/types/database";
 
@@ -32,12 +31,12 @@ export function OrderRow({ order, base, currency }: { order: OrderRowData; base:
           <span className="font-medium text-ink-soft">
             {order.order_no} · {formatDay(order.order_date)} · {formatQuantity(Number(order.total_quantity))} items ·{" "}
             {formatMoney(Number(order.total_amount), currency)}
+            {order.has_returns && (order.status === "pending" || order.status === "assigned")
+              ? " · returns due"
+              : ""}
           </span>
         </span>
-        <span className="flex flex-wrap items-center gap-2">
-          {order.has_returns ? <Badge tone="solid">Return due</Badge> : <Badge>No return</Badge>}
-          <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
-        </span>
+        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
       </Link>
     </li>
   );

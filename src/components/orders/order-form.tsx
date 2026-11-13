@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/components/ui/field";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
@@ -62,15 +63,17 @@ export function OrderForm({ action, customers, products, locations, stock, curre
   return (
     <form {...form} className="space-y-6">
       <div className="grid gap-5 sm:grid-cols-2">
-        <SelectField label="Customer" name="customerId" defaultValue={editing?.customerId ?? ""} required>
-          <option value="">Choose a customer</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.name}
-              {customer.area ? ` (${customer.area})` : ""}
-            </option>
-          ))}
-        </SelectField>
+        <SearchSelect
+          label="Customer"
+          name="customerId"
+          placeholder="Type a name to search"
+          defaultValue={editing?.customerId ?? ""}
+          options={customers.map((customer) => ({
+            value: customer.id,
+            label: customer.name,
+            detail: customer.area ?? undefined
+          }))}
+        />
         <TextField
           label="Order date"
           name="orderDate"
@@ -105,7 +108,7 @@ export function OrderForm({ action, customers, products, locations, stock, curre
       </div>
 
       <fieldset className="space-y-3">
-        <legend className="text-lg font-extrabold uppercase tracking-wide">Products</legend>
+        <legend className="text-lg font-extrabold">Products</legend>
         {lines.map((line, index) => {
           const product = productById.get(line.productId);
           const inStock = product ? available(product.id) : null;
@@ -115,20 +118,22 @@ export function OrderForm({ action, customers, products, locations, stock, curre
             <div key={line.key} className="space-y-1">
               <div className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[1fr_7rem_auto] sm:gap-3">
                 <div className="col-span-2 sm:col-span-1">
-                <SelectField
+                <SearchSelect
                   label={index === 0 ? "Product" : `Product ${index + 1}`}
                   name="productId"
+                  placeholder="Type a product to search"
                   value={line.productId}
-                  onChange={(event) => setLine(line.key, { productId: event.currentTarget.value })}
-                >
-                  <option value="">Choose a product</option>
-                  {products.map((option) => (
-                    <option key={option.id} value={option.id} disabled={option.price === null}>
-                      {option.name} ({option.unit})
-                      {option.price === null ? " · no price set" : ` · ${formatMoney(option.price, currency)}`}
-                    </option>
-                  ))}
-                </SelectField>
+                  onChange={(productId) => setLine(line.key, { productId })}
+                  options={products.map((option) => ({
+                    value: option.id,
+                    label: `${option.name} (${option.unit})`,
+                    detail:
+                      option.price === null
+                        ? "No price set yet"
+                        : `${formatMoney(option.price, currency)} · ${formatQuantity(available(option.id))} in stock`,
+                    disabled: option.price === null
+                  }))}
+                />
                 </div>
                 <TextField
                   label="Quantity"
@@ -172,7 +177,7 @@ export function OrderForm({ action, customers, products, locations, stock, curre
       </fieldset>
 
       <p className="flex items-baseline justify-between gap-3 border-t-[3px] border-ink pt-3">
-        <span className="text-lg font-extrabold uppercase tracking-wide">Order total</span>
+        <span className="text-lg font-extrabold">Order total</span>
         <span className="text-3xl font-extrabold tabular-nums">{formatMoney(total, currency)}</span>
       </p>
 

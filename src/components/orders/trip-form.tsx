@@ -77,7 +77,7 @@ export function TripForm({ action, orders, locations, today }: Props) {
 
       <fieldset className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <legend className="float-left text-lg font-extrabold uppercase tracking-wide">
+          <legend className="float-left text-lg font-extrabold">
             Orders to load ({chosen.size} chosen)
           </legend>
           {here.length > 1 ? (
@@ -116,7 +116,7 @@ export function TripForm({ action, orders, locations, today }: Props) {
                       {order.orderNo} · {formatQuantity(order.totalQuantity)} items
                     </span>
                   </span>
-                  {order.hasReturns ? <Badge tone="solid">Return due</Badge> : <Badge>No return</Badge>}
+                  {order.hasReturns ? <Badge tone="solid">Return due</Badge> : null}
                 </label>
               </li>
             ))}

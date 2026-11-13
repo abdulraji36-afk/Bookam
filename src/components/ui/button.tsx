@@ -13,11 +13,12 @@ const VARIANTS: Record<ButtonVariant, string> = {
 
 export function buttonClass(variant: ButtonVariant = "primary", size: "md" | "sm" = "md") {
   return [
-    "inline-flex items-center justify-center gap-2 rounded-md font-extrabold uppercase tracking-wide",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-extrabold uppercase tracking-wide",
     "transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97]",
     "focus-visible:outline-2 focus-visible:outline-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100",
-    size === "md" ? "min-h-12 px-5 text-base" : "min-h-11 px-4 text-sm",
+    // Slightly tighter on phones so two buttons fit side by side without wrapping.
+    size === "md" ? "min-h-12 px-4 text-sm sm:px-5 sm:text-base" : "min-h-11 px-3.5 text-sm sm:px-4",
     VARIANTS[variant]
   ].join(" ");
 }

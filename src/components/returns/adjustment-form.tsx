@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Choice } from "@/components/returns/exchange-form";
 import { FormMessage } from "@/components/ui/alert";
 import { SelectField, TextField } from "@/components/ui/field";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { ADD_REASONS, SUBTRACT_REASONS } from "@/lib/format";
@@ -90,24 +91,17 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
           ))}
         </SelectField>
         {needsCustomer ? (
-          <SelectField
+          <SearchSelect
             label="Which customer?"
             name="customerId"
-            defaultValue=""
+            placeholder="Type a name to search"
+            options={customers.map((customer) => ({ value: customer.id, label: customer.name }))}
             hint={
               reason === "customer_return"
                 ? "This also takes the quantity off what they owe."
                 : "This also adds the quantity to what they owe."
             }
-            required
-          >
-            <option value="">Choose a customer</option>
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.name}
-              </option>
-            ))}
-          </SelectField>
+          />
         ) : (
           <input type="hidden" name="customerId" value="" />
         )}

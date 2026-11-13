@@ -42,7 +42,7 @@ export function SelectField({ label, hint, id, name, children, ...props }: Selec
   const selectId = id ?? generatedId;
   return (
     <Field label={label} hint={hint} htmlFor={selectId}>
-      <select id={selectId} name={name} className={CONTROL} {...props}>
+      <select id={selectId} name={name} className={`${CONTROL} select-arrow`} {...props}>
         {children}
       </select>
     </Field>

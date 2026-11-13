@@ -51,15 +51,14 @@ async function Products({ params }: Pick<PageProps<"/b/[slug]/products">, "param
                   <p className="font-medium text-ink-soft">
                     Per {product.unit} · {formatMoney(product.selling_price, org.currency_code)}
                     {product.sku ? ` · ${product.sku}` : ""}
+                    {product.returnable_items ? "" : " · No return"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!product.is_active ? <Badge tone="accent">Switched off</Badge> : null}
                   {product.returnable_items ? (
                     <Badge tone="solid">Return due: {product.returnable_items.name}</Badge>
-                  ) : (
-                    <Badge>No return</Badge>
-                  )}
+                  ) : null}
                   {manager ? (
                     <>
                       <Link href={`${base}/${product.id}`} className={buttonClass("secondary", "sm")}>

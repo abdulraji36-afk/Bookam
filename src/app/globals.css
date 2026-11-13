@@ -18,6 +18,8 @@
   --color-danger-soft: #fdecea;
   --color-success: #17643a;
   --color-success-soft: #e6f4ea;
+  /* The one hue used for chart marks; checked for contrast and colour-blind safety. */
+  --color-chart: #1f6fb2;
 
   /* Motion: short and quiet. Things arrive; nothing bounces. */
   --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -142,6 +144,16 @@
     .page-head > div + div > a {
       flex: 1 1 0%;
     }
+  }
+
+  /* Dropdowns get one consistent arrow instead of each browser's own. */
+  .select-arrow {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230b1f33' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.125rem;
   }
 
   /* Thin, dark scrollbar for the side menu. */

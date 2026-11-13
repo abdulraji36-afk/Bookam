@@ -109,7 +109,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
           ))}
         </ul>
         <p className="mt-5 flex items-baseline justify-between gap-3 border-t-[3px] border-ink pt-3">
-          <span className="text-lg font-extrabold uppercase tracking-wide">Total</span>
+          <span className="text-lg font-extrabold">Total</span>
           <span className="text-3xl font-extrabold tabular-nums">
             {formatMoney(Number(summary?.total_amount ?? 0), org.currency_code)}
           </span>

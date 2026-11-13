@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/components/ui/field";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
@@ -53,18 +54,19 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
       </div>
 
       <fieldset className="space-y-3">
-        <legend className="text-lg font-extrabold uppercase tracking-wide">Products received</legend>
+        <legend className="text-lg font-extrabold">Products received</legend>
         {lines.map((key, index) => (
           <div key={key} className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[1fr_7rem_auto] sm:gap-3">
             <div className="col-span-2 sm:col-span-1">
-            <SelectField label={index === 0 ? "Product" : `Product ${index + 1}`} name="productId" defaultValue="">
-              <option value="">Choose a product</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} ({product.unit})
-                </option>
-              ))}
-            </SelectField>
+            <SearchSelect
+              label={index === 0 ? "Product" : `Product ${index + 1}`}
+              name="productId"
+              placeholder="Type a product to search"
+              options={products.map((product) => ({
+                value: product.id,
+                label: `${product.name} (${product.unit})`
+              }))}
+            />
             </div>
             <TextField
               label="Quantity"
