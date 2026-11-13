@@ -1,30 +1,26 @@
-"""Synthesise the soundtrack (public/music.wav) and sound effects (public/sfx/*.wav).
+"""Synthesise the soundtracks and sound effects. Everything is generated from scratch
+with numpy, so there are no licensing issues.
 
-Everything is generated from scratch with numpy, so there are no licensing issues.
 Usage: python3 scripts/music.py   (needs numpy and scipy)
+Writes public/music.wav (30 s cut), public/music-full.wav (49 s cut) and public/sfx/*.wav.
 
-Structure, matched to src/timeline.ts:
-  0.0 – 9.0 s   tension: drone, clock tick, heartbeat, riser into the crumple
-  9.0 – 10.0 s  warm swell while the logo builds
-  10.0 – 30 s   Afrobeats groove at 108 BPM (log drum, shaker, rim, keys, marimba)
-  23.33 s       call-to-action lands on a bar downbeat; the track rings out at 30 s
+Each track is laid out from src/timelines.json and the voiceover word timings, so:
+  start → crumple   tension: drone, clock tick, heartbeat, a riser into the crumple
+  reveal            warm swell while the logo builds
+  "Meet Bookam"     the Afrobeats groove drops (log drum, shaker, rim, keys, marimba)
+  "easy" scene      breakdown (full cut only): drums thin out, a riser builds
+  call to action    lands on a bar downbeat; the track rings out at the end
 """
+import json
 import os
 import numpy as np
 from scipy.io import wavfile
 from scipy.signal import butter, sosfilt, fftconvolve
 
 SR = 44100
-DUR = 30.0
-N = int(SR * DUR)
 rng = np.random.default_rng(7)
-ROOT = os.path.join(os.path.dirname(__file__), "..", "public")
-
-BPM = 108
-BEAT = 60 / BPM
-STEP = BEAT / 4
-BAR = BEAT * 4
-GROOVE_START = 10.0
+HERE = os.path.dirname(__file__)
+ROOT = os.path.join(HERE, "..", "public")
 
 
 def t_(d):
@@ -151,91 +147,120 @@ def noise_riser(d, lo=300, hi=7000):
 
 
 # ------------------------------------------------------------------- music
-mix = np.zeros((N, 2))
-
-# Tension section ----------------------------------------------------------
-drone_d = 9.2
-t = t_(drone_d)
-lfo = 0.5 + 0.5 * np.sin(2 * np.pi * 0.35 * t)
-drone = pad([note(45), note(52), note(57)], drone_d, 0.55, bright=700) * (0.7 + 0.3 * lfo)
-drone *= np.minimum(1, t / 0.4)
-place(mix, drone, 0.0, 0.9)
-# uneasy minor-second shimmer that grows
-sh = (np.sin(2 * np.pi * note(76) * t) + np.sin(2 * np.pi * note(77) * t)) * (t / drone_d) ** 2 * 0.08
-place(mix, sh * np.minimum(1, (drone_d - t) / 0.2), 0.0)
-# clock tick on every beat, heartbeat twice a bar
-for b in range(int(9.0 / BEAT)):
-    place(mix, rim() * 0.5, b * BEAT, 0.35, pan=0.3 if b % 2 else -0.3)
-for b in range(0, int(9.0 / BEAT), 2):
-    place(mix, kick(0.35, 90, 40), b * BEAT, 0.55)
-    place(mix, kick(0.3, 80, 38), b * BEAT + 0.22, 0.35)
-place(mix, noise_riser(1.6), 7.4, 0.35)
-place(mix, (np.sin(2 * np.pi * np.cumsum(np.linspace(200, 900, int(SR * 1.5))) / SR) * np.linspace(0, 1, int(SR * 1.5)) ** 2), 7.5, 0.06)
-
-# Swell while the logo builds ---------------------------------------------
 CH = {  # Fmaj7 – G6 – Em7 – Am7  (IV – V – iii – vi in C)
     "F": [53, 57, 60, 64], "G": [55, 59, 62, 64], "Em": [52, 55, 59, 62], "Am": [57, 60, 64, 67],
 }
 ROOTS = {"F": 41, "G": 43, "Em": 40, "Am": 45}
 PROG = ["F", "G", "Em", "Am"]
-place(mix, pad([note(n) for n in CH["F"]], 1.3, 0.5, bright=2500), 9.0, 0.8)
-
-# Groove ------------------------------------------------------------------
-n_bars = int(np.ceil((DUR - GROOVE_START) / BAR))
 MEL = [  # (step, midi) over two bars: a little C-major pentatonic hook
     (0, 76), (3, 79), (6, 81), (10, 79), (12, 76), (14, 74),
     (16, 72), (19, 74), (22, 76), (26, 79), (28, 81), (30, 84),
 ]
-for bar in range(n_bars):
-    b0 = GROOVE_START + bar * BAR
-    if b0 >= DUR - 0.6:
-        break
-    ch = PROG[bar % 4]
-    full = bar >= 2
-    for s in range(16):
-        at = b0 + s * STEP
-        if at >= DUR - 0.5:
+
+
+def compose(cut, out_name):
+    tl = json.load(open(os.path.join(HERE, "..", "src", "timelines.json")))[cut]
+    words = json.load(open(os.path.join(ROOT, tl["voDir"], "words.json")))
+    sc = tl["scenes"]
+    sec = lambda frames: frames / 30.0
+    DUR = sec(tl["total"])
+    N = int(SR * DUR)
+    t_crumple = sec(sc["nocontrol"]["from"] + sc["nocontrol"]["dur"] - 16)
+    t_reveal = sec(sc["reveal"]["from"])
+    meet = next(t for w, t in words["reveal"] if w.lower() == "meet")
+    t_groove = sec(sc["reveal"]["vo"]) + meet - 0.05
+    t_cta = sec(sc["cta"]["from"])
+    t_easy = sec(sc["easy"]["from"]) if "easy" in sc else None
+    # pick a tempo near 110 BPM that puts the call to action exactly on a bar line
+    bars_to_cta = max(1, round((t_cta - t_groove) / (240 / 110)))
+    BAR = (t_cta - t_groove) / bars_to_cta
+    BEAT = BAR / 4
+    STEP = BEAT / 4
+    print(f"{out_name}: {DUR:.1f}s, groove at {t_groove:.2f}s, {240 / BAR:.1f} BPM, CTA at {t_cta:.2f}s")
+
+    mix = np.zeros((N, 2))
+
+    # tension ---------------------------------------------------------------
+    drone_d = t_reveal + 0.2
+    t = t_(drone_d)
+    lfo = 0.5 + 0.5 * np.sin(2 * np.pi * 0.35 * t)
+    drone = pad([note(45), note(52), note(57)], drone_d, 0.55, bright=700) * (0.7 + 0.3 * lfo)
+    drone *= np.minimum(1, t / 0.4)
+    place(mix, drone, 0.0, 0.9)
+    sh = (np.sin(2 * np.pi * note(76) * t) + np.sin(2 * np.pi * note(77) * t)) * (t / drone_d) ** 2 * 0.08
+    place(mix, sh * np.minimum(1, (drone_d - t) / 0.2), 0.0)
+    for b in range(int(t_reveal / BEAT)):
+        place(mix, rim() * 0.5, b * BEAT, 0.35, pan=0.3 if b % 2 else -0.3)
+    for b in range(0, int(t_reveal / BEAT), 2):
+        place(mix, kick(0.35, 90, 40), b * BEAT, 0.55)
+        place(mix, kick(0.3, 80, 38), b * BEAT + 0.22, 0.35)
+    place(mix, noise_riser(1.6), t_crumple - 1.1, 0.35)
+    rs = int(SR * 1.5)
+    place(mix, np.sin(2 * np.pi * np.cumsum(np.linspace(200, 900, rs)) / SR) * np.linspace(0, 1, rs) ** 2, t_crumple - 1.0, 0.06)
+
+    # swell while the logo builds -------------------------------------------
+    place(mix, pad([note(n) for n in CH["F"]], t_groove - t_reveal + 0.4, 0.5, bright=2500), t_reveal, 0.8)
+
+    # groove ------------------------------------------------------------------
+    bar = 0
+    while True:
+        b0 = t_groove + bar * BAR
+        if b0 >= DUR - 1.0:
             break
-        swing = 0.018 if s % 2 else 0.0
-        at += swing
-        if s in (0, 8):
-            place(mix, kick(), at, 0.9)
-        if s == 14 and full:
-            place(mix, kick(amp=0.5), at, 0.5)
-        place(mix, shaker(amp=1.0 if s % 4 == 2 else 0.45), at, 0.22, pan=0.25)
-        if s in (3, 6, 11, 14):
-            place(mix, rim(), at, 0.28, pan=-0.35)
-        if full and s in (4, 12):
-            place(mix, clap(), at, 0.32)
-        if s in (0, 3, 7, 10, 13):
-            r = ROOTS[ch] + (12 if s in (7, 13) else 0)
-            place(mix, log_drum(note(r)), at, 0.55)
-        if s in (2, 6, 10):
-            place(mix, keys([note(n) for n in CH[ch]]), at, 0.42, pan=0.15)
-    place(mix, pad([note(n) for n in CH[ch]], BAR + 0.3, 0.16, bright=1500), b0, 1.0)
-    if full:
-        for step, m in MEL:
-            if (step >= 16) == (bar % 2 == 1):
-                at = b0 + (step % 16) * STEP
-                if at < DUR - 0.5:
-                    place(mix, marimba(note(m)), at, 0.32, pan=-0.2)
+        ch = PROG[bar % 4]
+        full = bar >= 2
+        breakdown = t_easy is not None and t_easy - 0.1 <= b0 < t_cta - 0.01
+        for s in range(16):
+            at = b0 + s * STEP + (0.018 if s % 2 else 0.0)
+            if at >= DUR - 0.8:
+                break
+            if not breakdown:
+                if s in (0, 8):
+                    place(mix, kick(), at, 0.9)
+                if s == 14 and full:
+                    place(mix, kick(amp=0.5), at, 0.5)
+                if s in (0, 3, 7, 10, 13):
+                    r = ROOTS[ch] + (12 if s in (7, 13) else 0)
+                    place(mix, log_drum(note(r)), at, 0.55)
+                if full and s in (4, 12):
+                    place(mix, clap(), at, 0.32)
+            place(mix, shaker(amp=1.0 if s % 4 == 2 else 0.45), at, 0.22 if not breakdown else 0.14, pan=0.25)
+            if s in (3, 6, 11, 14):
+                place(mix, rim(), at, 0.28 if not breakdown else 0.18, pan=-0.35)
+            if s in (2, 6, 10):
+                place(mix, keys([note(n) for n in CH[ch]]), at, 0.42, pan=0.15)
+            # a little rim roll to close every fourth bar
+            if bar % 4 == 3 and s >= 12 and not breakdown:
+                place(mix, rim(), at + STEP / 2, 0.2, pan=0.35)
+        place(mix, pad([note(n) for n in CH[ch]], BAR + 0.3, 0.16 if not breakdown else 0.3, bright=1500), b0, 1.0)
+        if full:
+            for step, m in MEL:
+                if (step >= 16) == (bar % 2 == 1):
+                    at = b0 + (step % 16) * STEP
+                    if at < DUR - 0.8:
+                        place(mix, marimba(note(m)), at, 0.32 if not breakdown else 0.4, pan=-0.2)
+        bar += 1
+    if t_easy is not None:
+        place(mix, noise_riser(min(2.0, t_cta - t_easy)), t_cta - min(2.0, t_cta - t_easy), 0.3)
 
-# CTA lands: crash-ish wash + octave keys, then everything rings out on Fmaj7
-cta = 23.333
-place(mix, hp(rng.standard_normal(int(SR * 1.8)), 5000) * env(1.8, 0.002, 0.5), cta, 0.12)
-end = GROOVE_START + int((DUR - 0.6 - GROOVE_START) / BAR) * BAR
-place(mix, pad([note(n) for n in CH["F"] + [72]], DUR - end + 0.1, 0.4, bright=2500), end, 1.0)
-place(mix, keys([note(n) for n in CH["F"]], 1.6), end, 0.5)
+    # call to action: a crash, then everything rings out on Fmaj7
+    place(mix, hp(rng.standard_normal(int(SR * 1.8)), 5000) * env(1.8, 0.002, 0.5), t_cta, 0.12)
+    end = t_groove + int((DUR - 1.0 - t_groove) / BAR) * BAR
+    place(mix, pad([note(n) for n in CH["F"] + [72]], DUR - end + 0.1, 0.4, bright=2500), end, 1.0)
+    place(mix, keys([note(n) for n in CH["F"]], 1.6), end, 0.5)
 
-mix = reverb(mix, 1.4, 0.18)
-mix = hp(mix.T, 30).T
-mix = np.tanh(mix * 1.2) / np.tanh(1.2)
-mix /= np.abs(mix).max() / 0.89
-fade = np.ones(N)
-fade[-int(SR * 0.4):] = np.linspace(1, 0, int(SR * 0.4))
-mix *= fade[:, None]
-wavfile.write(os.path.join(ROOT, "music.wav"), SR, (mix * 32767).astype(np.int16))
-print("music.wav", DUR, "s")
+    mix = reverb(mix, 1.4, 0.18)
+    mix = hp(mix.T, 30).T
+    mix = np.tanh(mix * 1.2) / np.tanh(1.2)
+    mix /= np.abs(mix).max() / 0.89
+    fade = np.ones(N)
+    fade[-int(SR * 0.4):] = np.linspace(1, 0, int(SR * 0.4))
+    mix *= fade[:, None]
+    wavfile.write(os.path.join(ROOT, out_name), SR, (mix * 32767).astype(np.int16))
+
+
+compose("short", "music.wav")
+compose("full", "music-full.wav")
 
 # -------------------------------------------------------------------- sfx
 os.makedirs(os.path.join(ROOT, "sfx"), exist_ok=True)
@@ -286,4 +311,9 @@ bell2 = np.zeros(len(dt)); o = int(0.11 * SR)
 bell2[o:] = sum(a * np.sin(2 * np.pi * f * dt[: len(dt) - o]) * np.exp(-dt[: len(dt) - o] * k) for f, a, k in
                 [(1760, 1, 4), (3520, 0.4, 7)])
 save("ding", (bell + bell2) * np.minimum(1, dt / 0.002), 0.2)
+save("grab", lp(rng.standard_normal(int(SR * 0.18)), 1200) * env(0.18, 0.004, 0.05) + kick(0.18, 120, 70) * 0.4)
+for name, f0 in (("type", 3200), ("tap", 900)):
+    d = 0.05 if name == "type" else 0.12
+    tt_ = t_(d)
+    save(name, (np.sin(2 * np.pi * f0 * tt_) * 0.6 + bp(rng.standard_normal(len(tt_)), f0 * 0.6, f0 * 2) * 0.6) * env(d, 0.0008, d / 4), 0.1)
 print("sfx:", sorted(os.listdir(os.path.join(ROOT, "sfx"))))

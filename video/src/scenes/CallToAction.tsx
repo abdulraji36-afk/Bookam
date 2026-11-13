@@ -3,73 +3,75 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { LogoMark } from "../components/LogoMark";
 import { NavyBackdrop } from "../components/PaperBackdrop";
 import { pop, ramp } from "../components/anim";
+import { useScene } from "../timeline";
 import { C, FONT } from "../theme";
 import { Wordmark } from "./Reveal";
 
-/* Frame cues, matched to the pauses in public/vo/cta.mp3 (voice starts at frame 8). */
-const CUE = { brand: 4, order: 46, driver: 71, accounted: 96, visit: 143 };
+/** Frames this scene starts before the showcase ends, so the two cross-fade instead of cutting through black. */
+export const CTA_PREROLL = 12;
 
 export const CallToAction: React.FC = () => {
-  const frame = useCurrentFrame();
-  const flash = 1 - ramp(frame, 0, 6);
+  const frame = useCurrentFrame() - CTA_PREROLL;
+  const S = useScene("cta");
+  const fadeIn = ramp(frame, -CTA_PREROLL, 0);
   const lines = [
-    { t: "Every order.", at: CUE.order, color: "#fff" },
-    { t: "Every driver.", at: CUE.driver, color: "#fff" },
-    { t: "Accounted for.", at: CUE.accounted, color: C.accent },
-  ];
-  const pills = pop(frame, CUE.visit, 12);
-  const pills2 = pop(frame, CUE.visit + 8, 12);
-  const pulse = 1 + Math.max(0, Math.sin((frame - CUE.visit - 20) * 0.18)) * 0.03 * ramp(frame, CUE.visit + 20, CUE.visit + 30);
+    { t: "Every order.", word: "order", color: "#fff" },
+    { t: "Every product.", word: "product", color: "#fff" },
+    { t: "Every driver.", word: "driver", color: "#fff" },
+    { t: "Accounted for.", word: "accounted", color: C.accent },
+  ].filter((l) => S.has(l.word));
+  const visit = S.cue("visit", 0.7);
+  const wa = S.has("whatsapp") ? S.cue("whatsapp") : visit + 10;
+  const site = pop(frame, visit, 12);
+  const phone = pop(frame, wa, 12);
+  const pulse = 1 + Math.max(0, Math.sin((frame - wa - 24) * 0.16)) * 0.035 * ramp(frame, wa + 24, wa + 34);
   return (
-    <AbsoluteFill>
+    <AbsoluteFill style={{ opacity: fadeIn }}>
       <NavyBackdrop glowY={30} />
-      <AbsoluteFill style={{ alignItems: "center", paddingTop: 260 }}>
+      <AbsoluteFill style={{ alignItems: "center", paddingTop: 250 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
-          <LogoMark size={190} frame={frame - CUE.brand} />
-          <Wordmark frame={frame} size={140} delay={CUE.brand + 8} />
+          <LogoMark size={180} frame={frame + 4} />
+          <Wordmark frame={frame} size={140} delay={4} />
         </div>
-        <div style={{ marginTop: 110, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+        <div style={{ marginTop: 90, display: "flex", flexDirection: "column", alignItems: "center" }}>
           {lines.map((l) => {
-            const p = pop(frame, l.at, 12);
+            const p = pop(frame, S.cue(l.word) - 6, 12);
             return (
               <div key={l.t} style={{
-                fontFamily: FONT, fontWeight: 900, fontSize: 118, letterSpacing: "-0.03em", color: l.color,
-                opacity: Math.min(1, p * 1.5), transform: `translateY(${(1 - p) * 70}px) scale(${0.9 + p * 0.1})`,
-                lineHeight: 1.08,
+                fontFamily: FONT, fontWeight: 900, fontSize: lines.length > 3 ? 112 : 120, letterSpacing: "-0.03em", color: l.color,
+                opacity: Math.min(1, p * 1.5), transform: `translateY(${(1 - p) * 70}px) scale(${0.9 + p * 0.1})`, lineHeight: 1.1,
               }}>{l.t}</div>
             );
           })}
         </div>
-        <div style={{ marginTop: 120, display: "flex", flexDirection: "column", alignItems: "center", gap: 34 }}>
+        <div style={{ marginTop: 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: 22, background: C.accent, color: C.ink, borderRadius: 999,
-            padding: "30px 64px", fontFamily: FONT, fontWeight: 900, fontSize: 76,
-            transform: `translateY(${(1 - pills) * 80}px) scale(${pulse})`, opacity: pills,
-            boxShadow: "0 20px 60px rgba(245,163,10,0.35)",
+            display: "flex", alignItems: "center", gap: 24, background: C.accent, color: C.ink, borderRadius: 999,
+            padding: "30px 66px", fontFamily: FONT, fontWeight: 900, fontSize: 80,
+            transform: `translateY(${(1 - site) * 80}px) scale(${pulse})`, opacity: site, boxShadow: "0 20px 60px rgba(245,163,10,0.35)",
           }}>
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2.4}>
+            <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2.4}>
               <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
             </svg>
             bookam.online
           </div>
           <div style={{
-            display: "flex", alignItems: "center", gap: 20, background: "rgba(255,255,255,0.08)",
-            border: "3px solid rgba(255,255,255,0.18)", color: "#fff", borderRadius: 999, padding: "24px 52px",
-            fontFamily: FONT, fontWeight: 800, fontSize: 60,
-            transform: `translateY(${(1 - pills2) * 80}px)`, opacity: pills2,
+            display: "flex", alignItems: "center", gap: 24, background: "#1f9d55", color: "#fff", borderRadius: 999,
+            padding: "26px 60px 26px 30px", fontFamily: FONT, fontWeight: 850, fontSize: 70,
+            transform: `translateY(${(1 - phone) * 80}px) scale(${pulse})`, opacity: phone, boxShadow: "0 20px 60px rgba(31,157,85,0.35)",
           }}>
-            <div style={{
-              width: 76, height: 76, borderRadius: 38, background: "#25a244", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="#fff">
+            <div style={{ width: 96, height: 96, borderRadius: 48, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="#1f9d55">
                 <path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z" />
               </svg>
             </div>
-            <span style={{ color: C.nav, fontWeight: 600 }}>WhatsApp</span> 0815 282 3719
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.05 }}>
+              <span style={{ fontSize: 34, fontWeight: 700, opacity: 0.9 }}>WhatsApp</span>
+              0815 282 3719
+            </div>
           </div>
         </div>
       </AbsoluteFill>
-      <AbsoluteFill style={{ background: "#fff", opacity: flash * 0.6 }} />
     </AbsoluteFill>
   );
 };

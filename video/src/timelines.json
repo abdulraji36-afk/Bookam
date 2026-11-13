@@ -1,0 +1,43 @@
+{
+  "short": {
+    "id": "BookamPromo",
+    "total": 900,
+    "voDir": "vo",
+    "music": "music.wav",
+    "scenes": {
+      "hook": { "from": 0, "dur": 60, "vo": 8 },
+      "manual": { "from": 60, "dur": 52, "vo": 62 },
+      "accounting": { "from": 112, "dur": 52, "vo": 114 },
+      "theft": { "from": 164, "dur": 48, "vo": 166 },
+      "nocontrol": { "from": 212, "dur": 58, "vo": 210 },
+      "reveal": { "from": 270, "dur": 60, "vo": 302 },
+      "customers": { "from": 330, "dur": 54, "vo": 332 },
+      "orders": { "from": 384, "dur": 60, "vo": 386 },
+      "dispatch": { "from": 444, "dur": 74, "vo": 446 },
+      "stock": { "from": 518, "dur": 88, "vo": 520 },
+      "realtime": { "from": 606, "dur": 94, "vo": 608 },
+      "cta": { "from": 700, "dur": 200, "vo": 708 }
+    }
+  },
+  "full": {
+    "id": "BookamPromoFull",
+    "total": 1470,
+    "voDir": "vo-full",
+    "music": "music-full.wav",
+    "scenes": {
+      "hook": { "from": 0, "dur": 71, "vo": 14 },
+      "manual": { "from": 71, "dur": 86, "vo": 77 },
+      "accounting": { "from": 157, "dur": 98, "vo": 163 },
+      "theft": { "from": 255, "dur": 79, "vo": 261 },
+      "nocontrol": { "from": 334, "dur": 114, "vo": 336 },
+      "reveal": { "from": 448, "dur": 95, "vo": 458 },
+      "customers": { "from": 543, "dur": 89, "vo": 549 },
+      "orders": { "from": 632, "dur": 103, "vo": 638 },
+      "dispatch": { "from": 735, "dur": 114, "vo": 741 },
+      "stock": { "from": 849, "dur": 110, "vo": 855 },
+      "realtime": { "from": 959, "dur": 122, "vo": 965 },
+      "easy": { "from": 1081, "dur": 80, "vo": 1087 },
+      "cta": { "from": 1161, "dur": 309, "vo": 1169 }
+    }
+  }
+}

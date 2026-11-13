@@ -3,11 +3,11 @@
   "private": true,
   "scripts": {
     "studio": "remotion studio",
-    "voiceover": "python3 scripts/voiceover.py",
+    "voiceover": "python3 scripts/voiceover.py full && python3 scripts/voiceover.py short",
     "music": "python3 scripts/music.py",
-    "render": "remotion render BookamPromo out/bookam-promo-raw.mp4 && npm run master",
-    "master": "ffmpeg -y -loglevel error -i out/bookam-promo-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-9x16.mp4",
-    "still": "remotion still BookamPromo out/still.png",
+    "render": "npm run render:full && npm run render:short",
+    "render:full": "remotion render BookamPromoFull out/bookam-promo-full-raw.mp4 && ffmpeg -y -loglevel error -i out/bookam-promo-full-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-full-49s.mp4",
+    "render:short": "remotion render BookamPromo out/bookam-promo-raw.mp4 && ffmpeg -y -loglevel error -i out/bookam-promo-raw.mp4 -c:v copy -af loudnorm=I=-14:TP=-1:LRA=11 -c:a aac -b:a 192k -movflags +faststart out/bookam-promo-30s.mp4",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
