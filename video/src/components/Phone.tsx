@@ -5,7 +5,7 @@ import { LogoMark } from "./LogoMark";
 export const PHONE_W = 880;
 export const PHONE_H = 1560;
 
-/** A phone with the Bookam app chrome: navy header, business name, light body. */
+/** A phone with the BukAm app chrome: navy header, business name, light body. */
 export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactNode; bare?: boolean }> = ({ children, overlay, bare }) => (
   <div style={{
     width: PHONE_W, height: PHONE_H, borderRadius: 96, background: "#05080c", padding: 20,
@@ -19,7 +19,7 @@ export const Phone: React.FC<{ children: React.ReactNode; overlay?: React.ReactN
         height: 220, background: C.ink, padding: "92px 46px 0", display: "flex", alignItems: "center", gap: 18,
       }}>
         <LogoMark size={70} frame={0} built />
-        <div style={{ color: "#fff", fontWeight: 900, fontSize: 44, letterSpacing: "0.04em" }}>BOOKAM</div>
+        <div style={{ color: "#fff", fontWeight: 900, fontSize: 46, letterSpacing: "-0.01em" }}>BukAm</div>
         <div style={{
           marginLeft: "auto", color: C.nav, fontSize: 32, fontWeight: 600, background: "rgba(255,255,255,0.08)",
           borderRadius: 30, padding: "10px 22px",

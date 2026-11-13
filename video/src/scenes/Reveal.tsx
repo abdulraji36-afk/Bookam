@@ -8,8 +8,9 @@ import { useScene } from "../timeline";
 import { C, FONT } from "../theme";
 
 export const Wordmark: React.FC<{ frame: number; size: number; delay?: number }> = ({ frame, size, delay = 0 }) => (
-  <div style={{ display: "flex", fontFamily: FONT, fontWeight: 900, fontSize: size, color: "#fff", letterSpacing: "0.04em" }}>
-    {"BOOKAM".split("").map((ch, i) => {
+  <div style={{ display: "flex", fontFamily: FONT, fontWeight: 900, fontSize: size, color: "#fff", letterSpacing: "-0.01em" }}>
+    {/* the name keeps its own capitals: BukAm */}
+    {"BukAm".split("").map((ch, i) => {
       const p = pop(frame, delay + i * 2.2, 12);
       return (
         <span key={i} style={{ display: "inline-block", opacity: Math.min(1, p * 1.5), transform: `translateY(${(1 - p) * 60}px)` }}>

@@ -1,22 +1,26 @@
-# Bookam videos (Remotion)
+# BukAm videos (Remotion)
 
 Vertical (1080×1920) awareness videos, all built from one shared set of scenes:
 
 | Composition | Length | What it is |
 | --- | --- | --- |
-| `BookamPromoFull` | 49 s | Main promo at a natural pace: WhatsApp Status, website, YouTube |
-| `BookamPromo` | 30 s | Main promo, fast cut for paid ads and short-form feeds |
+| `BukAmPromoFull` | 49 s | Main promo at a natural pace: WhatsApp Status, website, YouTube |
+| `BukAmPromo` | 30 s | Main promo, fast cut for paid ads and short-form feeds |
 | `SoundFamiliar1` | 18 s | "Sound familiar?" 1/5: bought 120 crates, counted 97 → every stock movement with a name |
 | `SoundFamiliar2` | 19 s | 2/5: which driver took it? → the trip record (driver, vehicle, orders, who sent it) |
 | `SoundFamiliar3` | 18 s | 3/5: a page torn out of the order book → voided orders stay on record with a reason |
 | `SoundFamiliar4` | 18 s | 4/5: 9pm, still adding up → the daily report |
 | `SoundFamiliar5` | 18 s | 5/5: away from the depot → Telegram message for every order, trip and return |
-| `BookamReturnables` | 38 s | Crates, cylinders and pallets: who owes what, returns per trip, balances |
+| `BukAmReturnables` | 38 s | Crates, cylinders and pallets: who owes what, returns per trip, balances |
 
-Everything shown matches what Bookam actually records (see `supabase/migrations`): returnable
+Everything shown matches what BukAm actually records (see `supabase/migrations`): returnable
 balances are counted in items (crates, cylinders), not money; orders go Pending → Assigned →
 Dispatched → Completed; voids need a reason and keep the record; Telegram messages end "By <name>".
 Names and figures are made up.
+
+**The name:** it is written **BukAm** (with its own capitals, never all caps) and the site is
+**bukam.online**. It is said "book-am", so the voiceover lines in `scripts/voiceover.py`
+deliberately spell it "Bookam" to get that pronunciation; don't "fix" that spelling.
 
 This is its own project with its own dependencies; the Next.js app ignores this folder.
 
@@ -31,17 +35,17 @@ This is its own project with its own dependencies; the Next.js app ignores this 
 | 11.1–14.9 s | Unfilled delivery note, then the page crumples | "and nobody knows who dispatched what, or which driver took it." |
 | 14.9–18.1 s | "There's a better way." then the logo builds | "There's a better way. Meet Bookam." |
 | 18.1–38.7 s | Phone: customers (search), orders (Pending → Completed), dispatch (who + driver, signed off), stock (returns go back on the shelf), live report + alerts, quick actions (dispatch a trip) | One line per feature |
-| 38.7–49 s | Logo, tagline, bookam.online, WhatsApp 0815 282 3719 | "Bookam. Every order, every product, every driver, accounted for. Visit bookam dot online, or WhatsApp us today." |
+| 38.7–49 s | Logo, tagline, bukam.online, WhatsApp 0815 282 3719 | "Bookam. Every order, every product, every driver, accounted for. Visit bookam dot online, or WhatsApp us today." |
 
 ## Commands
 
 ```bash
 npm install
 npm run studio          # live preview in the browser
-npm run render          # both promo cuts → out/bookam-promo-full-49s.mp4 and out/bookam-promo-30s.mp4
+npm run render          # both promo cuts → out/bukam-promo-full-49s.mp4 and out/bukam-promo-30s.mp4
 npm run render:full     # just the 49-second cut
 npm run render:series   # the five "Sound familiar?" episodes → out/sound-familiar-<n>.mp4
-npm run render:returns  # out/bookam-returnables.mp4
+npm run render:returns  # out/bukam-returnables.mp4
 npm run render:all      # everything
 ```
 

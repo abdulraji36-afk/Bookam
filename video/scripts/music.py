@@ -7,7 +7,7 @@ Writes public/music.wav (30 s cut), public/music-full.wav (49 s cut) and public/
 Each track is laid out from src/timelines.json and the voiceover word timings, so:
   start → crumple   tension: drone, clock tick, heartbeat, a riser into the crumple
   reveal            warm swell while the logo builds
-  "Meet Bookam"     the Afrobeats groove drops (log drum, shaker, rim, keys, marimba)
+  "Meet BukAm"     the Afrobeats groove drops (log drum, shaker, rim, keys, marimba)
   "easy" scene      breakdown (full cut only): drums thin out, a riser builds
   call to action    lands on a bar downbeat; the track rings out at the end
 """

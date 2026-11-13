@@ -15,7 +15,7 @@ export type Feature = {
   Screen: React.FC<ScreenProps>;
   /** camera push towards a point of the phone (percent), starting at a spoken word */
   zoom?: { word: string; fallback: number; z: number; x: number; y: number };
-  /** show the screen without the Bookam app header (e.g. a Telegram chat) */
+  /** show the screen without the BukAm app header (e.g. a Telegram chat) */
   bare?: boolean;
 };
 
@@ -274,7 +274,7 @@ function Dispatch({ f }: ScreenProps) {
     <div>
       <ScreenTitle title="Dispatch" right={<Chip bg={C.chip} fg={C.ink}>#D-2207</Chip>} />
       <div style={{ height: 170, position: "relative", overflow: "hidden", marginBottom: 14 }}>
-        <div style={{ position: "absolute", left: truckX, top: 6 }}><Truck label="BOOKAM" scale={0.72} /></div>
+        <div style={{ position: "absolute", left: truckX, top: 6 }}><Truck label="BukAm" scale={0.72} /></div>
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 2, height: 6, borderRadius: 3, background: C.line }} />
       </div>
       <Card>
@@ -447,7 +447,7 @@ const Notifications: React.FC<{ frame: number }> = ({ frame }) => {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 26, color: C.inkSoft, fontWeight: 700 }}>
-                <span>BOOKAM ALERTS</span><span>now</span>
+                <span>BukAm alerts</span><span>now</span>
               </div>
               <div style={{ fontSize: 38, fontWeight: 850, color: C.ink }}>{a.title}</div>
               <div style={{ fontSize: 30, color: C.inkSoft }}>{a.body}</div>

@@ -12,7 +12,7 @@ const PROBLEMS: [SceneKey, React.FC][] = [
   ["hook", Hook], ["manual", ManualBooking], ["accounting", Accounting], ["theft", Theft], ["nocontrol", NoControl], ["reveal", Reveal],
 ];
 
-export const BookamPromo: React.FC<{ tl: Timeline }> = ({ tl }) => {
+export const BukAmPromo: React.FC<{ tl: Timeline }> = ({ tl }) => {
   const sc = tl.scenes;
   const showFrom = sc.customers!.from;
   const showDur = sc.cta!.from - showFrom;

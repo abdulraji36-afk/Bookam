@@ -4,7 +4,7 @@ import { C } from "../theme";
 import { pop } from "./anim";
 
 /**
- * The Bookam mark: an amber tile, a navy spine and two stacked loads.
+ * The BukAm mark: an amber tile, a navy spine and two stacked loads.
  * `frame` drives the build: tile → spine slides up → loads drop in.
  */
 export const LogoMark: React.FC<{ size: number; frame: number; built?: boolean }> = ({

@@ -64,7 +64,7 @@ export const CallToAction: React.FC<{ lines?: CtaLine[] }> = ({ lines: given = P
             <svg width="68" height="68" viewBox="0 0 24 24" fill="none" stroke={C.ink} strokeWidth={2.4}>
               <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" />
             </svg>
-            bookam.online
+            bukam.online
           </div>
           <div style={{
             display: "flex", alignItems: "center", gap: 24, background: "#1f9d55", color: "#fff", borderRadius: 999,

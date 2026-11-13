@@ -1,6 +1,6 @@
 {
   "short": {
-    "id": "BookamPromo",
+    "id": "BukAmPromo",
     "total": 900,
     "voDir": "vo",
     "music": "music.wav",
@@ -20,7 +20,7 @@
     }
   },
   "full": {
-    "id": "BookamPromoFull",
+    "id": "BukAmPromoFull",
     "total": 1470,
     "voDir": "vo-full",
     "music": "music-full.wav",

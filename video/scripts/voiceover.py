@@ -7,6 +7,10 @@ Usage:
   python3 scripts/voiceover.py returns         # returnable items video -> public/vo-returns/
   python3 scripts/voiceover.py full en-NG-EzinneNeural   # female voice
 
+The product is written "BukAm" (and its site is bukam.online), but the lines below
+spell it "Bookam" on purpose: that makes the voice say it "book-am", which is how
+the name is pronounced. Keep that spelling here; the name on screen is set in src/.
+
 Default voice is en-NG-AbeoNeural (male). Needs network access to
 speech.platform.bing.com (pip install edge-tts) and ffmpeg.
 

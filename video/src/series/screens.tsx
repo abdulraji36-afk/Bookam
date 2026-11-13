@@ -9,7 +9,7 @@ import { C, FONT } from "../theme";
 
 /*
  * Phone screens for the "Sound familiar?" episodes and the returnables video.
- * They mirror what Bookam actually records (see supabase/migrations): stock
+ * They mirror what BukAm actually records (see supabase/migrations): stock
  * movements with who did them, trips with driver and vehicle, voids that keep
  * the record with a reason, the daily report, Telegram messages ending
  * "By <name>", and returnable balances per customer. The data is made up.
@@ -87,7 +87,7 @@ export function TripRecord({ f }: ScreenProps) {
     <div>
       <ScreenTitle title="TRP-0007" right={<Chip bg={C.successSoft} fg={C.success}>Dispatched</Chip>} />
       <div style={{ height: 160, position: "relative", overflow: "hidden", marginBottom: 10 }}>
-        <div style={{ position: "absolute", left: -430 + park * 470, top: 4 }}><Truck label="BOOKAM" scale={0.7} /></div>
+        <div style={{ position: "absolute", left: -430 + park * 470, top: 4 }}><Truck label="BukAm" scale={0.7} /></div>
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 2, height: 6, borderRadius: 3, background: C.line }} />
       </div>
       <Card>
@@ -213,7 +213,7 @@ export function TelegramChat({ f }: ScreenProps) {
         </div>
         <div>
           <div style={{ fontSize: 38, fontWeight: 850, color: C.ink }}>Kano Road Depot</div>
-          <div style={{ fontSize: 28, color: C.inkSoft }}>Telegram · Bookam alerts</div>
+          <div style={{ fontSize: 28, color: C.inkSoft }}>Telegram · BukAm alerts</div>
         </div>
       </div>
       <div style={{ padding: "26px 30px", display: "flex", flexDirection: "column", gap: 20 }}>

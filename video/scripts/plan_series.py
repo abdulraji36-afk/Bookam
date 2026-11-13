@@ -15,7 +15,7 @@ RETURNS = [("argument", 10, 8), ("loss", 4, 12), ("reveal", 26, 10), ("owes", 14
            ("tripback", 8, 8), ("balances", 8, 10), ("cta", 10, 40)]
 
 CUTS = {f"ep{n}": (f"SoundFamiliar{n}", f"vo-ep{n}", f"music-ep{n}.wav", EPISODE) for n in range(1, 6)}
-CUTS["returns"] = ("BookamReturnables", "vo-returns", "music-returns.wav", RETURNS)
+CUTS["returns"] = ("BukAmReturnables", "vo-returns", "music-returns.wav", RETURNS)
 
 out = {}
 for cut, (comp_id, vo_dir, music, plan) in CUTS.items():
