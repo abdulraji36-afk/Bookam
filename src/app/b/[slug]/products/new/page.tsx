@@ -24,7 +24,11 @@ async function NewProduct({ params }: Pick<PageProps<"/b/[slug]/products/new">, 
           action={saveProductAction.bind(null, org.slug, null)}
           currency={org.currency_code}
           returnables={(returnables ?? []).map((item) => item.name)}
-          features={{ returns: org.tracks_returns, serials: org.tracks_serials }}
+          features={{
+            returns: org.tracks_returns,
+            serials: org.tracks_serials,
+            serialByDefault: org.selling_mode === "serial"
+          }}
         />
       </Card>
     </div>

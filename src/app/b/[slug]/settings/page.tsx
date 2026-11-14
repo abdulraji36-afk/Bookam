@@ -67,13 +67,15 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
 
       <Card>
         <CardHeader
-          title="What you sell"
+          title="How you sell"
           description="This decides which parts of BukAm you see. Turning something off hides it; nothing is deleted."
         />
         <FeaturesForm
           action={setBusinessFeaturesAction.bind(null, org.slug)}
+          mode={org.selling_mode}
           returns={org.tracks_returns}
           serials={org.tracks_serials}
+          delivery={org.does_delivery}
         />
       </Card>
 

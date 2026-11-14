@@ -3,7 +3,7 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { requireUser, type CurrentUser } from "@/lib/auth/session";
 import { createClient, type ServerClient } from "@/lib/supabase/server";
-import type { MemberRole } from "@/types/database";
+import type { MemberRole, SellingMode } from "@/types/database";
 
 export type OrgContext = {
   supabase: ServerClient;
@@ -22,6 +22,10 @@ export type OrgContext = {
     tracks_returns: boolean;
     /** Sells items tracked one by one by serial number. */
     tracks_serials: boolean;
+    /** The main way the business sells; it shapes the words and the menu. */
+    selling_mode: SellingMode;
+    /** Delivers to customers on trips. When false, Dispatch is hidden. */
+    does_delivery: boolean;
   };
 };
 
@@ -32,7 +36,7 @@ const loadOrgContext = cache(async (slug: string): Promise<OrgContext> => {
   // Row level security only returns the business if the user is an active member.
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone, tracks_returns, tracks_serials")
+    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone, tracks_returns, tracks_serials, selling_mode, does_delivery")
     .eq("slug", slug)
     .maybeSingle();
 

@@ -13,6 +13,9 @@ export type ReturnableMovementType =
   | "supplier_exchange"
   | "adjustment"
   | "opening_debt";
+/** Counts its goods, or sells items one by one by serial number. */
+export type SellingMode = "quantity" | "serial";
+
 export type UnitStatus = "in_stock" | "reserved" | "sold" | "written_off";
 export type StockAdjustmentReason = "damaged" | "expired" | "lost_or_stolen" | "count_correction" | "found";
 export type ReturnableAdjustmentReason =
@@ -57,6 +60,8 @@ export type Database = {
           trial_ends_at: string | null;
           tracks_returns: boolean;
           tracks_serials: boolean;
+          selling_mode: SellingMode;
+          does_delivery: boolean;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -780,6 +785,8 @@ export type Database = {
           p_business_type?: string | null;
           p_tracks_returns?: boolean;
           p_tracks_serials?: boolean;
+          p_selling_mode?: SellingMode;
+          p_does_delivery?: boolean;
         };
         Returns: { id: string; slug: string }[];
       };
@@ -896,7 +903,13 @@ export type Database = {
       cancel_order: { Args: { p_order_id: string }; Returns: undefined };
       hand_over_order: { Args: { p_order_id: string }; Returns: undefined };
       set_business_features: {
-        Args: { p_organization_id: string; p_tracks_returns: boolean; p_tracks_serials: boolean };
+        Args: {
+          p_organization_id: string;
+          p_tracks_returns: boolean;
+          p_tracks_serials: boolean;
+          p_selling_mode?: SellingMode | null;
+          p_does_delivery?: boolean | null;
+        };
         Returns: undefined;
       };
       record_stock_adjustment: {

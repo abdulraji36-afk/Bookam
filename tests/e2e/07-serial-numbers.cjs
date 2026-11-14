@@ -46,30 +46,45 @@ let dbg;
   await a.goto(BASE + "/signup");
   await signUp(a, "Femi Ade", owner, "**/onboarding");
   await a.getByLabel("Business name").fill(`Femi Gadgets ${run}`);
-  await a.getByLabel("I sell items with serial numbers").check();
+  await a.getByText("I sell items with serial numbers").click();
+  // A phone shop is asked about delivery, which starts unticked; not about returns.
+  assert.equal(await a.getByLabel("We deliver to customers").isChecked(), false);
+  assert.equal(await a.getByLabel("Customers bring things back to me").count(), 0);
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/femi-gadgets-/);
   const base = new URL(a.url()).pathname;
   const go = (p) => a.goto(BASE + base + p);
+  const menu = a.getByRole("navigation", { name: "Business" });
+
+  // A phone shop's own words and menu: Sales, no Dispatch, serial search up front.
+  await menu.getByRole("link", { name: "Sales", exact: true }).waitFor();
+  assert.equal(await menu.getByRole("link", { name: "Orders", exact: true }).count(), 0);
+  assert.equal(await menu.getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
+  await a.getByRole("link", { name: "+ New sale" }).waitFor();
+  await a.getByLabel("Find a serial number").waitFor();
+  await a.getByText("Waiting to be collected").first().waitFor();
+  ok("a phone shop sees Sales instead of Orders, no Dispatch, and the serial search on its dashboard");
 
   // Products: a serial-tracked phone with warranty, and a plain charger
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("iPhone 15 128GB");
   await vis(a.getByLabel("Sold by the")).fill("phone");
   await vis(a.getByLabel(/Selling price/)).fill("1150000");
-  assert.equal(await vis(a.getByLabel("Warranty in months (optional)")).count(), 0);
-  await vis(a.getByLabel("Track each unit by serial number")).check();
+  // In a phone shop a new product starts as serial-numbered.
+  assert.equal(await vis(a.getByLabel("Track each unit by serial number")).isChecked(), true);
   await vis(a.getByLabel("Warranty in months (optional)")).fill("12");
   await a.screenshot({ path: `${SHOTS}/70-product-serial.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "iPhone 15 128GB" }).getByText(/Serial numbers/).waitFor();
+  await a.locator("section", { hasText: "With serial numbers" }).getByText("iPhone 15 128GB").waitFor();
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("USB-C charger");
   await vis(a.getByLabel("Sold by the")).fill("piece");
   await vis(a.getByLabel(/Selling price/)).fill("8000");
+  await vis(a.getByLabel("Track each unit by serial number")).uncheck(); // accessories are counted
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
+  await a.locator("section", { hasText: "Counted items" }).getByText("USB-C charger").waitFor();
   ok("a product can be set to track each unit by serial number, with a warranty");
 
   // Stock in phone by phone; Enter (as a scanner sends) starts the next line
@@ -174,9 +189,12 @@ let dbg;
   await pick(c, "Product 2", "USB-C charger");
   await vis(c.getByLabel("Quantity")).last().fill("2");
   await c.screenshot({ path: `${SHOTS}/75-order-units-mobile.png`, fullPage: true });
-  await vis(c.getByRole("button", { name: "Save order" })).click();
+  // A phone shop sells over the counter by default; this one is collected later.
+  assert.equal(await vis(c.getByLabel("Customer takes it now")).isChecked(), true);
+  await vis(c.getByLabel("Customer collects it later")).check();
+  await vis(c.getByRole("button", { name: "Save sale" })).click();
   await c.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-  await vis(c.getByText("Waiting for dispatch", { exact: true })).first().waitFor();
+  await vis(c.getByText("Waiting to be collected", { exact: true })).first().waitFor();
   // The held phone can no longer be chosen elsewhere
   await go("/orders/new");
   await pick(a, "Customer", "Ade Phones Ltd");
@@ -196,13 +214,26 @@ let dbg;
   await a.locator("section", { hasText: "356789101234562" }).getByText("Sold", { exact: true }).waitFor();
   await a.locator("section", { hasText: "356789101234562" }).getByRole("link", { name: /^ORD-/ }).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
-  await vis(a.getByText("Void this order", { exact: true })).click();
+  await vis(a.getByText("Void this sale", { exact: true })).click();
   await vis(a.getByLabel("Reason")).fill("Customer returned it the same day");
-  await vis(a.getByRole("button", { name: "Void order" })).click();
-  await a.getByText("This order was voided.").waitFor();
+  await vis(a.getByRole("button", { name: "Void sale" })).click();
+  await a.getByText("This sale was voided.").waitFor();
   await go("/stock/serials?q=4562");
   await a.locator("section", { hasText: "356789101234562" }).getByText("In stock", { exact: true }).waitFor();
   ok("voiding the sale puts the exact phone back in stock");
+
+  // A phone shop that starts delivering switches it on in Settings.
+  await go("/settings");
+  const selling = a.locator("form", { has: a.getByText("How do you sell?") });
+  assert.equal(await selling.getByLabel(/I sell items with serial numbers/).isChecked(), true);
+  await selling.getByLabel("We deliver to customers").check();
+  await selling.getByRole("button", { name: "Save" }).click();
+  await selling.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  await menu.getByRole("link", { name: "Dispatch", exact: true }).waitFor();
+  await go("/orders/new");
+  await vis(a.getByLabel("Deliver on a trip")).waitFor();
+  await a.screenshot({ path: `${SHOTS}/76-phone-shop-delivers.png`, fullPage: true });
+  ok("switching delivery on in Settings brings Dispatch and the delivery option back");
 
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));

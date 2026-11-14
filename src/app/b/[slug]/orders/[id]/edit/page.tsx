@@ -36,6 +36,8 @@ async function EditOrder({ params }: Pick<PageProps<"/b/[slug]/orders/[id]/edit"
       <PageTitle sub="Changes adjust the stock set aside for this order.">Edit {order.order_no}</PageTitle>
       <Card>
         <OrderForm
+            mode={org.selling_mode}
+            delivers={org.does_delivery}
           action={saveOrderAction.bind(null, org.slug, order.id)}
           currency={org.currency_code}
           today={todayIn(org.timezone, await requestNow())}

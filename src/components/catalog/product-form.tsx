@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
 
-const UNITS = ["crate", "pack", "carton", "bag", "cylinder", "bottle", "piece"];
+const UNITS = ["crate", "pack", "carton", "bag", "cylinder", "bottle", "piece", "phone", "laptop", "unit"];
 
 export type ProductDefaults = {
   name: string;
@@ -27,7 +27,7 @@ type Props = {
   /** Things customers already bring back for other products. */
   returnables: string[];
   /** Which product options this business uses. */
-  features: { returns: boolean; serials: boolean };
+  features: { returns: boolean; serials: boolean; serialByDefault?: boolean };
   defaults?: ProductDefaults;
 };
 
@@ -42,8 +42,10 @@ export function ProductForm({
   const [requiresReturn, setRequiresReturn] = useState(
     Boolean(defaults?.returnItemName),
   );
+  // A new product in a phone shop starts as serial-numbered; untick it for
+  // accessories that are simply counted.
   const [tracksSerials, setTracksSerials] = useState(
-    Boolean(defaults?.tracksSerials),
+    defaults ? defaults.tracksSerials : Boolean(features.serialByDefault),
   );
   const unitListId = useId();
   const returnListId = useId();

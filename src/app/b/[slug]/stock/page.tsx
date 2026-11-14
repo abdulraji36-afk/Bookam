@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, CardHeader, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, CardHeader, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDate, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
@@ -35,7 +35,9 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     getStockRows(supabase, org.id, selected?.id ?? null),
     supabase
       .from("stock_receipts")
-      .select("id, receipt_no, received_date, supplier_name, voided_at, locations (name), stock_receipt_items (quantity)")
+      .select(
+        "id, receipt_no, received_date, supplier_name, voided_at, locations (name), stock_receipt_items (quantity)"
+      )
       .eq("organization_id", org.id)
       .order("received_date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -54,6 +56,16 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     breakdown.set(unit.product_id, counts);
   }
   const lowCount = rows.filter((row) => row.isLow).length;
+  // A phone shop sees its serial-numbered stock and its counted accessories apart.
+  const stockGroups: [string | null, typeof rows][] =
+    org.selling_mode === "serial"
+      ? (
+          [
+            ["With serial numbers", rows.filter((row) => row.tracksSerials)],
+            ["Counted items", rows.filter((row) => !row.tracksSerials)]
+          ] as [string, typeof rows][]
+        ).filter(([, groupRows]) => groupRows.length > 0)
+      : [[null, rows]];
 
   return (
     <div className="space-y-6">
@@ -120,34 +132,45 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
       ) : null}
 
       {rows.length === 0 ? (
-        <EmptyState title="No products yet">
-          Add your products first, then record the stock you have.
-        </EmptyState>
+        <EmptyState title="No products yet">Add your products first, then record the stock you have.</EmptyState>
       ) : (
-        <Card className="!p-0">
-          <ul className="divide-y divide-line">
-            {rows.map((row) => (
-              <li key={row.productId} className="flex items-center justify-between gap-3 px-5 py-4">
-                <div className="min-w-0">
-                  <p className="text-lg font-extrabold">{row.name}</p>
-                  {breakdown.has(row.productId) ? (
-                    <p className="text-sm font-medium text-ink-soft">
-                      {[...breakdown.get(row.productId)!.entries()]
-                        .sort(([a], [b]) => a.localeCompare(b))
-                        .map(([label, count]) => `${label} ×${count}`)
-                        .join(" · ")}
+        <div className="space-y-6">
+          {stockGroups.map(([title, groupRows]) => {
+            const list = (
+              <ul className="divide-y divide-line">
+                {groupRows.map((row) => (
+                  <li key={row.productId} className="flex items-center justify-between gap-3 px-5 py-4">
+                    <div className="min-w-0">
+                      <p className="text-lg font-extrabold">{row.name}</p>
+                      {breakdown.has(row.productId) ? (
+                        <p className="text-sm font-medium text-ink-soft">
+                          {[...breakdown.get(row.productId)!.entries()]
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([label, count]) => `${label} ×${count}`)
+                            .join(" · ")}
+                        </p>
+                      ) : null}
+                      {row.isLow ? <Badge tone="accent">Low stock</Badge> : null}
+                    </div>
+                    <p className="shrink-0 text-right">
+                      <span className="text-3xl font-extrabold tabular-nums">{formatQuantity(row.onHand)}</span>{" "}
+                      <span className="font-medium text-ink-soft">{row.unit}</span>
                     </p>
-                  ) : null}
-                  {row.isLow ? <Badge tone="accent">Low stock</Badge> : null}
-                </div>
-                <p className="shrink-0 text-right">
-                  <span className="text-3xl font-extrabold tabular-nums">{formatQuantity(row.onHand)}</span>{" "}
-                  <span className="font-medium text-ink-soft">{row.unit}</span>
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Card>
+                  </li>
+                ))}
+              </ul>
+            );
+            return title ? (
+              <ListCard key={title} title={title}>
+                {list}
+              </ListCard>
+            ) : (
+              <Card key="all" className="!p-0">
+                {list}
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       <Card>
@@ -155,7 +178,10 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
           title="Stock received"
           action={
             receipts.length > 0 ? (
-              <Link href={`${base}/receipts`} className="text-sm font-extrabold uppercase tracking-wide underline decoration-accent decoration-4 underline-offset-4">
+              <Link
+                href={`${base}/receipts`}
+                className="text-sm font-extrabold uppercase tracking-wide underline decoration-accent decoration-4 underline-offset-4"
+              >
                 See all
               </Link>
             ) : undefined

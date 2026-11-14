@@ -10,8 +10,9 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
+import { saleWords } from "@/lib/selling";
 import { useFormAction } from "@/lib/use-form-action";
-import type { PaymentType } from "@/types/database";
+import type { PaymentType, SellingMode } from "@/types/database";
 
 export type OrderFormProduct = {
   id: string;
@@ -36,6 +37,10 @@ type Props = {
   units: PickableUnit[];
   currency: string;
   today: string;
+  /** Shapes the words ("sale" or "order") and the defaults. */
+  mode?: SellingMode;
+  /** When false, nothing goes on a trip: it is taken now or collected later. */
+  delivers?: boolean;
   /** Set when editing: the order's saved values. The location cannot change. */
   editing?: {
     locationId: string;
@@ -49,13 +54,30 @@ type Props = {
   };
 };
 
-export function OrderForm({ action, customers, products, locations, stock, units, currency, today, editing }: Props) {
+export function OrderForm({
+  action,
+  customers,
+  products,
+  locations,
+  stock,
+  units,
+  currency,
+  today,
+  mode = "quantity",
+  delivers = true,
+  editing
+}: Props) {
+  const words = saleWords(mode);
   const { state, pending, form } = useFormAction(action);
   const nextKey = useRef(editing ? editing.lines.length : 1);
   const [locationId, setLocationId] = useState(editing?.locationId ?? locations[0]?.id ?? "");
   // With no saved customers yet, every sale is to a walk-in buyer.
   const [walkIn, setWalkIn] = useState(editing ? editing.customerId === null : customers.length === 0);
-  const [leaving, setLeaving] = useState<"trip" | "now">(!editing && customers.length === 0 ? "now" : "trip");
+  // A shop that sells serial-numbered items, or does not deliver, mostly sells
+  // over the counter; a depot mostly sends orders out on a trip.
+  const [leaving, setLeaving] = useState<"trip" | "now">(
+    !editing && (customers.length === 0 || mode === "serial" || !delivers) ? "now" : "trip"
+  );
   const [lines, setLines] = useState<Line[]>(
     editing
       ? editing.lines.map((line, index) => ({
@@ -281,7 +303,9 @@ export function OrderForm({ action, customers, products, locations, stock, units
             {(
               [
                 ["now", "Customer takes it now", "Completed straight away. No trip needed."],
-                ["trip", "Deliver on a trip", "Waits for dispatch until it goes out on a trip."]
+                delivers
+                  ? (["trip", "Deliver on a trip", "Waits for dispatch until it goes out on a trip."] as const)
+                  : (["trip", "Customer collects it later", "Held for the customer until they come for it."] as const)
               ] as const
             ).map(([value, label, hint]) => (
               <label
@@ -309,14 +333,14 @@ export function OrderForm({ action, customers, products, locations, stock, units
       ) : null}
 
       <p className="flex items-baseline justify-between gap-3 border-t-[3px] border-ink pt-3">
-        <span className="text-lg font-extrabold">Order total</span>
+        <span className="text-lg font-extrabold">{words.One} total</span>
         <span className="text-3xl font-extrabold tabular-nums">{formatMoney(total, currency)}</span>
       </p>
 
       <TextField label="Note (optional)" name="note" defaultValue={editing?.note} maxLength={500} />
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel="Saving…">
-        {editing ? "Save changes" : leaving === "now" ? "Save and complete sale" : "Save order"}
+        {editing ? "Save changes" : leaving === "now" ? "Save and complete sale" : `Save ${words.one}`}
       </SubmitButton>
     </form>
   );

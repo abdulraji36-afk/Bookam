@@ -12,6 +12,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
+import { saleWords } from "@/lib/selling";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -33,6 +34,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
   ]);
   const order = orderResult.data;
   if (!order) notFound();
+  const words = saleWords(org.selling_mode);
   const summary = summaryResult.data;
 
   const details = [
@@ -49,7 +51,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         ? `At the counter, ${new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone: org.timezone }).format(new Date(order.handed_over_at))}`
         : null
     ],
-    ["Order date", formatDay(order.order_date)],
+    [`${words.One} date`, formatDay(order.order_date)],
     ["Payment", PAYMENT_LABELS[order.payment_type]],
     ["Stock taken from", order.locations?.name],
     ["Recorded by", order.profiles?.full_name],
@@ -62,15 +64,15 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
 
   return (
     <div className="max-w-3xl space-y-6">
-      {query.saved === "1" ? <Alert tone="success">Order saved. Its stock has been set aside.</Alert> : null}
+      {query.saved === "1" ? <Alert tone="success">{words.One} saved. Its stock has been set aside.</Alert> : null}
       <div className="page-head">
-        <PageTitle sub="Customer order">{order.order_no}</PageTitle>
-        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
+        <PageTitle sub={`Customer ${words.one}`}>{order.order_no}</PageTitle>
+        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} delivers={org.does_delivery} />
       </div>
 
       {order.voided_at ? (
         <Alert tone="error">
-          This order was voided. Its stock and returns were reversed. Reason: {order.void_reason}
+          This {words.one} was voided. Its stock and returns were reversed. Reason: {order.void_reason}
         </Alert>
       ) : null}
 
@@ -142,7 +144,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
 
       <div className="flex flex-wrap items-start gap-3">
         <Link href={`${base}/orders`} className={buttonClass("secondary")}>
-          Back to orders
+          Back to {words.many}
         </Link>
         {order.status === "pending" ? (
           <>
@@ -155,15 +157,15 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
               confirmMessage={`Mark ${order.order_no} as collected at the counter? It is completed straight away and will not go on a trip.`}
             />
             <Link href={`${base}/orders/${order.id}/edit`} className={buttonClass("secondary")}>
-              Edit order
+              Edit {words.one}
             </Link>
             <ActionButton
               action={cancelOrderAction.bind(null, org.slug, order.id)}
-              label="Cancel order"
+              label={`Cancel ${words.one}`}
               pendingLabel="Cancelling…"
               variant="danger"
               size="md"
-              confirmMessage={`Cancel order ${order.order_no}? Its stock will be put back.`}
+              confirmMessage={`Cancel ${words.one} ${order.order_no}? Its stock will be put back.`}
             />
           </>
         ) : null}
@@ -172,9 +174,9 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
       {canManage(role) && order.status !== "cancelled" ? (
         <ReasonForm
           action={voidOrderAction.bind(null, org.slug, order.id)}
-          trigger="Void this order"
+          trigger={`Void this ${words.one}`}
           explanation="Use this when the order should never have been recorded. Its stock goes back, the customer no longer owes anything for it, and any returns recorded against it are taken back out. The order stays on record, marked as voided."
-          submitLabel="Void order"
+          submitLabel={`Void ${words.one}`}
         />
       ) : null}
     </div>

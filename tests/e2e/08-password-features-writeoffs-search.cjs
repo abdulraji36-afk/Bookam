@@ -59,9 +59,13 @@ let dbg;
   await a.getByText(`We sent a confirmation link to ${owner}`).waitFor();
   await a.goto(await emailLink(owner, /confirm/i));
   await a.waitForURL("**/onboarding");
-  await a.getByText("What do you sell?").waitFor();
+  await a.getByText("How do you sell?").waitFor();
+  // The follow-up questions only appear once the first choice is made.
+  assert.equal(await a.getByLabel("Customers bring things back to me").count(), 0);
+  await a.getByText("I count my goods").click();
   assert.equal(await a.getByLabel("Customers bring things back to me").isChecked(), false);
-  assert.equal(await a.getByLabel("I sell items with serial numbers").isChecked(), false);
+  assert.equal(await a.getByLabel("I also sell some items with serial numbers").isChecked(), false);
+  assert.equal(await a.getByLabel("We deliver to customers").isChecked(), true, "a goods business delivers by default");
   await a.screenshot({ path: `${SHOTS}/80-onboarding-questions.png`, fullPage: true });
   await a.getByLabel("Business name").fill(`Tola Foods ${run}`);
   await a.getByRole("button", { name: "Create business" }).click();
@@ -203,8 +207,8 @@ let dbg;
 
   // 4. Switching serial numbers on later, and a serial write-off.
   await go("/settings");
-  const features = a.locator("form", { has: a.getByText("What do you sell?") });
-  await features.getByLabel("I sell items with serial numbers").check();
+  const features = a.locator("form", { has: a.getByText("How do you sell?") });
+  await features.getByLabel("I also sell some items with serial numbers").check();
   await features.getByRole("button", { name: "Save" }).click();
   await features.getByText("Saved. The menus and forms now match what you sell.").waitFor();
   await go("/products/new");
@@ -241,7 +245,7 @@ let dbg;
   await unit.getByText("Written off", { exact: true }).first().waitFor();
   await unit.getByText("Lost or stolen").waitFor();
   await go("/settings");
-  await features.getByLabel("I sell items with serial numbers").uncheck();
+  await features.getByLabel("I also sell some items with serial numbers").uncheck();
   await features.getByRole("button", { name: "Save" }).click();
   await features
     .getByText("Serial numbers cannot be switched off while Infinix Hot 40 is tracked by serial number.", { exact: false })

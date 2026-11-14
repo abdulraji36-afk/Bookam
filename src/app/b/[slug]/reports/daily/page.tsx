@@ -6,6 +6,7 @@ import { buttonClass } from "@/components/ui/button";
 import { ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDay, formatMoney, formatQuantity, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
+import { saleWords } from "@/lib/selling";
 import { requestNow } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "Daily report" };
@@ -35,6 +36,7 @@ const CELL = "px-4 py-3 tabular-nums";
 async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/reports/daily">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
+  const words = saleWords(org.selling_mode);
   const base = `/b/${org.slug}`;
   const today = todayIn(org.timezone, await requestNow());
   const asked = typeof query.date === "string" && DAY.test(query.date) ? query.date : today;
@@ -118,10 +120,10 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Figure label="Orders recorded" value={String(counted.length)} strong />
-            <Figure label="Items ordered" value={formatQuantity(soldQuantity)} />
+            <Figure label={`${words.Many} recorded`} value={String(counted.length)} strong />
+            <Figure label={words.one === "sale" ? "Items sold" : "Items ordered"} value={formatQuantity(soldQuantity)} />
             {showMoney ? (
-              <Figure label="Order value" value={formatMoney(soldValue, org.currency_code)} />
+              <Figure label={`${words.One} value`} value={formatMoney(soldValue, org.currency_code)} />
             ) : (
               <Figure label="Trips sent out" value={String(tripRows.length)} />
             )}
@@ -194,9 +196,9 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
             </ListCard>
           ) : null}
 
-          <ListCard title={`Orders recorded (${orderRows.length})`}>
+          <ListCard title={`${words.Many} recorded (${orderRows.length})`}>
             {orderRows.length === 0 ? (
-              <p className="px-5 py-4 font-medium text-ink-soft">No orders were recorded on this day.</p>
+              <p className="px-5 py-4 font-medium text-ink-soft">No {words.many} were recorded on this day.</p>
             ) : (
               <ul className="divide-y divide-line">
                 {orderRows.map((order) => (
@@ -212,7 +214,7 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                           {showMoney ? ` · ${formatMoney(Number(order.total_amount), org.currency_code)}` : ""}
                         </span>
                       </span>
-                      <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
+                      <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} delivers={org.does_delivery} />
                     </Link>
                   </li>
                 ))}

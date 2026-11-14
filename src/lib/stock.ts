@@ -7,6 +7,7 @@ export type StockRow = {
   unit: string;
   onHand: number;
   isLow: boolean;
+  tracksSerials: boolean;
 };
 
 /**
@@ -30,7 +31,7 @@ export async function getStockRows(
   const [productsResult, levelsResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, unit, low_stock_threshold")
+      .select("id, name, unit, low_stock_threshold, tracks_serials")
       .eq("organization_id", organizationId)
       .eq("is_active", true)
       .order("name"),
@@ -49,7 +50,8 @@ export async function getStockRows(
       name: product.name,
       unit: product.unit,
       onHand,
-      isLow: threshold > 0 && onHand <= threshold
+      isLow: threshold > 0 && onHand <= threshold,
+      tracksSerials: product.tracks_serials
     };
   });
 }

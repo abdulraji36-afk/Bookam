@@ -7,6 +7,21 @@ import { requireUser } from "@/lib/auth/session";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { businessSchema, firstIssue, locationSchema } from "@/lib/validation";
+import type { SellingMode } from "@/types/database";
+
+/** The answers to "How do you sell?" and its follow-ups, or null if not chosen. */
+function readSelling(formData: FormData) {
+  const value = formData.get("sellingMode");
+  if (value !== "quantity" && value !== "serial") return null;
+  const mode: SellingMode = value;
+  return {
+    p_selling_mode: mode,
+    p_tracks_returns: formData.get("tracksReturns") === "on",
+    // A serial shop always has serial numbers on; the database makes sure too.
+    p_tracks_serials: mode === "serial" || formData.get("tracksSerials") === "on",
+    p_does_delivery: formData.get("doesDelivery") === "on"
+  };
+}
 
 export async function createBusinessAction(
   _previous: ActionState,
@@ -19,13 +34,13 @@ export async function createBusinessAction(
     businessType: formData.get("businessType") ?? undefined
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!readSelling(formData)) return { ok: false, message: "Choose how you sell." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_organization", {
     p_name: parsed.data.name,
     p_business_type: parsed.data.businessType || null,
-    p_tracks_returns: formData.get("tracksReturns") === "on",
-    p_tracks_serials: formData.get("tracksSerials") === "on"
+    ...readSelling(formData)!
   });
 
   const created = data?.[0];
@@ -85,10 +100,12 @@ export async function setBusinessFeaturesAction(
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
 
+  const selling = readSelling(formData);
+  if (!selling) return { ok: false, message: "Choose how you sell." };
+
   const { error } = await supabase.rpc("set_business_features", {
     p_organization_id: org.id,
-    p_tracks_returns: formData.get("tracksReturns") === "on",
-    p_tracks_serials: formData.get("tracksSerials") === "on"
+    ...selling
   });
   if (error) return { ok: false, message: describeDbError(error) };
 

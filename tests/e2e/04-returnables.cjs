@@ -45,6 +45,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.goto(BASE + "/signup");
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
+  await a.getByText("I count my goods").click();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
   const base = new URL(a.url()).pathname;
@@ -99,7 +100,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   assert.equal(await a.getByLabel("Track each unit by serial number").count(), 0);
   // Switching returns on in Settings brings both back.
   await go("/settings");
-  const features = a.locator("form", { has: a.getByText("What do you sell?") });
+  const features = a.locator("form", { has: a.getByText("How do you sell?") });
   await features.getByLabel("Customers bring things back to me").check();
   await features.getByRole("button", { name: "Save" }).click();
   await features.getByText("Saved. The menus and forms now match what you sell.").waitFor();

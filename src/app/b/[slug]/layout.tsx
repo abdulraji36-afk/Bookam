@@ -9,6 +9,7 @@ import { PageSkeleton } from "@/components/ui/card";
 import { daysUntil } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { saleWords } from "@/lib/selling";
 
 async function BusinessShell({
   params,
@@ -32,8 +33,8 @@ async function BusinessShell({
   const tracksReturns = org.tracks_returns || Boolean(returnableCount);
   const items: NavItem[] = [
     { href: base, label: "Dashboard", icon: "dashboard", exact: true },
-    { href: `${base}/orders`, label: "Orders", icon: "orders" },
-    { href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch" },
+    { href: `${base}/orders`, label: saleWords(org.selling_mode).Many, icon: "orders" },
+    ...(org.does_delivery ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch" } as const] : []),
     ...(tracksReturns ? [{ href: `${base}/returns`, label: "Returns", icon: "returns" } as const] : []),
     { href: `${base}/stock`, label: "Stock", icon: "stock" },
     { href: `${base}/products`, label: "Products", icon: "products" },

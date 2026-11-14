@@ -16,7 +16,17 @@ export type OrderRowData = {
   voided_at: string | null;
 };
 
-export function OrderRow({ order, base, currency }: { order: OrderRowData; base: string; currency: string }) {
+export function OrderRow({
+  order,
+  base,
+  currency,
+  delivers = true
+}: {
+  order: OrderRowData;
+  base: string;
+  currency: string;
+  delivers?: boolean;
+}) {
   return (
     <li>
       <Link
@@ -36,7 +46,7 @@ export function OrderRow({ order, base, currency }: { order: OrderRowData; base:
               : ""}
           </span>
         </span>
-        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} />
+        <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} delivers={delivers} />
       </Link>
     </li>
   );

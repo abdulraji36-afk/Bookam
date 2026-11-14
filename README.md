@@ -107,9 +107,14 @@ These are what keep one business's data away from another's.
    wrong count) is a `stock_adjustments` row with a reason, plus its ledger
    movement. It can never take out more than is on hand. Serial-numbered stock
    is written off by naming the units, and only comes in through a delivery.
-12. What a business sells decides what it sees. `organizations.tracks_returns`
-   and `tracks_serials` come from the two sign-up questions and can be changed
-   in Settings. The database refuses a product that needs a switched-off
+12. How a business sells decides what it sees. `organizations.selling_mode`
+   is `quantity` (counts its goods: depots, stores) or `serial` (sells items
+   one by one by serial number: phone and laptop shops). It sets the words
+   ("orders" or "sales"), the defaults and how Products and Stock are grouped;
+   in serial mode each product can still be counted instead, for accessories.
+   `does_delivery` shows or hides Dispatch. `tracks_returns` and
+   `tracks_serials` switch those parts on. All of them come from the sign-up
+   questions and can be changed in Settings. The database refuses a product that needs a switched-off
    feature, and refuses to switch one off while a product or a customer
    balance still uses it.
 
@@ -180,4 +185,5 @@ version of the app, so the database can always go first.
 | 6a | Telegram notifications, linked per business | Done |
 | 7 | Serial-numbered products (serial and colour per unit, colour then serial when selling), counter sales, walk-in buyers, serial lookup with warranty | Done |
 | 8 | Forgot password, sign-up questions that shape the app, stock write-offs and corrections, search and paging on long lists, browser walkthroughs in the repo | Done |
+| 9 | Two kinds of business: shops that count goods and shops that sell by serial number, each with its own words, menu and defaults; delivery as its own choice | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

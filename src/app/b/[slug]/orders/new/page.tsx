@@ -8,6 +8,7 @@ import { todayIn } from "@/lib/format";
 import { getOrderFormData } from "@/lib/order-form-data";
 import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { saleWords } from "@/lib/selling";
 
 export const metadata: Metadata = { title: "New order" };
 
@@ -21,7 +22,9 @@ async function NewOrder({ params }: Pick<PageProps<"/b/[slug]/orders/new">, "par
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageTitle sub="Stock is set aside for the customer as soon as you save.">New order</PageTitle>
+      <PageTitle sub="Stock is set aside for the customer as soon as you save.">
+        New {saleWords(org.selling_mode).one}
+      </PageTitle>
       {data.products.length === 0 ? (
         <EmptyState title="Add a product first">
           <Link href={`${base}/products`} className={LINK}>
@@ -33,6 +36,8 @@ async function NewOrder({ params }: Pick<PageProps<"/b/[slug]/orders/new">, "par
           <OrderForm
             action={saveOrderAction.bind(null, org.slug, null)}
             currency={org.currency_code}
+            mode={org.selling_mode}
+            delivers={org.does_delivery}
             today={todayIn(org.timezone, await requestNow())}
             {...data}
           />

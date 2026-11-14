@@ -8,6 +8,7 @@ import { Badge, Card, CardHeader, ListCard, PageSkeleton, PageTitle } from "@/co
 import { describeOwed, formatDay, formatQuantity, ROLE_LABELS, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { saleWords } from "@/lib/selling";
 import { getStockRows } from "@/lib/stock";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -31,13 +32,35 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const week = lastSevenDays(today);
 
   const count = (table: "memberships" | "products" | "customers") =>
-    supabase.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true);
+    supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.id)
+      .eq("is_active", true);
   const tripCount = (statuses: ("draft" | "dispatched" | "completed")[]) =>
-    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).in("status", statuses);
+    supabase
+      .from("dispatch_trips")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.id)
+      .in("status", statuses);
 
   const [
-    members, products, customers, received, stockRows, profile, waiting, loading, trips, returnables, returned,
-    waitingOrders, tripsOut, balances, weekOrders
+    members,
+    products,
+    customers,
+    received,
+    stockRows,
+    profile,
+    waiting,
+    loading,
+    trips,
+    returnables,
+    returned,
+    waitingOrders,
+    tripsOut,
+    balances,
+    weekOrders,
+    orderCount
   ] = await Promise.all([
     count("memberships"),
     count("products"),
@@ -45,14 +68,20 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
     supabase.from("stock_receipts").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
     getStockRows(supabase, org.id, null),
     supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-    supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "pending"),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.id)
+      .eq("status", "pending"),
     tripCount(["draft"]),
     tripCount(["dispatched", "completed"]),
     supabase.from("returnable_totals").select("owed").eq("organization_id", org.id),
     supabase.from("trip_return_lines").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
     supabase
       .from("order_summaries")
-      .select("id, order_no, order_date, status, customer_name, customer_area, total_quantity, total_amount, has_returns, voided_at")
+      .select(
+        "id, order_no, order_date, status, customer_name, customer_area, total_quantity, total_amount, has_returns, voided_at"
+      )
       .eq("organization_id", org.id)
       .eq("status", "pending")
       .order("created_at")
@@ -78,8 +107,12 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       .neq("status", "cancelled")
       .gte("order_date", week[0])
       .lte("order_date", today)
-      .limit(5000)
+      .limit(5000),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id)
   ]);
+  const words = saleWords(org.selling_mode);
+  const delivers = org.does_delivery;
+  const waitingTitle = delivers ? "Waiting for dispatch" : "Waiting to be collected";
 
   const firstName = profile.data?.full_name?.split(" ")[0];
   const teamCount = members.count ?? 0;
@@ -93,10 +126,16 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   for (const order of weekOrders.data ?? []) perDay.set(order.order_date, (perDay.get(order.order_date) ?? 0) + 1);
   const days: DayCount[] = week.map((day) => ({
     day,
-    weekday: new Intl.DateTimeFormat("en-NG", { weekday: "short", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`)),
-    dateLabel: new Intl.DateTimeFormat("en-NG", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(
-      new Date(`${day}T00:00:00Z`)
-    ),
+    weekday: new Intl.DateTimeFormat("en-NG", {
+      weekday: "short",
+      timeZone: "UTC"
+    }).format(new Date(`${day}T00:00:00Z`)),
+    dateLabel: new Intl.DateTimeFormat("en-NG", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC"
+    }).format(new Date(`${day}T00:00:00Z`)),
     count: perDay.get(day) ?? 0,
     isToday: day === today
   }));
@@ -104,24 +143,38 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
 
   const steps = [
     { label: "Create your business", done: true },
-    { label: "Invite your team", done: teamCount > 1, href: manager ? `${base}/team` : undefined },
-    { label: "Add the products you sell", done: productCount > 0, href: manager ? `${base}/products/new` : undefined },
+    {
+      label: "Invite your team",
+      done: teamCount > 1,
+      href: manager ? `${base}/team` : undefined
+    },
+    {
+      label: "Add the products you sell",
+      done: productCount > 0,
+      href: manager ? `${base}/products/new` : undefined
+    },
     {
       label: "Record the stock you have",
       done: (received.count ?? 0) > 0,
       href: productCount > 0 ? `${base}/stock/receive` : undefined
     },
-    {
-      label: "Record an order and dispatch it",
-      done: (trips.count ?? 0) > 0,
-      href: (received.count ?? 0) > 0 ? `${base}/orders/new` : undefined
-    },
+    delivers
+      ? {
+          label: `Record ${words.one === "sale" ? "a sale" : "an order"} and dispatch it`,
+          done: (trips.count ?? 0) > 0,
+          href: (received.count ?? 0) > 0 ? `${base}/orders/new` : undefined
+        }
+      : {
+          label: `Record your first ${words.one}`,
+          done: (orderCount.count ?? 0) > 0,
+          href: (received.count ?? 0) > 0 ? `${base}/orders/new` : undefined
+        },
     ...(tracksReturns
       ? [
           {
             label: "Record what customers bring back",
             done: (returned.count ?? 0) > 0,
-            href: (trips.count ?? 0) > 0 ? `${base}/returns` : undefined
+            href: (trips.count ?? 0) > 0 || !delivers ? `${base}/returns` : undefined
           }
         ]
       : [])
@@ -137,7 +190,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         </PageTitle>
         <div className="flex flex-wrap gap-2">
           <Link href={`${base}/orders/new`} className={buttonClass("primary")}>
-            + New order
+            + New {words.one}
           </Link>
           <Link href={`${base}/stock/receive`} className={buttonClass("secondary")}>
             Receive stock
@@ -145,9 +198,31 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         </div>
       </div>
 
+      {org.selling_mode === "serial" ? (
+        <form method="get" action={`${base}/stock/serials`} className="flex flex-wrap items-end gap-2" role="search">
+          <label className="min-w-0 flex-1 text-sm font-bold">
+            Find a serial number
+            <input
+              type="search"
+              name="q"
+              autoComplete="off"
+              placeholder="Type or scan a serial / IMEI"
+              className="mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium placeholder:font-normal placeholder:text-ink-soft/70 focus:border-ink focus:outline-2 focus:outline-accent"
+            />
+          </label>
+          <button type="submit" className={buttonClass("secondary")}>
+            Find
+          </button>
+        </form>
+      ) : null}
+
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatTile label="Waiting for dispatch" value={waiting.count ?? 0} strong href={`${base}/orders`} />
-        <StatTile label="Trips loading" value={loading.count ?? 0} href={`${base}/dispatch`} />
+        <StatTile label={waitingTitle} value={waiting.count ?? 0} strong href={`${base}/orders`} />
+        {delivers ? (
+          <StatTile label="Trips loading" value={loading.count ?? 0} href={`${base}/dispatch`} />
+        ) : (
+          <StatTile label={`${words.Many} today`} value={perDay.get(today) ?? 0} href={`${base}/orders`} />
+        )}
         <StatTile label="Low stock" value={lowRows.length} href={`${base}/stock`} />
         {tracksReturns ? (
           <StatTile label="Owed back by customers" value={owedBack} href={`${base}/returns`} />
@@ -183,7 +258,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
 
       <Card>
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="text-lg font-extrabold">Orders this week</h2>
+          <h2 className="text-lg font-extrabold">{words.Many} this week</h2>
           <p className="font-medium text-ink-soft">
             <span className="text-2xl font-extrabold tabular-nums text-ink">{formatQuantity(weekTotal)}</span> in the
             last 7 days
@@ -194,7 +269,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ListCard
-          title="Waiting for dispatch"
+          title={waitingTitle}
           action={
             <Link href={`${base}/orders`} className={SEE_ALL}>
               See all
@@ -202,11 +277,15 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
           }
         >
           {(waitingOrders.data ?? []).length === 0 ? (
-            <p className="px-5 py-4 font-medium text-ink-soft">Nothing is waiting. Every order has gone out.</p>
+            <p className="px-5 py-4 font-medium text-ink-soft">
+              {delivers
+                ? `Nothing is waiting. Every ${words.one} has gone out.`
+                : "Nothing is waiting to be collected."}
+            </p>
           ) : (
             <ul className="divide-y divide-line">
               {(waitingOrders.data ?? []).map((order) => (
-                <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} />
+                <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} delivers={delivers} />
               ))}
             </ul>
           )}
@@ -239,37 +318,39 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
 
         {tracksReturns ? (
           <>
-            <ListCard
-              title="Out now, returns due"
-              action={
-                <Link href={`${base}/returns`} className={SEE_ALL}>
-                  See returns
-                </Link>
-              }
-            >
-              {(tripsOut.data ?? []).length === 0 ? (
-                <p className="px-5 py-4 font-medium text-ink-soft">No trip is waiting for its returns.</p>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {(tripsOut.data ?? []).map((trip) => (
-                    <li key={trip.id}>
-                      <Link
-                        href={`${base}/dispatch/${trip.id}`}
-                        className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-paper"
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-extrabold">{trip.driver_name}</span>
-                          <span className="text-sm font-medium text-ink-soft">
-                            {trip.trip_no} · left {formatDay(trip.dispatch_date)}
+            {delivers ? (
+              <ListCard
+                title="Out now, returns due"
+                action={
+                  <Link href={`${base}/returns`} className={SEE_ALL}>
+                    See returns
+                  </Link>
+                }
+              >
+                {(tripsOut.data ?? []).length === 0 ? (
+                  <p className="px-5 py-4 font-medium text-ink-soft">No trip is waiting for its returns.</p>
+                ) : (
+                  <ul className="divide-y divide-line">
+                    {(tripsOut.data ?? []).map((trip) => (
+                      <li key={trip.id}>
+                        <Link
+                          href={`${base}/dispatch/${trip.id}`}
+                          className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-paper"
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-extrabold">{trip.driver_name}</span>
+                            <span className="text-sm font-medium text-ink-soft">
+                              {trip.trip_no} · left {formatDay(trip.dispatch_date)}
+                            </span>
                           </span>
-                        </span>
-                        <Badge tone="accent">Record returns</Badge>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </ListCard>
+                          <Badge tone="accent">Record returns</Badge>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </ListCard>
+            ) : null}
 
             <ListCard title="Owes the most">
               {(balances.data ?? []).length === 0 ? (

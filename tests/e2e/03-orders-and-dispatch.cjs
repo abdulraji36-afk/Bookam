@@ -45,6 +45,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.goto(BASE + "/signup");
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
+  await a.getByText("I count my goods").click();
   await a.getByLabel("Customers bring things back to me").check();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);

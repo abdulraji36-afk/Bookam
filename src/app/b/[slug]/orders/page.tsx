@@ -7,6 +7,7 @@ import { EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/c
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
 import { requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
+import { saleWords } from "@/lib/selling";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -41,50 +42,61 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
   const waiting = waitingResult.data ?? [];
   const list = listResult.data ?? [];
   const total = listResult.count ?? 0;
+  const words = saleWords(org.selling_mode);
+  const delivers = org.does_delivery;
+  const waitingTitle = delivers ? "Waiting for dispatch" : "Waiting to be collected";
 
   return (
     <div className="space-y-6">
       <div className="page-head">
-        <PageTitle sub={listOnly ? "Every order, newest first." : `${waiting.length} waiting for dispatch.`}>Orders</PageTitle>
+        <PageTitle
+          sub={listOnly ? `Every ${words.one}, newest first.` : `${waiting.length} ${waitingTitle.toLowerCase()}.`}
+        >
+          {words.Many}
+        </PageTitle>
         <Link href={`${base}/orders/new`} className={buttonClass("primary")}>
-          + New order
+          + New {words.one}
         </Link>
       </div>
 
       <SearchForm
         action={`${base}/orders`}
         q={search.q}
-        label="Search orders"
-        placeholder="Search by order number, customer, phone or area"
+        label={`Search ${words.many}`}
+        placeholder={`Search by ${words.one} number, customer, phone or area`}
       />
 
       {!search.q && waiting.length === 0 && list.length === 0 && search.page === 1 ? (
-        <EmptyState title="No orders yet">Record the first order a customer places.</EmptyState>
+        <EmptyState title={`No ${words.many} yet`}>Record the first {words.one} to a customer.</EmptyState>
       ) : null}
       {search.q && list.length === 0 ? <NoMatches q={search.q} base={`${base}/orders`} /> : null}
 
       {waiting.length > 0 ? (
         <ListCard
-          title="Waiting for dispatch"
+          title={waitingTitle}
           action={
-            <Link href={`${base}/dispatch/new`} className={buttonClass("secondary", "sm")}>
-              Create trip
-            </Link>
+            delivers ? (
+              <Link href={`${base}/dispatch/new`} className={buttonClass("secondary", "sm")}>
+                Create trip
+              </Link>
+            ) : undefined
           }
         >
           <ul className="divide-y divide-line">
             {waiting.map((order) => (
-              <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} />
+              <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} delivers={delivers} />
             ))}
           </ul>
         </ListCard>
       ) : null}
 
       {list.length > 0 ? (
-        <ListCard title={search.q ? `Orders matching “${search.q}”` : listOnly ? "Orders" : "Recent orders"}>
+        <ListCard
+          title={search.q ? `${words.Many} matching “${search.q}”` : listOnly ? words.Many : `Recent ${words.many}`}
+        >
           <ul className="divide-y divide-line">
             {list.map((order) => (
-              <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} />
+              <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} delivers={delivers} />
             ))}
           </ul>
         </ListCard>
