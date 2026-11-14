@@ -249,6 +249,21 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# BukAm's branded emails. Paste the same files into the hosted project:
+# Authentication -> Emails -> Templates (see README).
+[auth.email.template.confirmation]
+subject = "Confirm your BukAm account"
+content_path = "./supabase/templates/confirm-signup.html"
+
+[auth.email.template.recovery]
+subject = "Reset your BukAm password"
+content_path = "./supabase/templates/reset-password.html"
+
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your BukAm password was changed"
+content_path = "./supabase/templates/password-changed.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

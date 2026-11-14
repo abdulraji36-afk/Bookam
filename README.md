@@ -132,6 +132,23 @@ Messages are sent after an action has finished, so a slow or unreachable
 Telegram never delays or fails the action. A message that fails to send is
 logged and not retried.
 
+## Emails
+
+Supabase Auth sends the sign-up and password-reset emails; the app sends none
+itself. The branded versions live in `supabase/templates/` and the local
+Supabase uses them (see `supabase/config.toml`). For the hosted project,
+paste each file into Authentication -> Emails -> Templates:
+
+| Template | File | Subject |
+| --- | --- | --- |
+| Confirm signup | `confirm-signup.html` | Confirm your BukAm account |
+| Reset password | `reset-password.html` | Reset your BukAm password |
+| Password changed (security notification) | `password-changed.html` | Your BukAm password was changed |
+
+Keep `{{ .ConfirmationURL }}` in the first two: it is the link. Send through
+a real mail service (custom SMTP), because Supabase's built-in sender is only
+for testing and allows very few emails an hour.
+
 ## Moving to a new web address
 
 When the app's address changes (for example to a custom domain), three
