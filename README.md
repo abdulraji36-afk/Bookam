@@ -103,10 +103,10 @@ These are what keep one business's data away from another's.
    record marked as voided, and writes what it was to the audit log.
 10. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
-11. Stock that leaves other than by sale (damaged, expired, lost or stolen, a
-   wrong count) is a `stock_adjustments` row with a reason, plus its ledger
-   movement. It can never take out more than is on hand. Serial-numbered stock
-   is written off by naming the units, and only comes in through a delivery.
+11. Stock only changes through deliveries (and their corrections) and
+   orders. There are no write-offs: damaged or expired goods go out on an
+   order to a customer such as "Breakages", which is then switched off.
+   Write-offs recorded before this stay in the history.
 12. How a business sells decides what it sees. `organizations.selling_mode`
    is `quantity` (counts its goods: depots, stores) or `serial` (sells items
    one by one by serial number: phone and laptop shops). It sets the words
@@ -207,4 +207,5 @@ version of the app, so the database can always go first.
 | 11 | Running a drinks depot like Bilikis: drink categories (RGB, PET, Juice, Energy, Can, Water), stock by category, stock value at cost, a drivers and loaders list chosen per trip, the NBC product list to add from, and a daily report with deliveries, empties in and out, and empty shortages | Done |
 | 12 | Bilikis rules for drinks: whole crates and empties, one waiting RGB order per customer, 10-character reasons, buying cost kept per delivery with stock valued at the average, truck required on trips | Done |
 | 13 | One simple customer form for everyone; correcting a delivery after the fact (date, supplier, reference, products and numbers), as in Bilikis | Done |
+| 14 | Write-offs removed; stock changes only through deliveries and orders | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

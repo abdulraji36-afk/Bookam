@@ -100,11 +100,11 @@ describe("tenant isolation", () => {
       await call(db, owner, `select public.start_telegram_link($1)`, [org.id]);
       const phone = await saveProduct(db, owner, org.id, { name: "Phone", sellingPrice: 1, tracksSerials: true });
       await receiveStock(db, owner, org.id, [{ product_id: phone, units: [{ serial: "SHARED-SERIAL-1" }] }]);
-      await call(
-        db,
-        owner,
-        `select public.record_stock_adjustment($1, (select id from public.locations where organization_id = $1 and is_default), public_today(), $2, 'subtract', 1, 'damaged', null, null)`,
-        [org.id, product]
+      // Write-offs can no longer be made; an old one is still a business-owned row.
+      await db.query(
+        `insert into public.stock_adjustments (organization_id, location_id, product_id, adjustment_date, quantity_delta, reason, created_by)
+         values ($1, (select id from public.locations where organization_id = $1 and is_default), $2, public_today(), -1, 'damaged', $3)`,
+        [org.id, product, owner]
       );
       const crate = await returnableId(db, org.id, "Empty crate");
       await adjust(db, owner, org.id, { returnableId: crate, direction: "add", quantity: 20, reason: "opening_count" });

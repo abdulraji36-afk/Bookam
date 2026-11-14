@@ -211,7 +211,7 @@ let dbg;
   await a.getByText("Today so far.").waitFor();
   const stockTable = a.locator("section", { hasText: "Stock" }).first();
   const colaRow = stockTable.locator("tr", { hasText: "Cola 50cl" });
-  assert.deepEqual((await colaRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "200", "20", "0", "180"]);
+  assert.deepEqual((await colaRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "200", "20", "180"]);
   const crateRow = a.locator("section", { hasText: "Empties count" }).locator("tr", { hasText: "Empties" });
   assert.deepEqual((await crateRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "156", "36", "120", "0"]);
   await a.getByText("₦84,000").first().waitFor(); // only Musa's order counts

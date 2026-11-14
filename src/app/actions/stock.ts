@@ -8,7 +8,7 @@ import { notify } from "@/lib/notify";
 import { requireOrg } from "@/lib/org";
 import { z } from "zod";
 import { MANAGER_ROLES } from "@/lib/org";
-import { firstIssue, readQuantity, stockAdjustmentSchema, stockReceiptSchema } from "@/lib/validation";
+import { firstIssue, readQuantity, stockReceiptSchema } from "@/lib/validation";
 
 export async function recordStockReceiptAction(
   slug: string,
@@ -98,75 +98,6 @@ export async function recordStockReceiptAction(
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/stock/receipts/${receipt.id}?saved=1`);
-}
-
-export async function recordStockAdjustmentAction(
-  slug: string,
-  _previous: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
-  const text = (name: string) => String(formData.get(name) ?? "");
-
-  const parsed = stockAdjustmentSchema.safeParse({
-    locationId: text("locationId"),
-    adjustmentDate: text("adjustmentDate"),
-    productId: text("productId"),
-    direction: text("direction"),
-    reason: text("reason"),
-    quantity: readQuantity(text("quantity")),
-    // Chosen units arrive as "lineKey|unitId", as on the order form.
-    unitIds: formData.getAll("unit").map((value) => String(value).split("|")[1] ?? ""),
-    note: text("note")
-  });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
-
-  const { error } = await supabase.rpc("record_stock_adjustment", {
-    p_organization_id: org.id,
-    p_location_id: parsed.data.locationId,
-    p_adjustment_date: parsed.data.adjustmentDate,
-    p_product_id: parsed.data.productId,
-    p_direction: parsed.data.direction,
-    p_quantity: parsed.data.quantity ?? null,
-    p_reason: parsed.data.reason,
-    p_note: parsed.data.note || null,
-    p_unit_ids: parsed.data.unitIds.length ? parsed.data.unitIds : null
-  });
-  if (error) return { ok: false, message: describeDbError(error) };
-
-  notify({ supabase, org }, async () => {
-    const { data: product } = await supabase.from("products").select("name").eq("id", parsed.data.productId).maybeSingle();
-    const quantity = parsed.data.unitIds.length || parsed.data.quantity || 0;
-    return [
-      `Stock ${parsed.data.direction === "add" ? "added" : "taken out"}: ${formatQuantity(quantity)} ${product?.name ?? ""}`.trim(),
-      `Reason: ${parsed.data.reason.replace(/_/g, " ")}`,
-      parsed.data.note && `Note: ${parsed.data.note}`
-    ];
-  });
-  revalidatePath(`/b/${slug}`, "layout");
-  redirect(`/b/${slug}/stock/adjust?saved=1`);
-}
-
-export async function voidStockAdjustmentAction(
-  slug: string,
-  adjustmentId: string,
-  _previous: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
-  if (!z.uuid().safeParse(adjustmentId).success) return { ok: false, message: "Adjustment not found." };
-
-  const reason = String(formData.get("reason") ?? "").trim();
-  if (reason.length < 10) return { ok: false, message: "Give a reason of at least 10 characters." };
-
-  const { error } = await supabase.rpc("void_stock_adjustment", {
-    p_adjustment_id: adjustmentId,
-    p_reason: reason.slice(0, 500)
-  });
-  if (error) return { ok: false, message: describeDbError(error) };
-
-  revalidatePath(`/b/${slug}`, "layout");
-  return { ok: true, message: "Adjustment voided. The stock is as it was before." };
 }
 
 /** Owners and admins correct the buying cost recorded on one delivery line. */

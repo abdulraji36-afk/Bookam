@@ -103,18 +103,6 @@ export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
   written_off: "Written off"
 };
 
-export const STOCK_OUT_REASONS: [StockAdjustmentReason, string][] = [
-  ["damaged", "Damaged"],
-  ["expired", "Expired"],
-  ["lost_or_stolen", "Lost or stolen"],
-  ["count_correction", "The count was wrong"]
-];
-
-export const STOCK_IN_REASONS: [StockAdjustmentReason, string][] = [
-  ["found", "Found stock"],
-  ["count_correction", "The count was wrong"]
-];
-
 export const STOCK_REASON_LABELS: Record<StockAdjustmentReason, string> = {
   damaged: "Damaged",
   expired: "Expired",

@@ -113,6 +113,8 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
   const deliveryRows = deliveries.data ?? [];
 
   const stockRows = stock.data ?? [];
+  // Write-offs are no longer made; the column only shows for a day that has an old one.
+  const showAdjusted = stockRows.some((row) => Number(row.adjusted) !== 0);
   const returnableRows = returnables.data ?? [];
   const orderRows = orders.data ?? [];
   const tripRows = trips.data ?? [];
@@ -185,7 +187,9 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                     <th scope="col" className={`${HEAD} text-right`}>Opening</th>
                     <th scope="col" className={`${HEAD} text-right`}>Received</th>
                     <th scope="col" className={`${HEAD} text-right`}>Ordered out</th>
-                    <th scope="col" className={`${HEAD} text-right`}>Written off / corrected</th>
+                    {showAdjusted ? (
+                      <th scope="col" className={`${HEAD} text-right`}>Written off / corrected</th>
+                    ) : null}
                     <th scope="col" className={`${HEAD} text-right`}>Closing</th>
                   </tr>
                 </thead>
@@ -198,10 +202,12 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.opening))}</td>
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.received))}</td>
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.sold))}</td>
-                      <td className={`${CELL} text-right`}>
-                        {Number(row.adjusted) > 0 ? "+" : Number(row.adjusted) < 0 ? "−" : ""}
-                        {formatQuantity(Math.abs(Number(row.adjusted)))}
-                      </td>
+                      {showAdjusted ? (
+                        <td className={`${CELL} text-right`}>
+                          {Number(row.adjusted) > 0 ? "+" : Number(row.adjusted) < 0 ? "−" : ""}
+                          {formatQuantity(Math.abs(Number(row.adjusted)))}
+                        </td>
+                      ) : null}
                       <td className={`${CELL} text-right text-lg font-extrabold`}>{formatQuantity(Number(row.closing))}</td>
                     </tr>
                   ))}

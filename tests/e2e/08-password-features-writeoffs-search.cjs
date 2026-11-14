@@ -88,60 +88,21 @@ let dbg;
   assert.equal(await a.getByLabel("Find a serial number").count(), 0);
   ok("a shop that said no to both questions sees no Returns page, no return or serial fields, no serial search");
 
-  // 2. Write-offs and corrections
+  // 2. No write-offs: stock only comes in through deliveries (and goes out on orders).
   await go("/stock/receive");
   await pick(a, "Product", "Rice 50kg");
   await vis(a.getByLabel("Quantity")).fill("20");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
   await go("/stock");
-  await a.getByRole("link", { name: "Write off / correct" }).click();
-  await a.waitForURL(/\/stock\/adjust$/);
-  await pick(a, "Product", "Rice 50kg");
-  await a.getByText("20 bag in stock here.").waitFor();
-  await vis(a.getByLabel("Reason")).selectOption({ label: "Damaged" });
-  await vis(a.getByLabel("Quantity")).fill("50");
-  await vis(a.getByRole("button", { name: "Take out of stock" })).click();
-  await a.getByText("Only 20 of Rice 50kg is in stock here, so 50 cannot be taken out.").waitFor();
-  await vis(a.getByLabel("Quantity")).fill("3");
-  await vis(a.getByLabel("Note (optional)")).fill("Rain got in");
-  await a.screenshot({ path: `${SHOTS}/81-write-off.png`, fullPage: true });
-  await vis(a.getByRole("button", { name: "Take out of stock" })).click();
-  await a.waitForURL(/\/stock\/adjust\?saved=1/);
-  await a.getByText("Stock updated.").waitFor();
-  const recent = a.locator("section", { hasText: "Recent changes" });
-  await recent.getByText("Rice 50kg: Damaged").waitFor();
-  await recent.getByText("−3 bag").waitFor();
-
-  // Adding back: "found" needs no note, a count correction does.
-  await a.getByText("+ Add", { exact: true }).click();
-  await pick(a, "Product", "Rice 50kg");
-  await vis(a.getByLabel("Reason")).selectOption({ label: "The count was wrong" });
-  await vis(a.getByLabel("Quantity")).fill("2");
-  assert.equal(await vis(a.getByLabel("Why is the count being corrected?")).getAttribute("required"), "");
-  await vis(a.getByLabel("Reason")).selectOption({ label: "Found stock" });
-  await vis(a.getByRole("button", { name: "Add to stock" })).click();
-  await a.waitForURL(/\/stock\/adjust\?saved=1/);
-  await recent.getByText("+2 bag").waitFor();
-  await go("/stock");
-  await a.locator("li", { hasText: "Rice 50kg" }).getByText("19", { exact: true }).waitFor();
-  ok("stock is written off with a reason, can't go below what is there, and found stock is added back");
-
-  // Voiding the damaged write-off puts the 3 bags back.
-  await go("/stock/adjust");
-  const damaged = recent.locator("li", { hasText: "Rice 50kg: Damaged" });
-  await damaged.getByText("Void this change").click();
-  await damaged.getByLabel("Reason").fill("Bags were fine after drying");
-  await damaged.getByRole("button", { name: "Void change" }).click();
-  await damaged.getByText("Voided", { exact: true }).waitFor();
-  await go("/stock");
-  await a.locator("li", { hasText: "Rice 50kg" }).getByText("22", { exact: true }).waitFor();
+  await a.locator("li", { hasText: "Rice 50kg" }).getByText("20", { exact: true }).waitFor();
+  assert.equal(await a.getByRole("link", { name: "Write off / correct" }).count(), 0);
+  const gone = await a.goto(BASE + base + "/stock/adjust");
+  assert.equal(gone.status(), 404);
   await go("/reports/daily");
   const riceRow = a.locator("section", { hasText: "Stock" }).first().locator("tr", { hasText: "Rice 50kg" });
-  assert.deepEqual((await riceRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "20", "0", "+2", "22"]);
-  await go("/activity");
-  await a.locator("li", { hasText: "Voided a stock adjustment" }).waitFor();
-  ok("voiding a write-off restores the stock; the daily report and activity log show the changes");
+  assert.deepEqual((await riceRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "20", "0", "20"]);
+  ok("there is no write-off screen; stock comes in through deliveries and the report has no write-off column");
 
   // 3. Search and paging, with enough customers to need a second page.
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
@@ -226,31 +187,13 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
 
-  await go("/stock/adjust");
-  await pick(a, "Product", "Infinix Hot 40");
-  await vis(a.getByLabel("Reason")).selectOption({ label: "Lost or stolen" });
-  await a.getByText("Serial number of each phone taken out (0 chosen)").waitFor();
-  await a.locator("label", { hasText: "861234560000022" }).click();
-  await vis(a.getByRole("button", { name: "Take out of stock" })).click();
-  await a.waitForURL(/\/stock\/adjust\?saved=1/);
-  await recent.getByText("861234560000022").waitFor();
-  // Serial-numbered stock only comes in through a delivery.
-  await a.getByText("+ Add", { exact: true }).click();
-  const box = a.getByRole("combobox", { name: "Product", exact: true });
-  await box.click();
-  await box.fill("Infinix");
-  assert.equal(await a.getByRole("option", { name: /Infinix Hot 40/ }).getAttribute("aria-disabled"), "true");
-  await go("/stock/serials?q=0000022");
-  const unit = a.locator("section", { hasText: "861234560000022" });
-  await unit.getByText("Written off", { exact: true }).first().waitFor();
-  await unit.getByText("Lost or stolen").waitFor();
   await go("/settings");
   await features.getByLabel("I also sell some items with serial numbers").uncheck();
   await features.getByRole("button", { name: "Save" }).click();
   await features
     .getByText("Serial numbers cannot be switched off while Infinix Hot 40 is tracked by serial number.", { exact: false })
     .waitFor();
-  ok("serial numbers can be switched on later; a lost phone is written off by its serial and shows so in the lookup");
+  ok("serial numbers can be switched on later, and cannot be switched off while a product uses them");
 
   // 5. Forgot password
   await vis(a.getByRole("button", { name: "Log out" })).click();

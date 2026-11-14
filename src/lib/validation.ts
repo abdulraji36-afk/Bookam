@@ -160,21 +160,6 @@ export const orderSchema = z
     message: "Choose a customer, or tick Walk-in buyer."
   });
 
-export const stockAdjustmentSchema = z.object({
-  locationId: z.uuid("Choose a location."),
-  adjustmentDate: z.iso.date("Enter the date."),
-  productId: z.uuid("Choose a product."),
-  direction: z.enum(["add", "subtract"], "Choose whether to take stock out or add it."),
-  reason: z.enum(["damaged", "expired", "lost_or_stolen", "count_correction", "found"], "Choose a reason."),
-  quantity: z
-    .number("Enter a quantity.")
-    .positive("Enter a quantity greater than zero.")
-    .max(9_999_999, "That quantity is too large.")
-    .optional(),
-  unitIds: z.array(z.uuid()).max(500, "Choose up to 500 units at a time."),
-  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
-});
-
 /** "" means not given; "1,200" means 1200. Anything else unreadable becomes NaN and fails validation. */
 export function readQuantity(value: string | undefined) {
   const text = (value ?? "").trim();

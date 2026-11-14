@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { categoryOrder, formatDate, formatQuantity } from "@/lib/format";
-import { canManage, requireOrg } from "@/lib/org";
+import { requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
 
 export const metadata: Metadata = { title: "Stock" };
 
 async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug);
   const base = `/b/${org.slug}/stock`;
 
   const { data: locationData } = await supabase
@@ -84,11 +84,6 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
           Stock
         </PageTitle>
         <div className="flex flex-wrap gap-2">
-          {canManage(role) ? (
-            <Link href={`${base}/adjust`} className={buttonClass("secondary")}>
-              Write off / correct
-            </Link>
-          ) : null}
           <Link href={`${base}/receive`} className={buttonClass("primary")}>
             + Receive stock
           </Link>
