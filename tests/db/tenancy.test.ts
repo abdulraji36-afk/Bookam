@@ -52,7 +52,8 @@ const TENANT_TABLES = [
   "stock_adjustments",
   "dispatch_workers",
   "dispatch_trip_loaders",
-  "stock_receipt_item_costs"
+  "stock_receipt_item_costs",
+  "stock_receipt_corrections"
 ];
 
 describe("tenant isolation", () => {
@@ -83,7 +84,13 @@ describe("tenant isolation", () => {
       });
       const customer = await saveCustomer(db, owner, org.id, { name: "Mama Tunde Stores" });
       await saveProduct(db, owner, org.id, { id: product, name: "Cola 50cl", sellingPrice: 4200, costPrice: 3000, returnItem: "Empty crate" });
-      await receiveStock(db, owner, org.id, [{ product_id: product, quantity: 10 }]);
+      const delivery = await receiveStock(db, owner, org.id, [{ product_id: product, quantity: 10 }]);
+      await call(
+        db,
+        owner,
+        `select public.correct_stock_receipt($1, public_today(), null, null, null, $2::jsonb, 'Recounted after offloading')`,
+        [delivery.id, JSON.stringify([{ product_id: product, quantity: 11 }])]
+      );
       const order = await createOrder(db, owner, org.id, customer, [{ product_id: product, quantity: 2 }]);
       const trip = await createTrip(db, owner, org.id, [order.id]);
       const loader = (

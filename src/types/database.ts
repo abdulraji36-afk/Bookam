@@ -266,8 +266,6 @@ export type Database = {
           phone: string | null;
           area: string | null;
           address: string | null;
-          customer_type: "Retailer" | "Wholesaler" | "Distributor" | null;
-          buys: "both" | "rgb" | "pet";
           is_active: boolean;
           created_by: string | null;
           created_at: string;
@@ -276,6 +274,37 @@ export type Database = {
         Insert: never;
         Update: never;
         Relationships: [];
+      };
+      stock_receipt_corrections: {
+        Row: {
+          id: string;
+          organization_id: string;
+          receipt_id: string;
+          product_id: string;
+          old_quantity: number;
+          new_quantity: number;
+          reason: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "stock_receipt_corrections_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_receipt_corrections_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       stock_receipt_item_costs: {
         Row: {
@@ -932,12 +961,22 @@ export type Database = {
           p_phone: string | null;
           p_area: string | null;
           p_address: string | null;
-          p_customer_type?: string | null;
-          p_buys?: "both" | "rgb" | "pet" | null;
         };
         Returns: string;
       };
       set_receipt_item_cost: { Args: { p_receipt_item_id: string; p_unit_cost: number }; Returns: undefined };
+      correct_stock_receipt: {
+        Args: {
+          p_receipt_id: string;
+          p_received_date: string;
+          p_supplier_name: string | null;
+          p_reference: string | null;
+          p_note: string | null;
+          p_items: Json;
+          p_reason: string;
+        };
+        Returns: undefined;
+      };
       set_customer_active: {
         Args: { p_customer_id: string; p_is_active: boolean };
         Returns: undefined;

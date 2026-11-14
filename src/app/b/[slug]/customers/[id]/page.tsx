@@ -14,7 +14,7 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
 
   const { data: customer } = await supabase
     .from("customers")
-    .select("id, name, phone, area, address, customer_type, buys")
+    .select("id, name, phone, area, address")
     .eq("organization_id", org.id)
     .eq("id", id)
     .maybeSingle();
@@ -30,11 +30,8 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
             name: customer.name,
             phone: customer.phone ?? "",
             area: customer.area ?? "",
-            address: customer.address ?? "",
-            customerType: customer.customer_type ?? "",
-            buys: customer.buys
+            address: customer.address ?? ""
           }}
-          drinks={org.sells_drinks}
         />
       </Card>
     </div>

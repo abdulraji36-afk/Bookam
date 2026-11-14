@@ -3,13 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { voidStockReceiptAction } from "@/app/actions/corrections";
-import { setReceiptItemCostAction } from "@/app/actions/stock";
-import { ReceiptCostForm } from "@/components/stock/receipt-cost-form";
 import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { describeUnit, formatDate, formatQuantity } from "@/lib/format";
+import { describeUnit, formatDate, formatMoney, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Stock receipt" };
@@ -41,6 +39,13 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
     : { data: [] };
   const costByItem = new Map((costRows ?? []).map((row) => [row.receipt_item_id, Number(row.unit_cost)]));
 
+  // Changes made after offloading, newest first.
+  const { data: corrections } = await supabase
+    .from("stock_receipt_corrections")
+    .select("id, old_quantity, new_quantity, reason, created_at, products (name, unit), profiles (full_name)")
+    .eq("receipt_id", receipt.id)
+    .order("created_at", { ascending: false });
+
   // Empties the supplier took away with this delivery, if any.
   const { data: exchange } = await supabase
     .from("supplier_exchanges")
@@ -65,6 +70,9 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
 
   return (
     <div className="max-w-3xl space-y-6">
+      {query.corrected === "1" && !receipt.voided_at ? (
+        <Alert tone="success">Correction saved. Stock and the reports have been updated.</Alert>
+      ) : null}
       {query.saved === "1" && !receipt.voided_at ? (
         <Alert tone="success">Saved. The stock below has been added.</Alert>
       ) : null}
@@ -96,12 +104,10 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
                 <span className="text-xl font-extrabold tabular-nums">+{formatQuantity(Number(item.quantity))}</span>{" "}
                 <span className="font-medium text-ink-soft">{item.products?.unit}</span>
               </span>
-              {manager && !receipt.voided_at ? (
-                <ReceiptCostForm
-                  action={setReceiptItemCostAction.bind(null, org.slug, item.id)}
-                  cost={costByItem.get(item.id) ?? null}
-                  label={`Buying cost per ${item.products?.unit ?? "unit"} (${org.currency_code})`}
-                />
+              {manager && costByItem.has(item.id) ? (
+                <span className="basis-full text-sm font-medium text-ink-soft">
+                  Bought at {formatMoney(costByItem.get(item.id)!, org.currency_code)} per {item.products?.unit}
+                </span>
               ) : null}
               {receipt.product_units.some((unit) => unit.product_id === item.product_id) ? (
                 <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
@@ -120,10 +126,36 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
         </ul>
       </Card>
 
+      {(corrections ?? []).length > 0 ? (
+        <Card>
+          <CardHeader title="Corrections" />
+          <ul className="-my-3 divide-y divide-line">
+            {(corrections ?? []).map((change) => (
+              <li key={change.id} className="py-3">
+                <p className="font-extrabold">
+                  {change.products?.name}: {formatQuantity(Number(change.old_quantity))} →{" "}
+                  {formatQuantity(Number(change.new_quantity))} {change.products?.unit}
+                </p>
+                <p className="text-sm font-medium text-ink-soft">
+                  {[change.reason, change.profiles?.full_name, formatDate(change.created_at, org.timezone)]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <div className="flex flex-wrap gap-3">
         <Link href={`/b/${org.slug}/stock`} className={buttonClass("secondary")}>
           Back to stock
         </Link>
+        {manager && !receipt.voided_at && receipt.product_units.length === 0 ? (
+          <Link href={`/b/${org.slug}/stock/receipts/${receipt.id}/correct`} className={buttonClass("secondary")}>
+            Correct this delivery
+          </Link>
+        ) : null}
         <Link href={`/b/${org.slug}/stock/receive`} className={buttonClass("primary")}>
           + Receive more
         </Link>

@@ -136,8 +136,21 @@ let dbg;
   await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}\?saved=1/);
   await a.getByText(/^250 \(EXC-\d{8}-0001\)$/).waitFor();
   await a.getByText("NBC-7781").waitFor();
-  // Each delivery line keeps its buying cost, which owners can correct.
-  assert.equal(await vis(a.getByLabel("Buying cost per crate (NGN)")).inputValue(), "3900");
+  // Each delivery line keeps its buying cost.
+  await a.getByText("Bought at ₦3,900 per crate").waitFor();
+
+  // After offloading: 12 crates broken, handed back to NBC. Correct the delivery.
+  await vis(a.getByRole("link", { name: "Correct this delivery" })).click();
+  await a.waitForURL(/\/correct$/);
+  // Lines are in name order: Coca-Cola 50cl PET, then Coca-Cola 50cl RGB.
+  assert.equal(await vis(a.getByLabel("Quantity")).nth(1).inputValue(), "500");
+  await vis(a.getByLabel("Quantity")).nth(1).fill("488");
+  await vis(a.getByLabel("Reason for the correction")).fill("12 crates broken, handed back to NBC");
+  await a.screenshot({ path: `${SHOTS}/98-correct-delivery.png`, fullPage: true });
+  await vis(a.getByRole("button", { name: "Save correction" })).click();
+  await a.waitForURL(/\?corrected=1/);
+  await a.getByText("Correction saved. Stock and the reports have been updated.").waitFor();
+  await a.locator("section", { hasText: "Corrections" }).getByText("Coca-Cola 50cl RGB: 500 → 488 crate").waitFor();
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("250", { exact: true }).waitFor();
   ok("an NBC delivery records the empties taken in the same go, and only 250 come off");
@@ -151,7 +164,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.getByText("You only have 250 Empties in store here, so 300 cannot be taken.", { exact: false }).waitFor();
   await go("/stock");
-  await a.locator("li", { hasText: "Coca-Cola 50cl RGB" }).getByText("500", { exact: true }).waitFor();
+  await a.locator("li", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
   // A drinks depot sees its stock by category, RGB first.
   const headings = await a.locator("main section h2").allInnerTexts();
   assert.deepEqual(headings.slice(0, 3), ["RGB", "PET", "Juice"]);
@@ -181,24 +194,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.getByText(`Mama Tunde Stores already has order ${firstOrderNo} with RGB crates waiting for dispatch.`, { exact: false }).waitFor();
 
-  // A customer who buys PET only cannot be sold RGB.
-  await go("/customers/new");
-  await vis(a.getByLabel("Customer name")).fill("Grace Canteen");
-  await vis(a.getByLabel("Customer type (optional)")).selectOption("Retailer");
-  await vis(a.getByLabel("Buys")).selectOption({ label: "PET only" });
-  await vis(a.getByRole("button", { name: "Save customer" })).click();
-  await a.waitForURL(new RegExp(base + "/customers$"));
-  await a.locator("li", { hasText: "Grace Canteen" }).getByText(/Retailer · PET only/).waitFor();
-  await go("/orders/new");
-  await pick(a, "Customer", "Grace Canteen");
-  const productBox = vis(a.getByRole("combobox", { name: "Product", exact: true }));
-  await productBox.click();
-  await productBox.fill("Coca-Cola 50cl RGB");
-  const rgbOption = a.getByRole("option", { name: /Coca-Cola 50cl RGB/ });
-  assert.equal(await rgbOption.getAttribute("aria-disabled"), "true");
-  await rgbOption.getByText("This customer buys PET only").waitFor();
-  await productBox.press("Escape");
-  ok("Bilikis rules: delivery costs kept, one waiting RGB order per customer, PET-only customers");
+  ok("Bilikis rules: a delivery corrected after offloading, and one waiting RGB order per customer");
 
   await go("/dispatch");
   await a.getByRole("link", { name: "Drivers and loaders" }).click();
@@ -247,9 +243,9 @@ let dbg;
   await a.screenshot({ path: `${SHOTS}/94-empties-page.png`, fullPage: true });
   ok("a customer bringing back owed empties later settles the shortage and adds to the store");
 
-  // Stock value at cost: 450 RGB at 3,900 and 35 PET at 2,700.
+  // Stock value at cost: 438 RGB at 3,900 and 35 PET at 2,700.
   await go("/reports/stock-value");
-  await a.getByText("₦1,849,500").first().waitFor();
+  await a.getByText("₦1,802,700").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/96-stock-value.png`, fullPage: true });
 
   // Daily report, the Bilikis way

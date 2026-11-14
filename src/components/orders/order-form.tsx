@@ -28,8 +28,7 @@ type Line = { key: number; productId: string; quantity: string; unitIds: Set<str
 
 type Props = {
   action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
-  /** buys: a drinks customer may take RGB only or PET only. */
-  customers: { id: string; name: string; area: string | null; buys?: "both" | "rgb" | "pet" }[];
+  customers: { id: string; name: string; area: string | null }[];
   products: OrderFormProduct[];
   locations: { id: string; name: string }[];
   /** Stock on hand: location id -> product id -> quantity. */
@@ -74,7 +73,6 @@ export function OrderForm({
   const [locationId, setLocationId] = useState(editing?.locationId ?? locations[0]?.id ?? "");
   // With no saved customers yet, every sale is to a walk-in buyer.
   const [customerId, setCustomerId] = useState(editing?.customerId ?? "");
-  const buys = customerBuys(customers.find((customer) => customer.id === customerId)?.buys);
   const [walkIn, setWalkIn] = useState(editing ? editing.customerId === null : customers.length === 0);
   // A shop that sells serial-numbered items, or does not deliver, mostly sells
   // over the counter; a depot mostly sends orders out on a trip.
@@ -162,10 +160,7 @@ export function OrderForm({
               options={customers.map((customer) => ({
                 value: customer.id,
                 label: customer.name,
-                detail:
-                  [customer.area, customer.buys && customer.buys !== "both" ? `${customer.buys.toUpperCase()} only` : null]
-                    .filter(Boolean)
-                    .join(" · ") || undefined
+                detail: customer.area ?? undefined
               }))}
             />
           )}
@@ -230,15 +225,9 @@ export function OrderForm({
                     detail:
                       option.price === null
                         ? "No price set yet"
-                        : !walkIn && buys !== "both" && option.returnable !== (buys === "rgb")
-                          ? `This customer buys ${buys.toUpperCase()} only`
-                          : `${formatMoney(option.price, currency)} · ${formatQuantity(available(option.id))} in stock`,
-                    // A walk-in buyer cannot take something that must be brought back, and a
-                    // drinks customer may buy RGB only or PET only.
-                    disabled:
-                      option.price === null ||
-                      (walkIn && option.returnable) ||
-                      (!walkIn && buys !== "both" && option.returnable !== (buys === "rgb"))
+                        : `${formatMoney(option.price, currency)} · ${formatQuantity(available(option.id))} in stock`,
+                    // A walk-in buyer cannot take something that must be brought back.
+                    disabled: option.price === null || (walkIn && option.returnable)
                   }))}
                 />
                 </div>
@@ -359,7 +348,3 @@ export function OrderForm({
   );
 }
 
-/** What a chosen customer may buy: both unless set to RGB only or PET only. */
-function customerBuys(buys: "both" | "rgb" | "pet" | undefined) {
-  return buys ?? "both";
-}

@@ -23,7 +23,7 @@ export async function getOrderFormData(supabase: ServerClient, organizationId: s
   const [customers, products, locations, levels, unitRows] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, name, area, buys")
+      .select("id, name, area")
       .eq("organization_id", organizationId)
       .eq("is_active", true)
       .order("name"),

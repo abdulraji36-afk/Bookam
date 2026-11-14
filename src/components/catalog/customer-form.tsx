@@ -1,19 +1,17 @@
 "use client";
 
 import { FormMessage } from "@/components/ui/alert";
-import { SelectField, TextField } from "@/components/ui/field";
+import { TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
 
 type Props = {
   action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
-  defaults?: { name: string; phone: string; area: string; address: string; customerType?: string; buys?: string };
-  /** A drinks business also records the customer's type and whether they buy RGB, PET or both. */
-  drinks?: boolean;
+  defaults?: { name: string; phone: string; area: string; address: string };
 };
 
-export function CustomerForm({ action, defaults, drinks }: Props) {
+export function CustomerForm({ action, defaults }: Props) {
   const { state, pending, form } = useFormAction(action);
 
   return (
@@ -37,21 +35,6 @@ export function CustomerForm({ action, defaults, drinks }: Props) {
         />
       </div>
       <TextField label="Address (optional)" name="address" defaultValue={defaults?.address} maxLength={200} />
-      {drinks ? (
-        <div className="grid gap-5 sm:grid-cols-2">
-          <SelectField label="Customer type (optional)" name="customerType" defaultValue={defaults?.customerType ?? ""}>
-            <option value="">Not set</option>
-            <option value="Retailer">Retailer</option>
-            <option value="Wholesaler">Wholesaler</option>
-            <option value="Distributor">Distributor</option>
-          </SelectField>
-          <SelectField label="Buys" name="buys" defaultValue={defaults?.buys ?? "both"}>
-            <option value="both">RGB and PET</option>
-            <option value="rgb">RGB only</option>
-            <option value="pet">PET only</option>
-          </SelectField>
-        </div>
-      ) : null}
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel="Saving…">
         Save customer

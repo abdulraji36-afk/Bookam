@@ -127,6 +127,14 @@ These are what keep one business's data away from another's.
    back. Staff record customers bringing back empties they owe
    (`record_customer_empties_return`), never more than they owe.
 
+14. A delivery can be corrected after the fact by an owner or admin
+   (`correct_stock_receipt`), as in Bilikis: date, supplier, reference,
+   note, and its products (add, remove, change quantities and costs). Its
+   stock movements are deleted and written again at the delivery's date,
+   so stock on hand and every daily report recalculate from the ledger.
+   It is refused if any product would go below zero, and each changed
+   quantity is kept in `stock_receipt_corrections` with the reason.
+
 ## Telegram notifications
 
 One bot serves every business; each business links its own group from its
@@ -197,5 +205,6 @@ version of the app, so the database can always go first.
 | 9 | Two kinds of business: shops that count goods and shops that sell by serial number, each with its own words, menu and defaults; delivery as its own choice | Done |
 | 10 | Drinks, the Bilikis way: one Empties pool, each drink RGB or PET, price and cost required, opening empties as an adjustment, empties given to the supplier on the delivery itself, empty shortages and customers bringing empties back | Done |
 | 11 | Running a drinks depot like Bilikis: drink categories (RGB, PET, Juice, Energy, Can, Water), stock by category, stock value at cost, a drivers and loaders list chosen per trip, the NBC product list to add from, and a daily report with deliveries, empties in and out, and empty shortages | Done |
-| 12 | Bilikis rules for drinks: whole crates and empties, customer type and RGB/PET/both, one waiting RGB order per customer, 10-character reasons, buying cost kept per delivery with stock valued at the average, truck required on trips | Done |
+| 12 | Bilikis rules for drinks: whole crates and empties, one waiting RGB order per customer, 10-character reasons, buying cost kept per delivery with stock valued at the average, truck required on trips | Done |
+| 13 | One simple customer form for everyone; correcting a delivery after the fact (date, supplier, reference, products and numbers), as in Bilikis | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

@@ -187,3 +187,57 @@ export async function setReceiptItemCostAction(
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Cost saved." };
 }
+
+/**
+ * Owners and admins correct a delivery after the fact, as in Bilikis: date,
+ * supplier, reference, note and its products. The database rewrites its stock
+ * lines at the delivery date and refuses anything that leaves stock below zero.
+ */
+export async function correctStockReceiptAction(
+  slug: string,
+  receiptId: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  if (!z.uuid().safeParse(receiptId).success) return { ok: false, message: "Delivery not found." };
+
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (reason.length < 10) return { ok: false, message: "Give a reason of at least 10 characters." };
+  const receivedDate = String(formData.get("receivedDate") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(receivedDate)) return { ok: false, message: "Enter the date the stock arrived." };
+
+  const productIds = formData.getAll("productId").map(String);
+  const quantities = formData.getAll("quantity").map(String);
+  const costs = formData.getAll("unitCost").map(String);
+  const items = [];
+  for (let index = 0; index < productIds.length; index++) {
+    if (!productIds[index] && !quantities[index]?.trim()) continue;
+    if (!z.uuid().safeParse(productIds[index]).success) return { ok: false, message: `Choose the product on line ${index + 1}.` };
+    const quantity = readQuantity(quantities[index] ?? "");
+    if (quantity === undefined || quantity <= 0) {
+      return { ok: false, message: `Enter a quantity greater than zero on line ${index + 1}.` };
+    }
+    const costText = (costs[index] ?? "").trim();
+    const unitCost = costText === "" ? null : readQuantity(costText);
+    if (unitCost === undefined || (unitCost !== null && unitCost < 0)) {
+      return { ok: false, message: `Enter a cost of zero or more on line ${index + 1}, or leave it empty.` };
+    }
+    items.push({ product_id: productIds[index], quantity, unit_cost: unitCost });
+  }
+  if (items.length === 0) return { ok: false, message: "A delivery needs at least one product. To cancel it, void it instead." };
+
+  const { error } = await supabase.rpc("correct_stock_receipt", {
+    p_receipt_id: receiptId,
+    p_received_date: receivedDate,
+    p_supplier_name: String(formData.get("supplierName") ?? "") || null,
+    p_reference: String(formData.get("reference") ?? "") || null,
+    p_note: String(formData.get("note") ?? "") || null,
+    p_items: items,
+    p_reason: reason
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  revalidatePath(`/b/${slug}`, "layout");
+  redirect(`/b/${slug}/stock/receipts/${receiptId}?corrected=1`);
+}
