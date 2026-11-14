@@ -19,7 +19,7 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
   const { data: receipt } = await supabase
     .from("stock_receipts")
     .select(
-      "id, receipt_no, received_date, supplier_name, reference, note, voided_at, void_reason, locations (name), profiles!stock_receipts_created_by_fkey (full_name), stock_receipt_items (id, product_id, quantity, products (name, unit)), product_units (id, product_id, serial_no, colour, condition)"
+      "id, receipt_no, received_date, supplier_name, reference, note, voided_at, void_reason, locations (name), profiles!stock_receipts_created_by_fkey (full_name), stock_receipt_items (id, product_id, quantity, products (name, unit)), product_units (id, product_id, serial_no, colour)"
     )
     .eq("organization_id", org.id)
     .eq("id", id)

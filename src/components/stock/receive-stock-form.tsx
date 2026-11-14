@@ -7,9 +7,7 @@ import { SelectField, TextField } from "@/components/ui/field";
 import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
-import { CONDITION_LABELS } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
-import type { UnitCondition } from "@/types/database";
 
 export type ReceiveProduct = {
   id: string;
@@ -27,7 +25,7 @@ type Props = {
   today: string;
 };
 
-type Unit = { key: number; serial: string; colour: string; condition: UnitCondition };
+type Unit = { key: number; serial: string; colour: string };
 type Line = { key: number; productId: string; units: Unit[] };
 
 export function ReceiveStockForm({ action, products, locations, today }: Props) {
@@ -41,8 +39,7 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
   const newUnit = (from?: Unit): Unit => ({
     key: nextKey.current++,
     serial: "",
-    colour: from?.colour ?? "",
-    condition: from?.condition ?? "brand_new"
+    colour: from?.colour ?? ""
   });
 
   const updateLine = (key: number, change: (line: Line) => Line) =>
@@ -156,7 +153,7 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
                     return (
                       <div
                         key={unit.key}
-                        className="grid grid-cols-2 items-end gap-2 border-b border-line pb-3 last:border-0 last:pb-0 sm:grid-cols-[1.4fr_1fr_1fr_auto] sm:border-0 sm:pb-0"
+                        className="grid grid-cols-2 items-end gap-2 border-b border-line pb-3 last:border-0 last:pb-0 sm:grid-cols-[1.6fr_1fr_auto] sm:border-0 sm:pb-0"
                       >
                         <input type="hidden" name="unitLine" value={line.key} />
                         <div className="col-span-2 sm:col-span-1">
@@ -193,18 +190,6 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
                           autoComplete="off"
                           onChange={(event) => set({ colour: event.currentTarget.value })}
                         />
-                        <SelectField
-                          label="Condition"
-                          name="condition"
-                          value={unit.condition}
-                          onChange={(event) => set({ condition: event.currentTarget.value as UnitCondition })}
-                        >
-                          {Object.entries(CONDITION_LABELS).map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </SelectField>
                         <Button
                           type="button"
                           variant="ghost"

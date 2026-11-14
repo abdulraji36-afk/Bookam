@@ -117,7 +117,7 @@ export function ProductForm({ action, currency, returnables, defaults }: Props) 
           name="tracksSerials"
           checked={tracksSerials}
           onChange={(event) => setTracksSerials(event.currentTarget.checked)}
-          hint="For phones, laptops and anything with a serial or IMEI. Each unit is entered when stock arrives, with its colour and condition, and you choose the exact unit when you sell it."
+          hint="For phones, laptops and anything with a serial or IMEI. Each unit is entered when stock arrives, with its colour, and you choose the exact unit when you sell it. To sell by condition, make a product for each, such as iPhone 15 128GB UK used."
         />
         {tracksSerials ? (
           <TextField

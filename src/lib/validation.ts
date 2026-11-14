@@ -82,8 +82,6 @@ export const customerSchema = z.object({
   address: z.string().trim().max(200, "Use at most 200 characters for the address.")
 });
 
-export const UNIT_CONDITIONS = ["brand_new", "uk_used", "nigerian_used"] as const;
-
 const lineQuantity = z
   .number("Enter a quantity on every line.")
   .positive("Quantities must be greater than zero.")
@@ -108,8 +106,7 @@ const receiptLine = z
                 .min(3, "Serial numbers must be 3 to 40 characters long.")
                 .max(40, "Serial numbers must be 3 to 40 characters long.")
             ),
-          colour: z.string().trim().max(30, "Colours must be 30 characters or fewer."),
-          condition: z.enum(UNIT_CONDITIONS, "Choose Brand new, UK used or Nigerian used for every unit.")
+          colour: z.string().trim().max(30, "Colours must be 30 characters or fewer.")
         })
       )
       .max(500, "A single receipt can hold up to 500 serial numbers.")

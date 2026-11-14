@@ -131,5 +131,5 @@ version of the app, so the database can always go first.
 | 4 | Returns: trip returns, customer balances, supplier exchange, add/subtract adjustments | Done |
 | 5 | Voids and corrections with reasons, activity log screen, daily report | Done |
 | 6a | Telegram notifications, linked per business | Done |
-| 7 | Serial-numbered products (serial, colour, condition per unit), counter sales, walk-in buyers, serial lookup with warranty | Done |
+| 7 | Serial-numbered products (serial and colour per unit, colour then serial when selling), counter sales, walk-in buyers, serial lookup with warranty | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

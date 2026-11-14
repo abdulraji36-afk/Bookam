@@ -10,7 +10,7 @@ import type { ServerClient } from "@/lib/supabase/server";
 export async function getOrderFormData(supabase: ServerClient, organizationId: string, editingOrderId?: string) {
   let unitQuery = supabase
     .from("product_units")
-    .select("id, product_id, location_id, serial_no, colour, condition")
+    .select("id, product_id, location_id, serial_no, colour")
     .eq("organization_id", organizationId)
     .order("serial_no")
     .limit(5000);
@@ -65,8 +65,7 @@ export async function getOrderFormData(supabase: ServerClient, organizationId: s
     productId: unit.product_id,
     locationId: unit.location_id,
     serial: unit.serial_no,
-    colour: unit.colour,
-    condition: unit.condition
+    colour: unit.colour
   }));
 
   return {

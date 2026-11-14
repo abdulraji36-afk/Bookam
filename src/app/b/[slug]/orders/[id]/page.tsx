@@ -24,7 +24,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
     supabase
       .from("orders")
       .select(
-        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, buyer_name, buyer_phone, handed_over_at, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, product_id, quantity, unit_price, line_total, products (name, unit), returnable_items (name)), product_units (id, product_id, serial_no, colour, condition)"
+        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, buyer_name, buyer_phone, handed_over_at, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, product_id, quantity, unit_price, line_total, products (name, unit), returnable_items (name)), product_units (id, product_id, serial_no, colour)"
       )
       .eq("organization_id", org.id)
       .eq("id", id)

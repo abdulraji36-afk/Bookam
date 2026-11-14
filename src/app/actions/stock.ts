@@ -16,11 +16,11 @@ export async function recordStockReceiptAction(
   const { supabase, org } = await requireOrg(slug);
 
   // Each line sends lineKey, productId, quantity and tracked, in step. Each
-  // serial-numbered unit sends unitLine, serial, colour and condition, in step,
+  // serial-numbered unit sends unitLine, serial and colour, in step,
   // with unitLine naming the line it belongs to.
   const field = (name: string) => formData.getAll(name).map(String);
   const [lineKeys, productIds, quantities, tracked] = ["lineKey", "productId", "quantity", "tracked"].map(field);
-  const [unitLines, serials, colours, conditions] = ["unitLine", "serial", "colour", "condition"].map(field);
+  const [unitLines, serials, colours] = ["unitLine", "serial", "colour"].map(field);
 
   const items = lineKeys
     .map((key, index) => ({
@@ -30,7 +30,7 @@ export async function recordStockReceiptAction(
       units: unitLines.flatMap((line, unit) =>
         // A trailing empty row (left by a scanner pressing Enter) is ignored.
         line === key && (serials[unit] ?? "").trim() !== ""
-          ? [{ serial: serials[unit], colour: colours[unit] ?? "", condition: conditions[unit] ?? "" }]
+          ? [{ serial: serials[unit], colour: colours[unit] ?? "" }]
           : []
       )
     }))
@@ -59,8 +59,7 @@ export async function recordStockReceiptAction(
             product_id: item.productId,
             units: item.units.map((unit) => ({
               serial: unit.serial,
-              colour: unit.colour || null,
-              condition: unit.condition
+              colour: unit.colour || null
             }))
           }
         : { product_id: item.productId, quantity: item.quantity ?? 0 }

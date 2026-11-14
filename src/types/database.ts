@@ -13,7 +13,6 @@ export type ReturnableMovementType =
   | "supplier_exchange"
   | "adjustment"
   | "opening_debt";
-export type UnitCondition = "brand_new" | "uk_used" | "nigerian_used";
 export type UnitStatus = "in_stock" | "reserved" | "sold";
 export type ReturnableAdjustmentReason =
   | "customer_return"
@@ -592,7 +591,6 @@ export type Database = {
           receipt_id: string;
           serial_no: string;
           colour: string | null;
-          condition: UnitCondition;
           status: UnitStatus;
           order_id: string | null;
           sold_at: string | null;

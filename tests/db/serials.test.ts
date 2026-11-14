@@ -34,15 +34,15 @@ describe("serial-numbered products, counter sales and walk-in buyers", () => {
     Number((await one<{ n: string }>(`select coalesce(sum(qty_in - qty_out), 0)::text as n from public.stock_movements where product_id = $1`, [productId])).n);
   const unitsOf = async (productId: string) =>
     (
-      await db.query<{ serial_no: string; colour: string | null; condition: string; status: string }>(
-        `select serial_no, colour, condition::text, status::text from public.product_units where product_id = $1 order by serial_no`,
+      await db.query<{ serial_no: string; colour: string | null; status: string }>(
+        `select serial_no, colour, status::text from public.product_units where product_id = $1 order by serial_no`,
         [productId]
       )
     ).rows;
   const statusOf = async (orderId: string) =>
     (await one<{ status: string }>(`select status::text from public.orders where id = $1`, [orderId])).status;
-  const phones = (...serials: [string, string?, string?][]) => [
-    { product_id: iphone, units: serials.map(([serial, colour, condition]) => ({ serial, colour, condition })) }
+  const phones = (...serials: [string, string?][]) => [
+    { product_id: iphone, units: serials.map(([serial, colour]) => ({ serial, colour })) }
   ];
 
   beforeAll(async () => {
@@ -70,19 +70,19 @@ describe("serial-numbered products, counter sales and walk-in buyers", () => {
     ]);
   });
 
-  it("stocks a tracked product one unit at a time, with colour and condition", async () => {
+  it("stocks a tracked product one unit at a time, with its colour", async () => {
     const receipt = await receiveStock(
       db,
       staff,
       org.id,
-      phones(["356 789 1012 3451", "Black"], ["3567891012345 2", "Black", "uk_used"], ["356789101234553", "Blue", "nigerian_used"])
+      phones(["356 789 1012 3451", "Black"], ["3567891012345 2", "Black"], ["356789101234553", "Blue"])
     );
     expect(receipt.receipt_no).toMatch(/^STK-/);
     expect(await stockOf(iphone)).toBe(3);
     expect(await unitsOf(iphone)).toEqual([
-      { serial_no: "3567891012345 1".replace(/ /g, ""), colour: "Black", condition: "brand_new", status: "in_stock" },
-      { serial_no: "35678910123452", colour: "Black", condition: "uk_used", status: "in_stock" },
-      { serial_no: "356789101234553", colour: "Blue", condition: "nigerian_used", status: "in_stock" }
+      { serial_no: "35678910123451", colour: "Black", status: "in_stock" },
+      { serial_no: "35678910123452", colour: "Black", status: "in_stock" },
+      { serial_no: "356789101234553", colour: "Blue", status: "in_stock" }
     ]);
     const item = await one<{ quantity: string }>(`select quantity::text from public.stock_receipt_items where receipt_id = $1`, [receipt.id]);
     expect(Number(item.quantity)).toBe(3);
@@ -103,9 +103,9 @@ describe("serial-numbered products, counter sales and walk-in buyers", () => {
     await expect(receiveStock(db, staff, org.id, phones(["35678910123452"]))).rejects.toThrow(
       /35678910123452 is already in your stock/
     );
-    await expect(receiveStock(db, staff, org.id, phones(["SN-2000", "Red", "refurbished"]))).rejects.toThrow(
-      /Brand new, UK used or Nigerian used/
-    );
+    await expect(
+      receiveStock(db, staff, org.id, phones(["SN-2000", "A colour name far longer than thirty letters"]))
+    ).rejects.toThrow(/Colours must be 30 characters or fewer/);
     await expect(
       receiveStock(db, staff, org.id, [{ product_id: charger, units: [{ serial: "CH-1" }] }])
     ).rejects.toThrow(/USB-C charger is not tracked by serial number/);
@@ -196,7 +196,7 @@ describe("serial-numbered products, counter sales and walk-in buyers", () => {
       buyerName: "Walk-in Tunde"
     });
     // Bought back as a trade-in a week later.
-    await receiveStock(db, staff, org.id, phones(["356789101234553", "Blue", "nigerian_used"]));
+    await receiveStock(db, staff, org.id, phones(["356789101234553", "Blue"]));
     const history = await db.query<{ status: string }>(
       `select status::text from public.product_units where serial_no = '356789101234553' order by created_at`
     );

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { CONDITION_LABELS, formatDate, formatQuantity } from "@/lib/format";
+import { formatDate, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
 
@@ -25,7 +25,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
 
   let unitQuery = supabase
     .from("product_units")
-    .select("product_id, colour, condition")
+    .select("product_id, colour")
     .eq("organization_id", org.id)
     .eq("status", "in_stock")
     .limit(10000);
@@ -45,10 +45,10 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const receipts = receiptsResult.data ?? [];
   const hasSerials = (unitsResult.data ?? []).length > 0;
 
-  // For serial-numbered products: how many of each colour and condition.
+  // For serial-numbered products: how many of each colour.
   const breakdown = new Map<string, Map<string, number>>();
   for (const unit of unitsResult.data ?? []) {
-    const label = [unit.colour, CONDITION_LABELS[unit.condition]].filter(Boolean).join(", ");
+    const label = unit.colour ?? "No colour";
     const counts = breakdown.get(unit.product_id) ?? new Map<string, number>();
     counts.set(label, (counts.get(label) ?? 0) + 1);
     breakdown.set(unit.product_id, counts);

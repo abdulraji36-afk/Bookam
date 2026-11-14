@@ -207,7 +207,7 @@ export async function receiveStock(
   organizationId: string,
   items: (
     | { product_id: string; quantity: number }
-    | { product_id: string; units: { serial: string; colour?: string | null; condition?: string }[] }
+    | { product_id: string; units: { serial: string; colour?: string | null }[] }
   )[],
   options: { locationId?: string; date?: string } = {}
 ) {

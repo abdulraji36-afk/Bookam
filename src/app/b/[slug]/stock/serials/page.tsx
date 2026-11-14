@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { CONDITION_LABELS, formatDate, formatDay, UNIT_STATUS_LABELS } from "@/lib/format";
+import { formatDate, formatDay, UNIT_STATUS_LABELS } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 
@@ -35,7 +35,7 @@ async function Serials({ params, searchParams }: PageProps<"/b/[slug]/stock/seri
       ? await supabase
           .from("product_units")
           .select(
-            "id, serial_no, colour, condition, status, sold_at, created_at, products (name, warranty_months), locations (name), stock_receipts (id, receipt_no, received_date, supplier_name), orders (id, order_no, order_date, buyer_name, buyer_phone, customers (name, phone))"
+            "id, serial_no, colour, status, sold_at, created_at, products (name, warranty_months), locations (name), stock_receipts (id, receipt_no, received_date, supplier_name), orders (id, order_no, order_date, buyer_name, buyer_phone, customers (name, phone))"
           )
           .eq("organization_id", org.id)
           .ilike("serial_no", `%${q}%`)
@@ -95,9 +95,9 @@ async function Serials({ params, searchParams }: PageProps<"/b/[slug]/stock/seri
                 <dt className="text-sm font-bold uppercase tracking-wide text-ink-soft">Product</dt>
                 <dd className="font-semibold">
                   {unit.products?.name}
-                  <span className="block text-sm font-medium text-ink-soft">
-                    {[unit.colour, CONDITION_LABELS[unit.condition]].filter(Boolean).join(" · ")}
-                  </span>
+                  {unit.colour ? (
+                    <span className="block text-sm font-medium text-ink-soft">{unit.colour}</span>
+                  ) : null}
                 </dd>
               </div>
               <div>
