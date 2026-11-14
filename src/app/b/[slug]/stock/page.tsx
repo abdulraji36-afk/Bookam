@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDate, formatQuantity } from "@/lib/format";
+import { CONDITION_LABELS, formatDate, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
 
@@ -23,7 +23,15 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const locations = locationData ?? [];
   const selected = locations.find((location) => location.id === query.location) ?? null;
 
-  const [rows, receiptsResult] = await Promise.all([
+  let unitQuery = supabase
+    .from("product_units")
+    .select("product_id, colour, condition")
+    .eq("organization_id", org.id)
+    .eq("status", "in_stock")
+    .limit(10000);
+  if (selected) unitQuery = unitQuery.eq("location_id", selected.id);
+
+  const [rows, receiptsResult, unitsResult] = await Promise.all([
     getStockRows(supabase, org.id, selected?.id ?? null),
     supabase
       .from("stock_receipts")
@@ -31,9 +39,20 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
       .eq("organization_id", org.id)
       .order("received_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(10)
+      .limit(10),
+    unitQuery
   ]);
   const receipts = receiptsResult.data ?? [];
+  const hasSerials = (unitsResult.data ?? []).length > 0;
+
+  // For serial-numbered products: how many of each colour and condition.
+  const breakdown = new Map<string, Map<string, number>>();
+  for (const unit of unitsResult.data ?? []) {
+    const label = [unit.colour, CONDITION_LABELS[unit.condition]].filter(Boolean).join(", ");
+    const counts = breakdown.get(unit.product_id) ?? new Map<string, number>();
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+    breakdown.set(unit.product_id, counts);
+  }
   const lowCount = rows.filter((row) => row.isLow).length;
 
   return (
@@ -52,6 +71,24 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
           + Receive stock
         </Link>
       </div>
+
+      {hasSerials ? (
+        <form method="get" action={`${base}/serials`} className="flex flex-wrap items-end gap-2" role="search">
+          <label className="min-w-0 flex-1 text-sm font-bold">
+            Find a serial number
+            <input
+              type="search"
+              name="q"
+              autoComplete="off"
+              placeholder="Type or scan a serial / IMEI"
+              className="mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium placeholder:font-normal placeholder:text-ink-soft/70 focus:border-ink focus:outline-2 focus:outline-accent"
+            />
+          </label>
+          <button type="submit" className={buttonClass("secondary")}>
+            Find
+          </button>
+        </form>
+      ) : null}
 
       {locations.length > 1 ? (
         <nav aria-label="Location" className="flex flex-wrap gap-2">
@@ -86,6 +123,14 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
               <li key={row.productId} className="flex items-center justify-between gap-3 px-5 py-4">
                 <div className="min-w-0">
                   <p className="text-lg font-extrabold">{row.name}</p>
+                  {breakdown.has(row.productId) ? (
+                    <p className="text-sm font-medium text-ink-soft">
+                      {[...breakdown.get(row.productId)!.entries()]
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([label, count]) => `${label} ×${count}`)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                   {row.isLow ? <Badge tone="accent">Low stock</Badge> : null}
                 </div>
                 <p className="shrink-0 text-right">

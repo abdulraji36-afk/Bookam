@@ -23,6 +23,7 @@ const ACTION_LABELS: Record<string, string> = {
   create_order: "Recorded an order",
   update_order: "Changed an order",
   cancel_order: "Cancelled an order",
+  hand_over_order: "Handed over at the counter",
   create_dispatch_trip: "Created a trip",
   dispatch_trip: "Dispatched a trip",
   cancel_dispatch_trip: "Cancelled a trip",

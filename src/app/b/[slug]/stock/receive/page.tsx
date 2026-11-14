@@ -14,10 +14,10 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
   const { slug } = await params;
   const { supabase, org, role } = await requireOrg(slug);
 
-  const [productsResult, locationsResult] = await Promise.all([
+  const [productsResult, locationsResult, coloursResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, unit")
+      .select("id, name, unit, tracks_serials")
       .eq("organization_id", org.id)
       .eq("is_active", true)
       .order("name"),
@@ -26,9 +26,21 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
       .select("id, name")
       .eq("organization_id", org.id)
       .eq("is_active", true)
-      .order("created_at")
+      .order("created_at"),
+    supabase.from("product_units").select("product_id, colour").eq("organization_id", org.id).not("colour", "is", null).limit(5000)
   ]);
-  const products = productsResult.data ?? [];
+  // Colours already used for each product, offered as suggestions.
+  const colours = new Map<string, Set<string>>();
+  for (const unit of coloursResult.data ?? []) {
+    if (unit.colour) (colours.get(unit.product_id) ?? colours.set(unit.product_id, new Set()).get(unit.product_id)!).add(unit.colour);
+  }
+  const products = (productsResult.data ?? []).map((product) => ({
+    id: product.id,
+    name: product.name,
+    unit: product.unit,
+    tracksSerials: product.tracks_serials,
+    colours: [...(colours.get(product.id) ?? [])].sort()
+  }));
 
   return (
     <div className="max-w-3xl space-y-6">

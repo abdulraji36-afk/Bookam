@@ -7,17 +7,28 @@ import { describeDbError, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg, type OrgContext } from "@/lib/org";
-import { firstIssue, orderSchema, tripSchema } from "@/lib/validation";
+import { firstIssue, orderSchema, readQuantity, tripSchema } from "@/lib/validation";
 
 const idSchema = z.uuid();
 
-/** Lines arrive as parallel productId / quantity fields; blank lines are skipped. */
+/**
+ * Each line sends lineKey, productId, quantity and tracked, in step. Each
+ * chosen serial-numbered unit is a "unit" field of the form "lineKey|unitId".
+ * Blank lines are skipped.
+ */
 function readLines(formData: FormData) {
-  const productIds = formData.getAll("productId").map(String);
-  const quantities = formData.getAll("quantity").map(String);
-  return productIds
-    .map((productId, index) => ({ productId, quantity: quantities[index] ?? "" }))
-    .filter((item) => item.productId !== "" || item.quantity.trim() !== "");
+  const field = (name: string) => formData.getAll(name).map(String);
+  const [lineKeys, productIds, quantities, tracked] = ["lineKey", "productId", "quantity", "tracked"].map(field);
+  const units = field("unit").map((value) => value.split("|"));
+
+  return lineKeys
+    .map((key, index) => ({
+      productId: productIds[index] ?? "",
+      tracked: tracked[index] === "1",
+      quantity: readQuantity(quantities[index]),
+      unitIds: units.filter(([line]) => line === key).map(([, unitId]) => unitId ?? "")
+    }))
+    .filter((item) => item.productId !== "" || item.quantity !== undefined || item.unitIds.length > 0);
 }
 
 /** "Mama Tunde: 40 items, ₦168,000" for an order, read back after saving. */
@@ -39,7 +50,11 @@ function readOrder(formData: FormData) {
   return orderSchema.safeParse({
     locationId: formData.get("locationId") ?? "",
     orderDate: formData.get("orderDate") ?? "",
+    walkIn: formData.get("walkIn") === "on",
     customerId: formData.get("customerId") ?? "",
+    buyerName: formData.get("buyerName") ?? "",
+    buyerPhone: formData.get("buyerPhone") ?? "",
+    handedOver: formData.get("leaving") === "now",
     paymentType: formData.get("paymentType") ?? "",
     note: formData.get("note") ?? "",
     items: readLines(formData)
@@ -56,22 +71,36 @@ export async function saveOrderAction(
 
   const parsed = readOrder(formData);
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
-  const items = parsed.data.items.map((item) => ({ product_id: item.productId, quantity: item.quantity }));
+  const items = parsed.data.items.map((item) =>
+    item.tracked
+      ? { product_id: item.productId, unit_ids: item.unitIds }
+      : { product_id: item.productId, quantity: item.quantity ?? 0 }
+  );
+  const customerId = parsed.data.walkIn ? null : parsed.data.customerId;
+  const buyerName = parsed.data.walkIn ? parsed.data.buyerName || null : null;
+  const buyerPhone = parsed.data.walkIn ? parsed.data.buyerPhone || null : null;
 
   if (orderId === null) {
     const { data, error } = await supabase.rpc("create_order", {
       p_organization_id: org.id,
       p_location_id: parsed.data.locationId,
       p_order_date: parsed.data.orderDate,
-      p_customer_id: parsed.data.customerId,
+      p_customer_id: customerId,
       p_payment_type: parsed.data.paymentType,
       p_note: parsed.data.note || null,
-      p_items: items
+      p_items: items,
+      p_handed_over: parsed.data.handedOver,
+      p_buyer_name: buyerName,
+      p_buyer_phone: buyerPhone
     });
     const order = data?.[0];
     if (error || !order) return { ok: false, message: describeDbError(error) };
 
-    notify({ supabase, org }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
+    notify({ supabase, org }, () =>
+      orderLines({ supabase, org }, order.id, (no) =>
+        parsed.data.handedOver ? `Sold at the counter ${no}` : `New order ${no}`
+      )
+    );
     revalidatePath(`/b/${slug}`, "layout");
     redirect(`/b/${slug}/orders/${order.id}?saved=1`);
   }
@@ -81,10 +110,12 @@ export async function saveOrderAction(
   const { error } = await supabase.rpc("update_order", {
     p_order_id: orderId,
     p_order_date: parsed.data.orderDate,
-    p_customer_id: parsed.data.customerId,
+    p_customer_id: customerId,
     p_payment_type: parsed.data.paymentType,
     p_note: parsed.data.note || null,
-    p_items: items
+    p_items: items,
+    p_buyer_name: buyerName,
+    p_buyer_phone: buyerPhone
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
@@ -110,6 +141,22 @@ export async function cancelOrderAction(
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Order cancelled and stock put back." };
+}
+
+export async function handOverOrderAction(
+  slug: string,
+  orderId: string,
+  _previous: ActionState
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug);
+  if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
+
+  const { error } = await supabase.rpc("hand_over_order", { p_order_id: orderId });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Handed over at the counter ${no}`));
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Order handed over and completed." };
 }
 
 export async function createTripAction(

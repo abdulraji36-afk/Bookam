@@ -25,7 +25,9 @@ export async function saveProductAction(
     costPrice: formData.get("costPrice") ?? "",
     lowStock: formData.get("lowStock") ?? "",
     requiresReturn: formData.get("requiresReturn") === "on",
-    returnItemName: formData.get("returnItemName") ?? ""
+    returnItemName: formData.get("returnItemName") ?? "",
+    tracksSerials: formData.get("tracksSerials") === "on",
+    warrantyMonths: formData.get("warrantyMonths") ?? ""
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
   if (productId !== null && !idSchema.safeParse(productId).success) {
@@ -42,7 +44,9 @@ export async function saveProductAction(
     p_cost_price: parsed.data.costPrice,
     p_low_stock_threshold: parsed.data.lowStock,
     p_requires_return: parsed.data.requiresReturn,
-    p_return_item_name: parsed.data.requiresReturn ? parsed.data.returnItemName : null
+    p_return_item_name: parsed.data.requiresReturn ? parsed.data.returnItemName : null,
+    p_tracks_serials: parsed.data.tracksSerials,
+    p_warranty_months: parsed.data.tracksSerials ? parsed.data.warrantyMonths : null
   });
   if (error) return { ok: false, message: describeDbError(error) };
 

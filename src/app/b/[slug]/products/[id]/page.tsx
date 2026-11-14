@@ -17,7 +17,7 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
   const [productResult, costResult, returnablesResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, unit, selling_price, low_stock_threshold, returnable_items (name)")
+      .select("id, name, sku, unit, selling_price, low_stock_threshold, tracks_serials, warranty_months, returnable_items (name)")
       .eq("organization_id", org.id)
       .eq("id", id)
       .maybeSingle(),
@@ -44,7 +44,9 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
             sellingPrice: asText(product.selling_price),
             costPrice: asText(costResult.data?.cost_price),
             lowStock: lowStock > 0 ? String(lowStock) : "",
-            returnItemName: product.returnable_items?.name ?? ""
+            returnItemName: product.returnable_items?.name ?? "",
+            tracksSerials: product.tracks_serials,
+            warrantyMonths: product.warranty_months ? String(product.warranty_months) : ""
           }}
         />
       </Card>

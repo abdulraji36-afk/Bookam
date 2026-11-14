@@ -147,12 +147,14 @@ type ProductInput = {
   costPrice?: number | null;
   lowStock?: number | null;
   returnItem?: string | null;
+  tracksSerials?: boolean;
+  warrantyMonths?: number | null;
 };
 
 export async function saveProduct(db: Db, userId: string, organizationId: string, input: ProductInput) {
   const rows = await as(db, userId, (s) =>
     s.query<{ id: string }>(
-      `select public.save_product($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id`,
+      `select public.save_product($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id`,
       [
         organizationId,
         input.id ?? null,
@@ -163,7 +165,9 @@ export async function saveProduct(db: Db, userId: string, organizationId: string
         input.costPrice ?? null,
         input.lowStock ?? null,
         Boolean(input.returnItem),
-        input.returnItem ?? null
+        input.returnItem ?? null,
+        input.tracksSerials ?? false,
+        input.warrantyMonths ?? null
       ]
     )
   );
@@ -201,7 +205,10 @@ export async function receiveStock(
   db: Db,
   userId: string,
   organizationId: string,
-  items: { product_id: string; quantity: number }[],
+  items: (
+    | { product_id: string; quantity: number }
+    | { product_id: string; units: { serial: string; colour?: string | null; condition?: string }[] }
+  )[],
   options: { locationId?: string; date?: string } = {}
 ) {
   const locationId = options.locationId ?? (await mainLocation(db, organizationId));
@@ -220,15 +227,32 @@ export async function createOrder(
   db: Db,
   userId: string,
   organizationId: string,
-  customerId: string,
-  items: Line[],
-  options: { locationId?: string; date?: string; payment?: "cash" | "transfer" | "credit" } = {}
+  customerId: string | null,
+  items: (Line | { product_id: string; unit_ids: string[] })[],
+  options: {
+    locationId?: string;
+    date?: string;
+    payment?: "cash" | "transfer" | "credit";
+    handedOver?: boolean;
+    buyerName?: string;
+    buyerPhone?: string;
+  } = {}
 ) {
   const locationId = options.locationId ?? (await mainLocation(db, organizationId));
   const rows = await as(db, userId, (s) =>
     s.query<{ id: string; order_no: string }>(
-      `select * from public.create_order($1, $2, coalesce($3::date, public_today()), $4, $5, null, $6::jsonb)`,
-      [organizationId, locationId, options.date ?? null, customerId, options.payment ?? "cash", JSON.stringify(items)]
+      `select * from public.create_order($1, $2, coalesce($3::date, public_today()), $4, $5, null, $6::jsonb, $7, $8, $9)`,
+      [
+        organizationId,
+        locationId,
+        options.date ?? null,
+        customerId,
+        options.payment ?? "cash",
+        JSON.stringify(items),
+        options.handedOver ?? false,
+        options.buyerName ?? null,
+        options.buyerPhone ?? null
+      ]
     )
   );
   return rows[0];
@@ -325,4 +349,13 @@ export async function adjust(
       ]
     )
   );
+}
+
+/** Ids of a product's units with the given status, oldest first. */
+export async function unitIds(db: Db, productId: string, status = "in_stock") {
+  const result = await db.query<{ id: string }>(
+    `select id from public.product_units where product_id = $1 and status = $2::public.unit_status order by created_at, serial_no`,
+    [productId, status]
+  );
+  return result.rows.map((row) => row.id);
 }

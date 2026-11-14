@@ -47,7 +47,8 @@ const TENANT_TABLES = [
   "returnable_totals",
   "returnable_holdings",
   "customer_returnable_balances",
-  "organization_notifications"
+  "organization_notifications",
+  "product_units"
 ];
 
 describe("tenant isolation", () => {
@@ -82,6 +83,8 @@ describe("tenant isolation", () => {
       const order = await createOrder(db, owner, org.id, customer, [{ product_id: product, quantity: 2 }]);
       const trip = await createTrip(db, owner, org.id, [order.id]);
       await call(db, owner, `select public.start_telegram_link($1)`, [org.id]);
+      const phone = await saveProduct(db, owner, org.id, { name: "Phone", sellingPrice: 1, tracksSerials: true });
+      await receiveStock(db, owner, org.id, [{ product_id: phone, units: [{ serial: "SHARED-SERIAL-1" }] }]);
       const crate = await returnableId(db, org.id, "Empty crate");
       await adjust(db, owner, org.id, { returnableId: crate, direction: "add", quantity: 20, reason: "opening_count" });
       await call(db, owner, `select public.dispatch_trip($1)`, [trip.id]);

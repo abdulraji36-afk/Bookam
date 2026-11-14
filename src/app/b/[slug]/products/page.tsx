@@ -18,7 +18,7 @@ async function Products({ params }: Pick<PageProps<"/b/[slug]/products">, "param
 
   const { data } = await supabase
     .from("products")
-    .select("id, name, sku, unit, selling_price, is_active, returnable_items (name)")
+    .select("id, name, sku, unit, selling_price, is_active, tracks_serials, returnable_items (name)")
     .eq("organization_id", org.id)
     .order("is_active", { ascending: false })
     .order("name");
@@ -52,6 +52,7 @@ async function Products({ params }: Pick<PageProps<"/b/[slug]/products">, "param
                     Per {product.unit} · {formatMoney(product.selling_price, org.currency_code)}
                     {product.sku ? ` · ${product.sku}` : ""}
                     {product.returnable_items ? "" : " · No return"}
+                    {product.tracks_serials ? " · Serial numbers" : ""}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

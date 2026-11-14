@@ -13,6 +13,8 @@ export type ReturnableMovementType =
   | "supplier_exchange"
   | "adjustment"
   | "opening_debt";
+export type UnitCondition = "brand_new" | "uk_used" | "nigerian_used";
+export type UnitStatus = "in_stock" | "reserved" | "sold";
 export type ReturnableAdjustmentReason =
   | "customer_return"
   | "purchase"
@@ -185,6 +187,8 @@ export type Database = {
           selling_price: number | null;
           low_stock_threshold: number;
           returnable_item_id: string | null;
+          tracks_serials: boolean;
+          warranty_months: number | null;
           is_active: boolean;
           created_by: string | null;
           created_at: string;
@@ -320,7 +324,7 @@ export type Database = {
           location_id: string;
           order_no: string;
           order_date: string;
-          customer_id: string;
+          customer_id: string | null;
           status: OrderStatus;
           payment_type: PaymentType;
           note: string | null;
@@ -331,6 +335,9 @@ export type Database = {
           voided_by: string | null;
           void_reason: string | null;
           voided_from_status: string | null;
+          buyer_name: string | null;
+          buyer_phone: string | null;
+          handed_over_at: string | null;
         };
         Insert: never;
         Update: never;
@@ -576,6 +583,54 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      product_units: {
+        Row: {
+          id: string;
+          organization_id: string;
+          product_id: string;
+          location_id: string;
+          receipt_id: string;
+          serial_no: string;
+          colour: string | null;
+          condition: UnitCondition;
+          status: UnitStatus;
+          order_id: string | null;
+          sold_at: string | null;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "product_units_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_units_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_units_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: false;
+            referencedRelation: "stock_receipts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_units_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       product_stock_levels: {
@@ -596,7 +651,7 @@ export type Database = {
           order_date: string;
           status: OrderStatus;
           payment_type: PaymentType;
-          customer_id: string;
+          customer_id: string | null;
           customer_name: string;
           customer_area: string | null;
           total_quantity: number;
@@ -606,6 +661,8 @@ export type Database = {
           trip_no: string | null;
           created_at: string;
           voided_at: string | null;
+          customer_phone: string | null;
+          handed_over_at: string | null;
         };
         Relationships: [];
       };
@@ -716,6 +773,8 @@ export type Database = {
           p_low_stock_threshold: number | null;
           p_requires_return: boolean;
           p_return_item_name: string | null;
+          p_tracks_serials?: boolean;
+          p_warranty_months?: number | null;
         };
         Returns: string;
       };
@@ -755,10 +814,13 @@ export type Database = {
           p_organization_id: string;
           p_location_id: string;
           p_order_date: string;
-          p_customer_id: string;
+          p_customer_id: string | null;
           p_payment_type: PaymentType;
           p_note: string | null;
           p_items: Json;
+          p_handed_over?: boolean;
+          p_buyer_name?: string | null;
+          p_buyer_phone?: string | null;
         };
         Returns: { id: string; order_no: string }[];
       };
@@ -766,14 +828,17 @@ export type Database = {
         Args: {
           p_order_id: string;
           p_order_date: string;
-          p_customer_id: string;
+          p_customer_id: string | null;
           p_payment_type: PaymentType;
           p_note: string | null;
           p_items: Json;
+          p_buyer_name?: string | null;
+          p_buyer_phone?: string | null;
         };
         Returns: undefined;
       };
       cancel_order: { Args: { p_order_id: string }; Returns: undefined };
+      hand_over_order: { Args: { p_order_id: string }; Returns: undefined };
       create_dispatch_trip: {
         Args: {
           p_organization_id: string;

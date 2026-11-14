@@ -17,6 +17,8 @@ export type ProductDefaults = {
   costPrice: string;
   lowStock: string;
   returnItemName: string;
+  tracksSerials: boolean;
+  warrantyMonths: string;
 };
 
 type Props = {
@@ -30,6 +32,7 @@ type Props = {
 export function ProductForm({ action, currency, returnables, defaults }: Props) {
   const { state, pending, form } = useFormAction(action);
   const [requiresReturn, setRequiresReturn] = useState(Boolean(defaults?.returnItemName));
+  const [tracksSerials, setTracksSerials] = useState(Boolean(defaults?.tracksSerials));
   const unitListId = useId();
   const returnListId = useId();
 
@@ -105,6 +108,26 @@ export function ProductForm({ action, currency, returnables, defaults }: Props) 
               ))}
             </datalist>
           </>
+        ) : null}
+      </div>
+
+      <div className="space-y-4 rounded-md border-2 border-ink p-4">
+        <CheckboxField
+          label="Track each unit by serial number"
+          name="tracksSerials"
+          checked={tracksSerials}
+          onChange={(event) => setTracksSerials(event.currentTarget.checked)}
+          hint="For phones, laptops and anything with a serial or IMEI. Each unit is entered when stock arrives, with its colour and condition, and you choose the exact unit when you sell it."
+        />
+        {tracksSerials ? (
+          <TextField
+            label="Warranty in months (optional)"
+            name="warrantyMonths"
+            inputMode="numeric"
+            defaultValue={defaults?.warrantyMonths}
+            hint="Looking up a serial number then shows whether it is still under warranty."
+            maxLength={3}
+          />
         ) : null}
       </div>
 

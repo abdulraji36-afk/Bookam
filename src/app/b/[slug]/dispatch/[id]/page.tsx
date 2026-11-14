@@ -34,7 +34,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     supabase
       .from("dispatch_trip_orders")
       .select(
-        "orders (id, order_no, status, customers (name, area), order_items (quantity, products (id, name, unit), returnable_items (id, name)))"
+        "orders (id, order_no, status, buyer_name, customers (name, area), order_items (quantity, products (id, name, unit), returnable_items (id, name)))"
       )
       .eq("trip_id", id),
     supabase
@@ -74,7 +74,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
       const line = byItem.get(item.returnable_items.id) ?? {
         orderId: order.id,
         returnableItemId: item.returnable_items.id,
-        customerName: order.customers?.name ?? "Customer",
+        customerName: order.customers?.name ?? order.buyer_name ?? "Walk-in buyer",
         returnableName: item.returnable_items.name,
         expected: 0
       };
@@ -83,7 +83,9 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     }
     expectedReturns.push(...byItem.values());
   }
-  const customerByOrder = new Map(orders.map((order) => [order.id, order.customers?.name ?? "Customer"]));
+  const customerByOrder = new Map(
+    orders.map((order) => [order.id, order.customers?.name ?? order.buyer_name ?? "Walk-in buyer"])
+  );
   const returnLines = returnLinesResult.data ?? [];
 
   const details = [
@@ -156,7 +158,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
                   >
                     <span className="min-w-0">
                       <span className="block text-lg font-extrabold">
-                        {order.customers?.name}
+                        {order.customers?.name ?? order.buyer_name ?? "Walk-in buyer"}
                         {order.customers?.area ? ` (${order.customers.area})` : ""}
                       </span>
                       <span className="font-medium text-ink-soft">

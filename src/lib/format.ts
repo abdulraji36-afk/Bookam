@@ -4,7 +4,9 @@ import type {
   PaymentType,
   ReturnableAdjustmentReason,
   ReturnableMovementType,
-  TripStatus
+  TripStatus,
+  UnitCondition,
+  UnitStatus
 } from "@/types/database";
 
 export const ROLE_LABELS: Record<MemberRole, string> = {
@@ -92,4 +94,21 @@ export const SUBTRACT_REASONS: [ReturnableAdjustmentReason, string][] = [
 /** "12 owed" / "5 in credit" for a customer's returnable balance. */
 export function describeOwed(owed: number) {
   return owed >= 0 ? `${formatQuantity(owed)} owed` : `${formatQuantity(-owed)} in credit`;
+}
+
+export const CONDITION_LABELS: Record<UnitCondition, string> = {
+  brand_new: "Brand new",
+  uk_used: "UK used",
+  nigerian_used: "Nigerian used"
+};
+
+export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
+  in_stock: "In stock",
+  reserved: "On an order",
+  sold: "Sold"
+};
+
+/** "356789… · Black · UK used" for one unit. */
+export function describeUnit(unit: { serial_no: string; colour: string | null; condition: UnitCondition }) {
+  return [unit.serial_no, unit.colour, CONDITION_LABELS[unit.condition]].filter(Boolean).join(" · ");
 }

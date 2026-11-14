@@ -22,13 +22,7 @@ async function NewOrder({ params }: Pick<PageProps<"/b/[slug]/orders/new">, "par
   return (
     <div className="max-w-3xl space-y-6">
       <PageTitle sub="Stock is set aside for the customer as soon as you save.">New order</PageTitle>
-      {data.customers.length === 0 ? (
-        <EmptyState title="Add a customer first">
-          <Link href={`${base}/customers/new`} className={LINK}>
-            Add your first customer
-          </Link>
-        </EmptyState>
-      ) : data.products.length === 0 ? (
+      {data.products.length === 0 ? (
         <EmptyState title="Add a product first">
           <Link href={`${base}/products`} className={LINK}>
             Go to products

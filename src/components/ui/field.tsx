@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type ReactNode, type Ref, type SelectHTMLAttributes } from "react";
 
 const CONTROL =
   "block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium text-ink " +
@@ -18,7 +18,12 @@ export function Field({ label, hint, children, htmlFor }: FieldProps) {
   );
 }
 
-type InputProps = InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; name: string };
+type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  hint?: string;
+  name: string;
+  ref?: Ref<HTMLInputElement>;
+};
 
 export function TextField({ label, hint, id, name, ...props }: InputProps) {
   // Generated, so two forms on one page can both have a field called "name".

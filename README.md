@@ -74,10 +74,13 @@ These are what keep one business's data away from another's.
 7. Returnables are a ledger too. `returnable_movements` holds two running
    counts per item: what is in store and what each customer owes. A customer
    balance below zero means the business is holding some for them.
-8. Mistakes are undone, not edited. A void (owners and admins only, with a
+8. Serial-numbered units live in `product_units`. For a tracked product the
+   stock ledger at a location always equals the number of its units in stock
+   there; a test checks this.
+9. Mistakes are undone, not edited. A void (owners and admins only, with a
    reason) reverses a record's effect on stock and returnables, keeps the
    record marked as voided, and writes what it was to the audit log.
-9. Money the staff should not see (buying cost) lives in its own table that
+10. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
 
 ## Telegram notifications
@@ -128,4 +131,5 @@ version of the app, so the database can always go first.
 | 4 | Returns: trip returns, customer balances, supplier exchange, add/subtract adjustments | Done |
 | 5 | Voids and corrections with reasons, activity log screen, daily report | Done |
 | 6a | Telegram notifications, linked per business | Done |
+| 7 | Serial-numbered products (serial, colour, condition per unit), counter sales, walk-in buyers, serial lookup with warranty | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

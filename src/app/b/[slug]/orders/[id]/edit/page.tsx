@@ -18,11 +18,13 @@ async function EditOrder({ params }: Pick<PageProps<"/b/[slug]/orders/[id]/edit"
   const [orderResult, data] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, order_no, order_date, status, payment_type, note, customer_id, location_id, order_items (product_id, quantity)")
+      .select(
+        "id, order_no, order_date, status, payment_type, note, customer_id, buyer_name, buyer_phone, location_id, order_items (product_id, quantity), product_units (id, product_id)"
+      )
       .eq("organization_id", org.id)
       .eq("id", id)
       .maybeSingle(),
-    getOrderFormData(supabase, org.id)
+    getOrderFormData(supabase, org.id, id)
   ]);
   const order = orderResult.data;
   if (!order) notFound();
@@ -41,11 +43,14 @@ async function EditOrder({ params }: Pick<PageProps<"/b/[slug]/orders/[id]/edit"
             locationId: order.location_id,
             orderDate: order.order_date,
             customerId: order.customer_id,
+            buyerName: order.buyer_name ?? "",
+            buyerPhone: order.buyer_phone ?? "",
             paymentType: order.payment_type,
             note: order.note ?? "",
             lines: order.order_items.map((item) => ({
               productId: item.product_id,
-              quantity: Number(item.quantity)
+              quantity: Number(item.quantity),
+              unitIds: order.product_units.filter((unit) => unit.product_id === item.product_id).map((unit) => unit.id)
             }))
           }}
           {...data}

@@ -7,7 +7,7 @@ import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDate, formatQuantity } from "@/lib/format";
+import { describeUnit, formatDate, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Stock receipt" };
@@ -19,7 +19,7 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
   const { data: receipt } = await supabase
     .from("stock_receipts")
     .select(
-      "id, receipt_no, received_date, supplier_name, reference, note, voided_at, void_reason, locations (name), profiles!stock_receipts_created_by_fkey (full_name), stock_receipt_items (id, quantity, products (name, unit))"
+      "id, receipt_no, received_date, supplier_name, reference, note, voided_at, void_reason, locations (name), profiles!stock_receipts_created_by_fkey (full_name), stock_receipt_items (id, product_id, quantity, products (name, unit)), product_units (id, product_id, serial_no, colour, condition)"
     )
     .eq("organization_id", org.id)
     .eq("id", id)
@@ -62,12 +62,24 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
         <CardHeader title="Products received" />
         <ul className="-my-3 divide-y divide-line">
           {receipt.stock_receipt_items.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-3 py-3">
+            <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3">
               <span className="font-extrabold">{item.products?.name}</span>
               <span>
                 <span className="text-xl font-extrabold tabular-nums">+{formatQuantity(Number(item.quantity))}</span>{" "}
                 <span className="font-medium text-ink-soft">{item.products?.unit}</span>
               </span>
+              {receipt.product_units.some((unit) => unit.product_id === item.product_id) ? (
+                <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
+                  {receipt.product_units
+                    .filter((unit) => unit.product_id === item.product_id)
+                    .sort((a, b) => a.serial_no.localeCompare(b.serial_no))
+                    .map((unit) => (
+                      <li key={unit.id} className="tabular-nums">
+                        {describeUnit(unit)}
+                      </li>
+                    ))}
+                </ul>
+              ) : null}
             </li>
           ))}
         </ul>

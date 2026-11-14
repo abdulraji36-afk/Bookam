@@ -3,14 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { voidOrderAction } from "@/app/actions/corrections";
-import { cancelOrderAction } from "@/app/actions/orders";
+import { cancelOrderAction, handOverOrderAction } from "@/app/actions/orders";
 import { ReasonForm } from "@/components/corrections/reason-form";
 import { OrderStatusBadge } from "@/components/orders/status-badge";
 import { ActionButton } from "@/components/team/action-button";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDay, formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
+import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Order" };
@@ -24,7 +24,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
     supabase
       .from("orders")
       .select(
-        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, quantity, unit_price, line_total, products (name, unit), returnable_items (name))"
+        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, buyer_name, buyer_phone, handed_over_at, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, product_id, quantity, unit_price, line_total, products (name, unit), returnable_items (name)), product_units (id, product_id, serial_no, colour, condition)"
       )
       .eq("organization_id", org.id)
       .eq("id", id)
@@ -36,14 +36,29 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
   const summary = summaryResult.data;
 
   const details = [
-    ["Customer", [order.customers?.name, order.customers?.area].filter(Boolean).join(", ")],
-    ["Phone", order.customers?.phone],
+    [
+      "Customer",
+      order.customers
+        ? [order.customers.name, order.customers.area].filter(Boolean).join(", ")
+        : `${order.buyer_name ?? "Walk-in buyer"} (walk-in)`
+    ],
+    ["Phone", order.customers?.phone ?? order.buyer_phone],
+    [
+      "Handed over",
+      order.handed_over_at
+        ? `At the counter, ${new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone: org.timezone }).format(new Date(order.handed_over_at))}`
+        : null
+    ],
     ["Order date", formatDay(order.order_date)],
     ["Payment", PAYMENT_LABELS[order.payment_type]],
     ["Stock taken from", order.locations?.name],
     ["Recorded by", order.profiles?.full_name],
     ["Note", order.note]
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+  const unitsByProduct = new Map<string, typeof order.product_units>();
+  for (const unit of order.product_units) {
+    unitsByProduct.set(unit.product_id, [...(unitsByProduct.get(unit.product_id) ?? []), unit]);
+  }
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -105,6 +120,15 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
                   {formatMoney(Number(item.line_total), org.currency_code)}
                 </span>
               </span>
+              {unitsByProduct.has(item.product_id) ? (
+                <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
+                  {unitsByProduct.get(item.product_id)!.map((unit) => (
+                    <li key={unit.id} className="tabular-nums">
+                      {describeUnit(unit)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -122,6 +146,14 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         </Link>
         {order.status === "pending" ? (
           <>
+            <ActionButton
+              action={handOverOrderAction.bind(null, org.slug, order.id)}
+              label="Handed over now"
+              pendingLabel="Saving…"
+              variant="primary"
+              size="md"
+              confirmMessage={`Mark ${order.order_no} as collected at the counter? It is completed straight away and will not go on a trip.`}
+            />
             <Link href={`${base}/orders/${order.id}/edit`} className={buttonClass("secondary")}>
               Edit order
             </Link>
