@@ -37,6 +37,7 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
           action={saveProductAction.bind(null, org.slug, product.id)}
           currency={org.currency_code}
           returnables={(returnablesResult.data ?? []).map((item) => item.name)}
+          features={{ returns: org.tracks_returns, serials: org.tracks_serials }}
           defaults={{
             name: product.name,
             sku: product.sku ?? "",

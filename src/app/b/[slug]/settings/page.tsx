@@ -7,8 +7,9 @@ import {
   setNotificationsEnabledAction,
   startTelegramLinkAction
 } from "@/app/actions/notifications";
-import { createLocationAction, updateBusinessAction } from "@/app/actions/organizations";
+import { createLocationAction, setBusinessFeaturesAction, updateBusinessAction } from "@/app/actions/organizations";
 import { BusinessForm } from "@/components/business/business-form";
+import { FeaturesForm } from "@/components/business/features-form";
 import { LocationForm } from "@/components/business/location-form";
 import { TelegramConnect } from "@/components/settings/telegram-connect";
 import { ActionButton } from "@/components/team/action-button";
@@ -61,6 +62,18 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
           submitLabel="Save changes"
           pendingLabel="Saving…"
           defaults={{ name: org.name, businessType: org.business_type }}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="What you sell"
+          description="This decides which parts of BukAm you see. Turning something off hides it; nothing is deleted."
+        />
+        <FeaturesForm
+          action={setBusinessFeaturesAction.bind(null, org.slug)}
+          returns={org.tracks_returns}
+          serials={org.tracks_serials}
         />
       </Card>
 

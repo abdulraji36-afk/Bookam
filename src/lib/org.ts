@@ -18,6 +18,10 @@ export type OrgContext = {
     trial_ends_at: string | null;
     currency_code: string;
     timezone: string;
+    /** Customers bring things back (crates, cylinders). */
+    tracks_returns: boolean;
+    /** Sells items tracked one by one by serial number. */
+    tracks_serials: boolean;
   };
 };
 
@@ -28,7 +32,7 @@ const loadOrgContext = cache(async (slug: string): Promise<OrgContext> => {
   // Row level security only returns the business if the user is an active member.
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone")
+    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone, tracks_returns, tracks_serials")
     .eq("slug", slug)
     .maybeSingle();
 

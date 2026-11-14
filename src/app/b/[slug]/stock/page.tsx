@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDate, formatQuantity } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { canManage, requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
 
 export const metadata: Metadata = { title: "Stock" };
 
 async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}/stock`;
 
   const { data: locationData } = await supabase
@@ -43,7 +43,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     unitQuery
   ]);
   const receipts = receiptsResult.data ?? [];
-  const hasSerials = (unitsResult.data ?? []).length > 0;
+  const hasSerials = org.tracks_serials || (unitsResult.data ?? []).length > 0;
 
   // For serial-numbered products: how many of each colour.
   const breakdown = new Map<string, Map<string, number>>();
@@ -67,9 +67,16 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
         >
           Stock
         </PageTitle>
-        <Link href={`${base}/receive`} className={buttonClass("primary")}>
-          + Receive stock
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {canManage(role) ? (
+            <Link href={`${base}/adjust`} className={buttonClass("secondary")}>
+              Write off / correct
+            </Link>
+          ) : null}
+          <Link href={`${base}/receive`} className={buttonClass("primary")}>
+            + Receive stock
+          </Link>
+        </div>
       </div>
 
       {hasSerials ? (
@@ -144,7 +151,16 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
       )}
 
       <Card>
-        <CardHeader title="Stock received" />
+        <CardHeader
+          title="Stock received"
+          action={
+            receipts.length > 0 ? (
+              <Link href={`${base}/receipts`} className="text-sm font-extrabold uppercase tracking-wide underline decoration-accent decoration-4 underline-offset-4">
+                See all
+              </Link>
+            ) : undefined
+          }
+        />
         {receipts.length === 0 ? (
           <p className="text-ink-soft">Nothing received yet.</p>
         ) : (

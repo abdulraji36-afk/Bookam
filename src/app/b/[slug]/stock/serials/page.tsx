@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDate, formatDay, UNIT_STATUS_LABELS } from "@/lib/format";
+import { formatDate, formatDay, STOCK_REASON_LABELS, UNIT_STATUS_LABELS } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 
@@ -35,7 +35,7 @@ async function Serials({ params, searchParams }: PageProps<"/b/[slug]/stock/seri
       ? await supabase
           .from("product_units")
           .select(
-            "id, serial_no, colour, status, sold_at, created_at, products (name, warranty_months), locations (name), stock_receipts (id, receipt_no, received_date, supplier_name), orders (id, order_no, order_date, buyer_name, buyer_phone, customers (name, phone))"
+            "id, serial_no, colour, status, sold_at, created_at, products (name, warranty_months), locations (name), stock_receipts (id, receipt_no, received_date, supplier_name), stock_adjustments (adjustment_date, reason, note), orders (id, order_no, order_date, buyer_name, buyer_phone, customers (name, phone))"
           )
           .eq("organization_id", org.id)
           .ilike("serial_no", `%${q}%`)
@@ -85,7 +85,17 @@ async function Serials({ params, searchParams }: PageProps<"/b/[slug]/stock/seri
             key={unit.id}
             title={unit.serial_no}
             action={
-              <Badge tone={unit.status === "in_stock" ? "success" : unit.status === "reserved" ? "accent" : "solid"}>
+              <Badge
+                tone={
+                  unit.status === "in_stock"
+                    ? "success"
+                    : unit.status === "reserved"
+                      ? "accent"
+                      : unit.status === "written_off"
+                        ? "plain"
+                        : "solid"
+                }
+              >
                 {UNIT_STATUS_LABELS[unit.status]}
               </Badge>
             }
@@ -134,6 +144,19 @@ async function Serials({ params, searchParams }: PageProps<"/b/[slug]/stock/seri
                         .filter(Boolean)
                         .map((part) => ` · ${part}`)
                         .join("")}
+                    </span>
+                  </dd>
+                </div>
+              ) : null}
+              {unit.status === "written_off" && unit.stock_adjustments ? (
+                <div>
+                  <dt className="text-sm font-bold uppercase tracking-wide text-ink-soft">Written off</dt>
+                  <dd className="font-semibold">
+                    {STOCK_REASON_LABELS[unit.stock_adjustments.reason]}
+                    <span className="block text-sm font-medium text-ink-soft">
+                      {[formatDay(unit.stock_adjustments.adjustment_date), unit.stock_adjustments.note]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </dd>
                 </div>

@@ -28,7 +28,8 @@ async function BusinessShell({
   const trialDays = org.plan_code === "trial" ? daysUntil(org.trial_ends_at, await requestNow()) : null;
 
   const manager = canManage(role);
-  const tracksReturns = Boolean(returnableCount);
+  // Shown when the business tracks returns, or still has returnables on record.
+  const tracksReturns = org.tracks_returns || Boolean(returnableCount);
   const items: NavItem[] = [
     { href: base, label: "Dashboard", icon: "dashboard", exact: true },
     { href: `${base}/orders`, label: "Orders", icon: "orders" },

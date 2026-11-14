@@ -130,13 +130,14 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
 
           <ListCard title="Stock">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem]">
+              <table className="w-full min-w-[42rem]">
                 <thead>
                   <tr className="border-b border-line">
                     <th scope="col" className={HEAD}>Product</th>
                     <th scope="col" className={`${HEAD} text-right`}>Opening</th>
                     <th scope="col" className={`${HEAD} text-right`}>Received</th>
                     <th scope="col" className={`${HEAD} text-right`}>Ordered out</th>
+                    <th scope="col" className={`${HEAD} text-right`}>Written off / corrected</th>
                     <th scope="col" className={`${HEAD} text-right`}>Closing</th>
                   </tr>
                 </thead>
@@ -149,6 +150,10 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.opening))}</td>
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.received))}</td>
                       <td className={`${CELL} text-right`}>{formatQuantity(Number(row.sold))}</td>
+                      <td className={`${CELL} text-right`}>
+                        {Number(row.adjusted) > 0 ? "+" : Number(row.adjusted) < 0 ? "−" : ""}
+                        {formatQuantity(Math.abs(Number(row.adjusted)))}
+                      </td>
                       <td className={`${CELL} text-right text-lg font-extrabold`}>{formatQuantity(Number(row.closing))}</td>
                     </tr>
                   ))}

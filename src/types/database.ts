@@ -13,7 +13,8 @@ export type ReturnableMovementType =
   | "supplier_exchange"
   | "adjustment"
   | "opening_debt";
-export type UnitStatus = "in_stock" | "reserved" | "sold";
+export type UnitStatus = "in_stock" | "reserved" | "sold" | "written_off";
+export type StockAdjustmentReason = "damaged" | "expired" | "lost_or_stolen" | "count_correction" | "found";
 export type ReturnableAdjustmentReason =
   | "customer_return"
   | "purchase"
@@ -54,6 +55,8 @@ export type Database = {
           timezone: string;
           plan_code: string;
           trial_ends_at: string | null;
+          tracks_returns: boolean;
+          tracks_serials: boolean;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -582,6 +585,48 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      stock_adjustments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          location_id: string;
+          product_id: string;
+          adjustment_date: string;
+          quantity_delta: number;
+          reason: StockAdjustmentReason;
+          note: string | null;
+          created_by: string | null;
+          created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "stock_adjustments_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_adjustments_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_adjustments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       product_units: {
         Row: {
           id: string;
@@ -593,6 +638,7 @@ export type Database = {
           colour: string | null;
           status: UnitStatus;
           order_id: string | null;
+          adjustment_id: string | null;
           sold_at: string | null;
           created_at: string;
         };
@@ -625,6 +671,13 @@ export type Database = {
             columns: ["location_id"];
             isOneToOne: false;
             referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_units_adjustment_id_fkey";
+            columns: ["adjustment_id"];
+            isOneToOne: false;
+            referencedRelation: "stock_adjustments";
             referencedColumns: ["id"];
           }
         ];
@@ -722,7 +775,12 @@ export type Database = {
     };
     Functions: {
       create_organization: {
-        Args: { p_name: string; p_business_type?: string | null };
+        Args: {
+          p_name: string;
+          p_business_type?: string | null;
+          p_tracks_returns?: boolean;
+          p_tracks_serials?: boolean;
+        };
         Returns: { id: string; slug: string }[];
       };
       update_organization: {
@@ -837,6 +895,25 @@ export type Database = {
       };
       cancel_order: { Args: { p_order_id: string }; Returns: undefined };
       hand_over_order: { Args: { p_order_id: string }; Returns: undefined };
+      set_business_features: {
+        Args: { p_organization_id: string; p_tracks_returns: boolean; p_tracks_serials: boolean };
+        Returns: undefined;
+      };
+      record_stock_adjustment: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_adjustment_date: string;
+          p_product_id: string;
+          p_direction: "add" | "subtract";
+          p_quantity: number | null;
+          p_reason: StockAdjustmentReason;
+          p_note: string | null;
+          p_unit_ids?: string[] | null;
+        };
+        Returns: string;
+      };
+      void_stock_adjustment: { Args: { p_adjustment_id: string; p_reason: string }; Returns: undefined };
       create_dispatch_trip: {
         Args: {
           p_organization_id: string;
@@ -913,6 +990,7 @@ export type Database = {
           opening: number;
           received: number;
           sold: number;
+          adjusted: number;
           closing: number;
         }[];
       };

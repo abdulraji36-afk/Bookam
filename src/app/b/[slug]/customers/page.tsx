@@ -4,31 +4,43 @@ import { Suspense } from "react";
 import { setCustomerActiveAction } from "@/app/actions/catalog";
 import { ActionButton } from "@/components/team/action-button";
 import { buttonClass } from "@/components/ui/button";
+import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
 import { Badge, Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { describeOwed } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
+import { matchAny, readListSearch } from "@/lib/search";
 
 export const metadata: Metadata = { title: "Customers" };
 
-async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "params">) {
-  const { slug } = await params;
+async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customers">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}/customers`;
   const manager = canManage(role);
 
-  const [{ data }, { data: balanceData }] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("id, name, phone, area, is_active")
-      .eq("organization_id", org.id)
-      .order("is_active", { ascending: false })
-      .order("name"),
-    supabase
-      .from("customer_returnable_balances")
-      .select("customer_id, returnable_name, owed")
-      .eq("organization_id", org.id)
-  ]);
+  const search = readListSearch(query, 50);
+
+  let listQuery = supabase
+    .from("customers")
+    .select("id, name, phone, area, is_active", { count: "exact" })
+    .eq("organization_id", org.id)
+    .order("is_active", { ascending: false })
+    .order("name")
+    .range(search.from, search.to);
+  if (search.q) listQuery = listQuery.or(matchAny(search.q, ["name", "area", "phone"]));
+  const { data, count } = await listQuery;
   const customers = data ?? [];
+
+  const { data: balanceData } = customers.length
+    ? await supabase
+        .from("customer_returnable_balances")
+        .select("customer_id, returnable_name, owed")
+        .eq("organization_id", org.id)
+        .in(
+          "customer_id",
+          customers.map((customer) => customer.id)
+        )
+    : { data: [] };
   const balances = new Map<string, { returnable_name: string; owed: number }[]>();
   for (const balance of balanceData ?? []) {
     const list = balances.get(balance.customer_id) ?? [];
@@ -45,8 +57,16 @@ async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "par
         </Link>
       </div>
 
+      {customers.length > 0 || search.q ? (
+        <SearchForm action={base} q={search.q} label="Search customers" placeholder="Search by name, area or phone" />
+      ) : null}
+
       {customers.length === 0 ? (
-        <EmptyState title="No customers yet">Add the first customer you deliver to.</EmptyState>
+        search.q ? (
+          <NoMatches q={search.q} base={base} />
+        ) : (
+          <EmptyState title="No customers yet">Add the first customer you deliver to.</EmptyState>
+        )
       ) : (
         <Card className="!p-0">
           <ul className="divide-y divide-line">
@@ -85,14 +105,15 @@ async function Customers({ params }: Pick<PageProps<"/b/[slug]/customers">, "par
           </ul>
         </Card>
       )}
+      <Pager base={base} search={search} total={count ?? 0} />
     </div>
   );
 }
 
-export default function CustomersPage({ params }: PageProps<"/b/[slug]/customers">) {
+export default function CustomersPage(props: PageProps<"/b/[slug]/customers">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Customers params={params} />
+      <Customers {...props} />
     </Suspense>
   );
 }

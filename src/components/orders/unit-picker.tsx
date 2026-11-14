@@ -16,6 +16,8 @@ type Props = {
   chosen: Set<string>;
   onToggle: (unitId: string) => void;
   unitWord: string;
+  /** What is happening to the chosen units, for the heading. */
+  verb?: string;
 };
 
 const NO_COLOUR = "\u0000none";
@@ -24,7 +26,7 @@ const NO_COLOUR = "\u0000none";
  * Choosing the exact serial-numbered units for an order line: first the
  * colour, then the serial number. Typing narrows the list by serial number.
  */
-export function UnitPicker({ lineKey, units, chosen, onToggle, unitWord }: Props) {
+export function UnitPicker({ lineKey, units, chosen, onToggle, unitWord, verb = "going out" }: Props) {
   const [colour, setColour] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -70,7 +72,7 @@ export function UnitPicker({ lineKey, units, chosen, onToggle, unitWord }: Props
 
       <div className="space-y-2">
         <label className="block text-sm font-bold" htmlFor={`unit-filter-${lineKey}`}>
-          {colours.length > 1 ? "2. " : ""}Serial number of each {unitWord} going out ({chosen.size} chosen)
+          {colours.length > 1 ? "2. " : ""}Serial number of each {unitWord} {verb} ({chosen.size} chosen)
         </label>
         {shown.length > 4 || needle ? (
           <input

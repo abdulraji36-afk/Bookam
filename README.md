@@ -43,7 +43,28 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
-| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch, returns, voids and reports |
+| `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch, returns, voids, reports, serials and write-offs |
+| `npm run test:e2e` | Browser walkthroughs in `tests/e2e/` against a running app (see below) |
+
+### Browser walkthroughs
+
+Each file in `tests/e2e/` signs up fresh users and clicks through one area of
+the app in Chromium, the way a person would. To run them:
+
+1. `npx supabase start`. Its Mailpit (port 54324) catches the sign-up and
+   password-reset emails, which the walkthroughs open.
+2. In `.env.local`, point the app at the local Supabase, set
+   `NEXT_PUBLIC_SITE_URL=http://localhost:3000`, and for the Telegram
+   walkthrough set `TELEGRAM_BOT_TOKEN=test-token`,
+   `TELEGRAM_BOT_USERNAME=bookam_test_bot`, `TELEGRAM_WEBHOOK_SECRET=` any
+   value and `TELEGRAM_API_BASE=http://127.0.0.1:8099`. The runner starts a
+   stand-in Telegram on that port.
+3. `npm run build && npm start`, then `npm run test:e2e` in another terminal.
+   `npm run test:e2e -- 04 08` runs only the files starting with those numbers.
+   Screenshots go to `test-results/e2e/`.
+
+The first time on a new machine, install the browser with
+`npx playwright install chromium`.
 
 ## How the code is organised
 
@@ -82,6 +103,15 @@ These are what keep one business's data away from another's.
    record marked as voided, and writes what it was to the audit log.
 10. Money the staff should not see (buying cost) lives in its own table that
    only owners and admins can read.
+11. Stock that leaves other than by sale (damaged, expired, lost or stolen, a
+   wrong count) is a `stock_adjustments` row with a reason, plus its ledger
+   movement. It can never take out more than is on hand. Serial-numbered stock
+   is written off by naming the units, and only comes in through a delivery.
+12. What a business sells decides what it sees. `organizations.tracks_returns`
+   and `tracks_serials` come from the two sign-up questions and can be changed
+   in Settings. The database refuses a product that needs a switched-off
+   feature, and refuses to switch one off while a product or a customer
+   balance still uses it.
 
 ## Telegram notifications
 
@@ -132,4 +162,5 @@ version of the app, so the database can always go first.
 | 5 | Voids and corrections with reasons, activity log screen, daily report | Done |
 | 6a | Telegram notifications, linked per business | Done |
 | 7 | Serial-numbered products (serial and colour per unit, colour then serial when selling), counter sales, walk-in buyers, serial lookup with warranty | Done |
+| 8 | Forgot password, sign-up questions that shape the app, stock write-offs and corrections, search and paging on long lists, browser walkthroughs in the repo | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

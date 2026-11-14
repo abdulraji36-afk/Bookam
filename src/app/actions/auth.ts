@@ -5,7 +5,7 @@ import type { ActionState } from "@/lib/action-state";
 import { safeNextPath } from "@/lib/safe-next";
 import { getSiteUrl } from "@/lib/site-url";
 import { createClient } from "@/lib/supabase/server";
-import { firstIssue, signInSchema, signUpSchema } from "@/lib/validation";
+import { firstIssue, forgotPasswordSchema, newPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation";
 
 export async function signInAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = signInSchema.safeParse({
@@ -74,4 +74,51 @@ export async function signUpAction(
   }
 
   redirect(next);
+}
+
+export async function requestPasswordResetAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${await getSiteUrl()}/auth/confirm?next=${encodeURIComponent("/reset-password")}`
+  });
+  if (error?.code === "over_email_send_rate_limit" || error?.status === 429) {
+    return { ok: false, message: "Too many attempts. Please wait a minute and try again." };
+  }
+
+  // The same answer whether or not the email has an account, so this form
+  // cannot be used to find out who is signed up.
+  return {
+    ok: true,
+    message: `If ${parsed.data.email} has a BukAm account, a link to choose a new password is on its way. Open it in this browser.`
+  };
+}
+
+export async function setNewPasswordAction(_previous: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = newPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirm: formData.get("confirm")
+  });
+  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims?.sub) {
+    return { ok: false, message: "This reset link has expired. Ask for a new one from the log in page." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    const message =
+      error.code === "same_password"
+        ? "Choose a password different from your old one."
+        : error.code === "weak_password"
+          ? "Choose a stronger password."
+          : "We could not change your password. Please try again.";
+    return { ok: false, message };
+  }
+
+  redirect("/businesses");
 }

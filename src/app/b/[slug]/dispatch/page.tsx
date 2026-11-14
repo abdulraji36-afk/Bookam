@@ -3,9 +3,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { TripStatusBadge } from "@/components/orders/status-badge";
 import { buttonClass } from "@/components/ui/button";
+import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
 import { EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { formatDay, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
+import { matchAny, readListSearch } from "@/lib/search";
 import type { TripStatus } from "@/types/database";
 
 export const metadata: Metadata = { title: "Dispatch" };
@@ -46,25 +48,28 @@ function TripRow({ trip, base }: { trip: TripRowData; base: string }) {
   );
 }
 
-async function Dispatch({ params }: Pick<PageProps<"/b/[slug]/dispatch">, "params">) {
-  const { slug } = await params;
+async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
+  const search = readListSearch(query, 30);
+  const listOnly = Boolean(search.q) || search.page > 1;
+
+  let listQuery = supabase
+    .from("dispatch_trip_summaries")
+    .select(COLUMNS, { count: "exact" })
+    .eq("organization_id", org.id)
+    .order("created_at", { ascending: false })
+    .range(search.from, search.to);
+  if (search.q) listQuery = listQuery.or(matchAny(search.q, ["trip_no", "driver_name", "vehicle"]));
+  else listQuery = listQuery.neq("status", "draft");
+
   const [draftResult, recentResult, waitingResult] = await Promise.all([
-    supabase
-      .from("dispatch_trip_summaries")
-      .select(COLUMNS)
-      .eq("organization_id", org.id)
-      .eq("status", "draft")
-      .order("created_at"),
-    supabase
-      .from("dispatch_trip_summaries")
-      .select(COLUMNS)
-      .eq("organization_id", org.id)
-      .neq("status", "draft")
-      .order("created_at", { ascending: false })
-      .limit(30),
+    listOnly
+      ? Promise.resolve({ data: [] })
+      : supabase.from("dispatch_trip_summaries").select(COLUMNS).eq("organization_id", org.id).eq("status", "draft").order("created_at"),
+    listQuery,
     supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
@@ -86,7 +91,17 @@ async function Dispatch({ params }: Pick<PageProps<"/b/[slug]/dispatch">, "param
         </Link>
       </div>
 
-      {drafts.length === 0 && recent.length === 0 ? (
+      {drafts.length > 0 || recent.length > 0 || search.q || search.page > 1 ? (
+        <SearchForm
+          action={`${base}/dispatch`}
+          q={search.q}
+          label="Search trips"
+          placeholder="Search by trip number, driver or vehicle"
+        />
+      ) : null}
+      {search.q && recent.length === 0 ? <NoMatches q={search.q} base={`${base}/dispatch`} /> : null}
+
+      {!listOnly && drafts.length === 0 && recent.length === 0 ? (
         <EmptyState title="No trips yet">
           Record some orders, then group them onto a trip to send them out.
         </EmptyState>
@@ -103,7 +118,7 @@ async function Dispatch({ params }: Pick<PageProps<"/b/[slug]/dispatch">, "param
       ) : null}
 
       {recent.length > 0 ? (
-        <ListCard title="Recent trips">
+        <ListCard title={search.q ? `Trips matching “${search.q}”` : listOnly ? "Trips" : "Recent trips"}>
           <ul className="divide-y divide-line">
             {recent.map((trip) => (
               <TripRow key={trip.id} trip={trip} base={base} />
@@ -111,14 +126,15 @@ async function Dispatch({ params }: Pick<PageProps<"/b/[slug]/dispatch">, "param
           </ul>
         </ListCard>
       ) : null}
+      <Pager base={`${base}/dispatch`} search={search} total={recentResult.count ?? 0} />
     </div>
   );
 }
 
-export default function DispatchPage({ params }: PageProps<"/b/[slug]/dispatch">) {
+export default function DispatchPage(props: PageProps<"/b/[slug]/dispatch">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Dispatch params={params} />
+      <Dispatch {...props} />
     </Suspense>
   );
 }

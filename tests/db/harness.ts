@@ -81,9 +81,19 @@ export async function as<T>(
   });
 }
 
-export async function createBusiness(db: Db, ownerId: string, name: string) {
+/** Test businesses switch on returns and serial numbers unless told otherwise. */
+export async function createBusiness(
+  db: Db,
+  ownerId: string,
+  name: string,
+  features: { returns?: boolean; serials?: boolean } = {}
+) {
   const rows = await as(db, ownerId, (s) =>
-    s.query<{ id: string; slug: string }>(`select * from public.create_organization($1)`, [name])
+    s.query<{ id: string; slug: string }>(`select * from public.create_organization($1, null, $2, $3)`, [
+      name,
+      features.returns ?? true,
+      features.serials ?? true
+    ])
   );
   return rows[0];
 }

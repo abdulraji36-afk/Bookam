@@ -7,12 +7,13 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 }
 
 /** Heavy underlined title that runs edge to edge across the top of a Card. */
-export function CardHeader({ title, description }: { title: string; description?: string }) {
+export function CardHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <header className="-mx-5 -mt-5 mb-5 sm:-mx-6 sm:-mt-6">
-      <h2 className="border-b-[3px] border-ink px-5 py-3.5 text-lg font-extrabold sm:px-6">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-3 border-b-[3px] border-ink px-5 py-3.5 sm:px-6">
+        <h2 className="text-lg font-extrabold">{title}</h2>
+        {action}
+      </div>
       {description ? <p className="px-5 pt-4 text-sm text-ink-soft sm:px-6">{description}</p> : null}
     </header>
   );

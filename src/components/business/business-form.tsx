@@ -1,7 +1,7 @@
 "use client";
 
 import { FormMessage } from "@/components/ui/alert";
-import { SelectField, TextField } from "@/components/ui/field";
+import { CheckboxField, SelectField, TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
@@ -21,9 +21,11 @@ type Props = {
   submitLabel: string;
   pendingLabel: string;
   defaults?: { name: string; businessType: string | null };
+  /** At sign-up, also ask what the business sells. */
+  askFeatures?: boolean;
 };
 
-export function BusinessForm({ action, submitLabel, pendingLabel, defaults }: Props) {
+export function BusinessForm({ action, submitLabel, pendingLabel, defaults, askFeatures }: Props) {
   const { state, pending, form } = useFormAction(action);
   const types =
     defaults?.businessType && !BUSINESS_TYPES.includes(defaults.businessType)
@@ -48,10 +50,35 @@ export function BusinessForm({ action, submitLabel, pendingLabel, defaults }: Pr
           </option>
         ))}
       </SelectField>
+      {askFeatures ? <FeatureQuestions /> : null}
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel={pendingLabel}>
         {submitLabel}
       </SubmitButton>
     </form>
+  );
+}
+
+/** The two questions that decide which parts of BukAm a business sees. */
+export function FeatureQuestions({ returns = false, serials = false }: { returns?: boolean; serials?: boolean }) {
+  return (
+    <fieldset className="space-y-4 rounded-md border-2 border-ink p-4">
+      <legend className="px-1 text-lg font-extrabold">What do you sell?</legend>
+      <CheckboxField
+        label="Customers bring things back to me"
+        name="tracksReturns"
+        defaultChecked={returns}
+        hint="Crates, gas cylinders, pallets, water bottles. BukAm tracks what each customer still owes you."
+      />
+      <CheckboxField
+        label="I sell items with serial numbers"
+        name="tracksSerials"
+        defaultChecked={serials}
+        hint="Phones, laptops, generators. Each one is recorded by its serial or IMEI when it comes in and when it is sold."
+      />
+      <p className="text-sm text-ink-soft">
+        Leave both unticked if you simply sell goods. You can change this later in Settings.
+      </p>
+    </fieldset>
   );
 }

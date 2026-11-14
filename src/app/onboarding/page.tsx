@@ -20,6 +20,7 @@ export default function OnboardingPage() {
             action={createBusinessAction}
             submitLabel="Create business"
             pendingLabel="Creating…"
+            askFeatures
           />
         </Card>
       </main>

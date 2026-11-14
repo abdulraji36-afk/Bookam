@@ -23,7 +23,9 @@ export async function createBusinessAction(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_organization", {
     p_name: parsed.data.name,
-    p_business_type: parsed.data.businessType || null
+    p_business_type: parsed.data.businessType || null,
+    p_tracks_returns: formData.get("tracksReturns") === "on",
+    p_tracks_serials: formData.get("tracksSerials") === "on"
   });
 
   const created = data?.[0];
@@ -74,4 +76,22 @@ export async function createLocationAction(
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: `${parsed.data.name} added.` };
+}
+
+export async function setBusinessFeaturesAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+
+  const { error } = await supabase.rpc("set_business_features", {
+    p_organization_id: org.id,
+    p_tracks_returns: formData.get("tracksReturns") === "on",
+    p_tracks_serials: formData.get("tracksSerials") === "on"
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Saved. The menus and forms now match what you sell." };
 }

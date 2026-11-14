@@ -4,6 +4,7 @@ import type {
   PaymentType,
   ReturnableAdjustmentReason,
   ReturnableMovementType,
+  StockAdjustmentReason,
   TripStatus,
   UnitStatus
 } from "@/types/database";
@@ -98,7 +99,28 @@ export function describeOwed(owed: number) {
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
   in_stock: "In stock",
   reserved: "On an order",
-  sold: "Sold"
+  sold: "Sold",
+  written_off: "Written off"
+};
+
+export const STOCK_OUT_REASONS: [StockAdjustmentReason, string][] = [
+  ["damaged", "Damaged"],
+  ["expired", "Expired"],
+  ["lost_or_stolen", "Lost or stolen"],
+  ["count_correction", "The count was wrong"]
+];
+
+export const STOCK_IN_REASONS: [StockAdjustmentReason, string][] = [
+  ["found", "Found stock"],
+  ["count_correction", "The count was wrong"]
+];
+
+export const STOCK_REASON_LABELS: Record<StockAdjustmentReason, string> = {
+  damaged: "Damaged",
+  expired: "Expired",
+  lost_or_stolen: "Lost or stolen",
+  count_correction: "Count corrected",
+  found: "Found stock"
 };
 
 /** "356789… · Black" for one unit. */

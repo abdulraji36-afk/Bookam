@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     confirmed = !error;
   }
 
-  const destination = confirmed ? next : "/login?error=confirm";
+  const failed = next.startsWith("/reset-password") ? "/forgot-password?expired=1" : "/login?error=confirm";
+  const destination = confirmed ? next : failed;
   return NextResponse.redirect(new URL(destination, request.url));
 }
