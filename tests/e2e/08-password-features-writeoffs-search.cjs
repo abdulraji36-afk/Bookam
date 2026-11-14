@@ -63,7 +63,7 @@ let dbg;
   // The follow-up questions only appear once the first choice is made.
   assert.equal(await a.getByLabel("Customers bring things back to me").count(), 0);
   await a.getByText("I count my goods").click();
-  assert.equal(await a.getByLabel("Customers bring things back to me").isChecked(), false);
+  assert.equal(await a.getByLabel("I sell drinks (RGB crates and PET packs)").isChecked(), false);
   assert.equal(await a.getByLabel("I also sell some items with serial numbers").isChecked(), false);
   assert.equal(await a.getByLabel("We deliver to customers").isChecked(), true, "a goods business delivers by default");
   await a.screenshot({ path: `${SHOTS}/80-onboarding-questions.png`, fullPage: true });

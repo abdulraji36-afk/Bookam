@@ -76,6 +76,7 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
           returns={org.tracks_returns}
           serials={org.tracks_serials}
           delivery={org.does_delivery}
+          drinks={org.sells_drinks}
         />
       </Card>
 

@@ -35,7 +35,7 @@ async function BusinessShell({
     { href: base, label: "Dashboard", icon: "dashboard", exact: true },
     { href: `${base}/orders`, label: saleWords(org.selling_mode).Many, icon: "orders" },
     ...(org.does_delivery ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch" } as const] : []),
-    ...(tracksReturns ? [{ href: `${base}/returns`, label: "Returns", icon: "returns" } as const] : []),
+    ...(tracksReturns ? [{ href: `${base}/returns`, label: org.sells_drinks ? "Empties" : "Returns", icon: "returns" } as const] : []),
     { href: `${base}/stock`, label: "Stock", icon: "stock" },
     { href: `${base}/products`, label: "Products", icon: "products" },
     { href: `${base}/customers`, label: "Customers", icon: "customers" },

@@ -48,7 +48,7 @@ export async function recordStockReceiptAction(
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
-  const { data, error } = await supabase.rpc("record_stock_receipt", {
+  const receiptArgs = {
     p_organization_id: org.id,
     p_location_id: parsed.data.locationId,
     p_received_date: parsed.data.receivedDate,
@@ -66,7 +66,21 @@ export async function recordStockReceiptAction(
           }
         : { product_id: item.productId, quantity: item.quantity ?? 0 }
     )
-  });
+  };
+
+  // A drinks delivery also records the empties given to the supplier, in one go.
+  const emptiesText = String(formData.get("emptiesGiven") ?? "").trim();
+  const emptiesGiven = emptiesText === "" ? 0 : readQuantity(emptiesText);
+  if (org.sells_drinks && (emptiesGiven === undefined || emptiesGiven < 0)) {
+    return { ok: false, message: "Enter how many empties the supplier took, or 0." };
+  }
+  const { data, error } = org.sells_drinks
+    ? await supabase.rpc("record_stock_delivery", {
+        ...receiptArgs,
+        p_empties_given: emptiesGiven ?? 0,
+        p_returnable_item_id: String(formData.get("returnableItemId") ?? "") || null
+      })
+    : await supabase.rpc("record_stock_receipt", receiptArgs);
 
   const receipt = data?.[0];
   if (error || !receipt) return { ok: false, message: describeDbError(error) };
@@ -78,7 +92,8 @@ export async function recordStockReceiptAction(
   notify({ supabase, org }, () => [
     `Stock received ${receipt.receipt_no}`,
     `${parsed.data.items.length} product${parsed.data.items.length === 1 ? "" : "s"}, ${formatQuantity(total)} items in total`,
-    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
+    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`,
+    org.sells_drinks && emptiesGiven ? `Empties given to the supplier: ${formatQuantity(emptiesGiven)}` : null
   ]);
 
   revalidatePath(`/b/${slug}`, "layout");

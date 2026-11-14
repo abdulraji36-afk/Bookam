@@ -26,6 +26,8 @@ export type OrgContext = {
     selling_mode: SellingMode;
     /** Delivers to customers on trips. When false, Dispatch is hidden. */
     does_delivery: boolean;
+    /** A drinks business: one pool of empties, drinks are RGB or PET, prices required. */
+    sells_drinks: boolean;
   };
 };
 
@@ -36,7 +38,7 @@ const loadOrgContext = cache(async (slug: string): Promise<OrgContext> => {
   // Row level security only returns the business if the user is an active member.
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone, tracks_returns, tracks_serials, selling_mode, does_delivery")
+    .select("id, name, slug, business_type, plan_code, trial_ends_at, currency_code, timezone, tracks_returns, tracks_serials, selling_mode, does_delivery, sells_drinks")
     .eq("slug", slug)
     .maybeSingle();
 

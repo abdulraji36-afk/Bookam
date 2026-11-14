@@ -16,7 +16,9 @@ function readSelling(formData: FormData) {
   const mode: SellingMode = value;
   return {
     p_selling_mode: mode,
-    p_tracks_returns: formData.get("tracksReturns") === "on",
+    // A drinks business always tracks its empties; the database makes sure too.
+    p_sells_drinks: mode === "quantity" ? formData.get("sellsDrinks") === "on" : undefined,
+    p_tracks_returns: formData.get("tracksReturns") === "on" || (mode === "quantity" && formData.get("sellsDrinks") === "on"),
     // A serial shop always has serial numbers on; the database makes sure too.
     p_tracks_serials: mode === "serial" || formData.get("tracksSerials") === "on",
     p_does_delivery: formData.get("doesDelivery") === "on"

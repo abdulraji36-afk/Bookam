@@ -12,19 +12,21 @@ export function FeaturesForm({
   mode,
   returns,
   serials,
-  delivery
+  delivery,
+  drinks
 }: {
   action: (previous: ActionState, formData: FormData) => Promise<ActionState>;
   mode: SellingMode;
   returns: boolean;
   serials: boolean;
   delivery: boolean;
+  drinks: boolean;
 }) {
   const { state, pending, form } = useFormAction(action);
 
   return (
     <form {...form} className="space-y-4">
-      <SellingQuestions mode={mode} returns={returns} serials={serials} delivery={delivery} />
+      <SellingQuestions mode={mode} returns={returns} serials={serials} delivery={delivery} drinks={drinks} />
       <FormMessage state={state} />
       <SubmitButton variant="secondary" pending={pending} pendingLabel="Saving…">
         Save

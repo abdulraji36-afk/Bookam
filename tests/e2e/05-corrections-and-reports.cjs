@@ -47,7 +47,7 @@ let dbg;
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
   await a.getByText("I count my goods").click();
-  await a.getByLabel("Customers bring things back to me").check();
+  await a.getByLabel("I sell drinks (RGB crates and PET packs)").check();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
   const base = new URL(a.url()).pathname;
@@ -58,9 +58,9 @@ let dbg;
     await vis(a.getByLabel("Product name")).fill(name);
     await vis(a.getByLabel("Sold by the")).fill(unit);
     await vis(a.getByLabel(/Selling price/)).fill(price);
+    await vis(a.getByLabel(/Buying cost/)).fill(String(Math.round(Number(price) * 0.9)));
     if (returnItem) {
-      await vis(a.getByLabel("Customers must bring something back")).check();
-      await vis(a.getByLabel("What must they bring back?")).fill(returnItem);
+      await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -75,6 +75,8 @@ let dbg;
     await go("/stock/receive");
     await pick(a, "Product", product);
     await vis(a.getByLabel("Quantity")).fill(String(quantity));
+    await vis(a.getByLabel("Supplier delivery reference")).fill(`NBC-${Date.now()}`);
+    await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
     await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
     await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}/);
     return a.url().split("?")[0];
@@ -111,20 +113,20 @@ let dbg;
   };
   const crateTotals = async (inStore, owed) => {
     await go("/returns");
-    const card = a.locator("section", { hasText: "Empty crate" }).filter({ hasText: "In store" });
+    const card = a.locator("section", { hasText: "Empties" }).filter({ hasText: "In store" });
     await card.locator("div", { hasText: "In store" }).getByText(String(inStore), { exact: true }).waitFor();
     await card.locator("div", { hasText: "Owed by customers" }).getByText(String(owed), { exact: true }).waitFor();
   };
 
-  await addProduct("Cola 50cl", "crate", "4200", "Empty crate");
+  await addProduct("Cola 50cl", "crate", "4200", "Empties");
   await addProduct("Water 75cl", "pack", "1800");
   await addCustomer("Mama Tunde Stores");
   await addCustomer("Alhaji Musa Kiosk");
   await receive("Cola 50cl (crate)", 200);
   const waterReceipt = await receive("Water 75cl (pack)", 50);
   await go("/returns/adjust");
-  await vis(a.getByLabel(/How many Empty crate\?/)).fill("100");
-  await vis(a.getByLabel("Reason")).selectOption({ label: "Opening count (already in store)" });
+  await vis(a.getByLabel(/How many Empties\?/)).fill("100");
+  await vis(a.getByLabel("Reason")).selectOption({ label: "Opening empties (already in store)" });
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
 
@@ -182,7 +184,7 @@ let dbg;
 
   // Void an adjustment from the returns page
   await go("/returns/adjust");
-  await vis(a.getByLabel(/How many Empty crate\?/)).fill("7");
+  await vis(a.getByLabel(/How many Empties\?/)).fill("7");
   await vis(a.getByLabel("Reason")).selectOption({ label: "Bought new ones" });
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
@@ -209,7 +211,7 @@ let dbg;
   const stockTable = a.locator("section", { hasText: "Stock" }).first();
   const colaRow = stockTable.locator("tr", { hasText: "Cola 50cl" });
   assert.deepEqual((await colaRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "200", "20", "0", "180"]);
-  const crateRow = a.locator("section", { hasText: "Returnables" }).locator("tr", { hasText: "Empty crate" });
+  const crateRow = a.locator("section", { hasText: "Returnables" }).locator("tr", { hasText: "Empties" });
   assert.deepEqual((await crateRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "156", "36", "120", "0"]);
   await a.getByText("₦84,000").first().waitFor(); // only Musa's order counts
   await a.locator("section", { hasText: "Orders recorded (3)" }).getByText("Voided").first().waitFor();

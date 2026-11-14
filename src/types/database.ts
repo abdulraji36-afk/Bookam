@@ -62,6 +62,7 @@ export type Database = {
           tracks_serials: boolean;
           selling_mode: SellingMode;
           does_delivery: boolean;
+          sells_drinks: boolean;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -543,6 +544,7 @@ export type Database = {
           quantity_taken: number;
           supplier_name: string | null;
           reference: string | null;
+          receipt_id: string | null;
           received_by: string | null;
           note: string | null;
           created_by: string | null;
@@ -553,7 +555,22 @@ export type Database = {
         };
         Insert: never;
         Update: never;
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "supplier_exchanges_returnable_item_id_fkey";
+            columns: ["returnable_item_id"];
+            isOneToOne: false;
+            referencedRelation: "returnable_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "supplier_exchanges_receipt_id_fkey";
+            columns: ["receipt_id"];
+            isOneToOne: true;
+            referencedRelation: "stock_receipts";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       returnable_adjustments: {
         Row: {
@@ -787,6 +804,7 @@ export type Database = {
           p_tracks_serials?: boolean;
           p_selling_mode?: SellingMode;
           p_does_delivery?: boolean;
+          p_sells_drinks?: boolean;
         };
         Returns: { id: string; slug: string }[];
       };
@@ -909,8 +927,35 @@ export type Database = {
           p_tracks_serials: boolean;
           p_selling_mode?: SellingMode | null;
           p_does_delivery?: boolean | null;
+          p_sells_drinks?: boolean | null;
         };
         Returns: undefined;
+      };
+      record_stock_delivery: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_received_date: string;
+          p_supplier_name: string | null;
+          p_reference: string | null;
+          p_note: string | null;
+          p_items: Json;
+          p_empties_given?: number;
+          p_returnable_item_id?: string | null;
+        };
+        Returns: { id: string; receipt_no: string; exchange_no: string | null }[];
+      };
+      record_customer_empties_return: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_return_date: string;
+          p_returnable_item_id: string;
+          p_customer_id: string;
+          p_quantity: number;
+          p_note?: string | null;
+        };
+        Returns: string;
       };
       record_stock_adjustment: {
         Args: {

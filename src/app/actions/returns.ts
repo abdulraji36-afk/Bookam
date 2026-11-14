@@ -191,3 +191,55 @@ export async function recordOpeningDebtAction(
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Old debt recorded on the customer's balance." };
 }
+
+const customerEmptiesReturnSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  returnDate: z.iso.date("Enter the date."),
+  returnableItemId: z.uuid("Choose what was brought back."),
+  customerId: z.uuid("Choose the customer."),
+  quantity: z.coerce
+    .number("Enter how many they brought.")
+    .positive("Enter how many they brought.")
+    .max(9_999_999, "That number is too large."),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+});
+
+/** Any team member: a customer brings back empties they still owed. */
+export async function recordCustomerEmptiesReturnAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug);
+
+  const parsed = customerEmptiesReturnSchema.safeParse({
+    locationId: text(formData, "locationId"),
+    returnDate: text(formData, "returnDate"),
+    returnableItemId: text(formData, "returnableItemId"),
+    customerId: text(formData, "customerId"),
+    quantity: text(formData, "quantity"),
+    note: text(formData, "note")
+  });
+  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+
+  const { error } = await supabase.rpc("record_customer_empties_return", {
+    p_organization_id: org.id,
+    p_location_id: parsed.data.locationId,
+    p_return_date: parsed.data.returnDate,
+    p_returnable_item_id: parsed.data.returnableItemId,
+    p_customer_id: parsed.data.customerId,
+    p_quantity: parsed.data.quantity,
+    p_note: parsed.data.note || null
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, async () => {
+    const { data: customer } = await supabase.from("customers").select("name").eq("id", parsed.data.customerId).maybeSingle();
+    return [
+      `${customer?.name ?? "A customer"} brought back ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
+      parsed.data.note && `Note: ${parsed.data.note}`
+    ];
+  });
+  revalidatePath(`/b/${slug}`, "layout");
+  redirect(`/b/${slug}/returns?saved=customer-return`);
+}

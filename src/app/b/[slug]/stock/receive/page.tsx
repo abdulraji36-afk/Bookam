@@ -7,6 +7,7 @@ import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card"
 import { todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { getDrinksStock } from "@/lib/returnables";
 
 export const metadata: Metadata = { title: "Receive stock" };
 
@@ -17,7 +18,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
   const [productsResult, locationsResult, coloursResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, unit, tracks_serials")
+      .select("id, name, unit, tracks_serials, returnable_item_id")
       .eq("organization_id", org.id)
       .eq("is_active", true)
       .order("name"),
@@ -29,6 +30,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
       .order("created_at"),
     supabase.from("product_units").select("product_id, colour").eq("organization_id", org.id).not("colour", "is", null).limit(5000)
   ]);
+  const drinks = org.sells_drinks ? await getDrinksStock(supabase, org.id) : undefined;
   // Colours already used for each product, offered as suggestions.
   const colours = new Map<string, Set<string>>();
   for (const unit of coloursResult.data ?? []) {
@@ -39,6 +41,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
     name: product.name,
     unit: product.unit,
     tracksSerials: product.tracks_serials,
+    returnable: product.returnable_item_id !== null,
     colours: [...(colours.get(product.id) ?? [])].sort()
   }));
 
@@ -66,6 +69,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
             action={recordStockReceiptAction.bind(null, org.slug)}
             products={products}
             locations={locationsResult.data ?? []}
+            drinks={drinks}
             today={todayIn(org.timezone, await requestNow())}
           />
         </Card>

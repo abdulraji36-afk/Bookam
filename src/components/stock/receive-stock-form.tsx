@@ -14,6 +14,8 @@ export type ReceiveProduct = {
   name: string;
   unit: string;
   tracksSerials: boolean;
+  /** An RGB drink: its empty crate must come back. */
+  returnable?: boolean;
   /** Colours already used for this product, offered as suggestions. */
   colours: string[];
 };
@@ -23,16 +25,27 @@ type Props = {
   products: ReceiveProduct[];
   locations: { id: string; name: string }[];
   today: string;
+  /** Set for a drinks business: the empties pool, and how many are in store at each location. */
+  drinks?: { returnableItemId: string; returnableName: string; inStore: Record<string, number> };
 };
 
 type Unit = { key: number; serial: string; colour: string };
-type Line = { key: number; productId: string; units: Unit[] };
+type Line = { key: number; productId: string; quantity: string; units: Unit[] };
 
-export function ReceiveStockForm({ action, products, locations, today }: Props) {
+export function ReceiveStockForm({ action, products, locations, today, drinks }: Props) {
   const { state, pending, form } = useFormAction(action);
   const nextKey = useRef(1);
-  const [lines, setLines] = useState<Line[]>([{ key: 0, productId: "", units: [] }]);
+  const [lines, setLines] = useState<Line[]>([{ key: 0, productId: "", quantity: "", units: [] }]);
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
+  // The empties given back follow the RGB crates received, until someone types a different number.
+  const [emptiesTyped, setEmptiesTyped] = useState<string | null>(null);
   const productById = new Map(products.map((product) => [product.id, product]));
+  const rgbReceived = lines.reduce((sum, line) => {
+    const quantity = Number(line.quantity);
+    return productById.get(line.productId)?.returnable && Number.isFinite(quantity) && quantity > 0 ? sum + quantity : sum;
+  }, 0);
+  const emptiesGiven = emptiesTyped ?? (rgbReceived > 0 ? String(rgbReceived) : "");
+  const emptiesInStore = drinks?.inStore[locationId] ?? 0;
   // Lets a new serial box take the cursor, so a barcode scanner can keep going.
   const focusSerial = useRef<number | null>(null);
 
@@ -56,7 +69,12 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField label="Date the stock arrived" name="receivedDate" type="date" defaultValue={today} max={today} required />
         {locations.length > 1 ? (
-          <SelectField label="Received at" name="locationId" defaultValue={locations[0].id}>
+          <SelectField
+            label="Received at"
+            name="locationId"
+            value={locationId}
+            onChange={(event) => setLocationId(event.currentTarget.value)}
+          >
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
@@ -66,13 +84,28 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
         ) : (
           <input type="hidden" name="locationId" value={locations[0]?.id ?? ""} />
         )}
-        <TextField label="Supplier (optional)" name="supplierName" maxLength={80} />
         <TextField
-          label="Delivery reference (optional)"
-          name="reference"
-          hint="A waybill or invoice number, if there is one."
+          label={drinks ? "Supplier" : "Supplier (optional)"}
+          name="supplierName"
           maxLength={80}
+          placeholder={drinks ? "e.g. NBC" : undefined}
         />
+        {drinks ? (
+          <TextField
+            label="Supplier delivery reference"
+            name="reference"
+            hint="The NBC (or other supplier) delivery ref on the waybill."
+            maxLength={80}
+            required
+          />
+        ) : (
+          <TextField
+            label="Delivery reference (optional)"
+            name="reference"
+            hint="A waybill or invoice number, if there is one."
+            maxLength={80}
+          />
+        )}
       </div>
 
       <fieldset className="space-y-5">
@@ -99,6 +132,7 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
                       updateLine(line.key, (current) => ({
                         ...current,
                         productId,
+                        quantity: current.quantity,
                         // A serial-numbered product starts with one empty phone line.
                         units: chosen?.tracksSerials ? (current.units.length ? current.units : [newUnit()]) : []
                       }));
@@ -119,7 +153,17 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
                     <input type="hidden" name="quantity" value="" />
                   </div>
                 ) : (
-                  <TextField label="Quantity" name="quantity" inputMode="decimal" autoComplete="off" />
+                  <TextField
+                    label="Quantity"
+                    name="quantity"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={line.quantity}
+                    onChange={(event) => {
+                      const quantity = event.currentTarget.value;
+                      updateLine(line.key, (current) => ({ ...current, quantity }));
+                    }}
+                  />
                 )}
                 <Button
                   type="button"
@@ -226,11 +270,29 @@ export function ReceiveStockForm({ action, products, locations, today }: Props) 
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => setLines((current) => [...current, { key: nextKey.current++, productId: "", units: [] }])}
+          onClick={() =>
+            setLines((current) => [...current, { key: nextKey.current++, productId: "", quantity: "", units: [] }])
+          }
         >
           Add another product
         </Button>
       </fieldset>
+
+      {drinks ? (
+        <fieldset className="space-y-3 rounded-md border-2 border-ink p-4">
+          <legend className="px-1 text-lg font-extrabold">{drinks.returnableName} given to the supplier</legend>
+          <input type="hidden" name="returnableItemId" value={drinks.returnableItemId} />
+          <TextField
+            label={`How many ${drinks.returnableName.toLowerCase()} did the supplier take?`}
+            name="emptiesGiven"
+            inputMode="numeric"
+            autoComplete="off"
+            value={emptiesGiven}
+            onChange={(event) => setEmptiesTyped(event.currentTarget.value)}
+            hint={`Starts at the RGB crates received; change it if they took fewer. Only this number comes off your ${drinks.returnableName.toLowerCase()}. In store now: ${emptiesInStore}.`}
+          />
+        </fieldset>
+      ) : null}
 
       <TextField label="Note (optional)" name="note" maxLength={500} />
       <FormMessage state={state} />

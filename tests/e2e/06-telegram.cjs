@@ -58,7 +58,6 @@ let dbg;
   await a.waitForURL("**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
   await a.getByText("I count my goods").click();
-  await a.getByLabel("Customers bring things back to me").check();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
   const base = new URL(a.url()).pathname;

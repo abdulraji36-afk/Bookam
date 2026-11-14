@@ -63,13 +63,25 @@ export function BusinessForm({ action, submitLabel, pendingLabel, defaults, askF
   );
 }
 
-type SellingDefaults = { mode?: SellingMode; returns?: boolean; serials?: boolean; delivery?: boolean };
+type SellingDefaults = {
+  mode?: SellingMode;
+  returns?: boolean;
+  serials?: boolean;
+  delivery?: boolean;
+  drinks?: boolean;
+};
 
 /**
  * The questions that decide which parts of BukAm a business sees: first how
  * it sells, then the follow-ups that fit that answer.
  */
-export function SellingQuestions({ mode: initialMode, returns = false, serials = false, delivery }: SellingDefaults) {
+export function SellingQuestions({
+  mode: initialMode,
+  returns = false,
+  serials = false,
+  delivery,
+  drinks = false
+}: SellingDefaults) {
   const [mode, setMode] = useState<SellingMode | null>(initialMode ?? null);
   // Until the person answers it themselves, delivery follows the usual case:
   // depots deliver, phone shops sell at the counter.
@@ -115,11 +127,20 @@ export function SellingQuestions({ mode: initialMode, returns = false, serials =
           {mode === "quantity" ? (
             <>
               <CheckboxField
-                label="Customers bring things back to me"
-                name="tracksReturns"
-                defaultChecked={returns}
-                hint="Crates, gas cylinders, pallets, water bottles. BukAm tracks what each customer still owes you."
+                label="I sell drinks (RGB crates and PET packs)"
+                name="sellsDrinks"
+                defaultChecked={drinks}
+                hint="Soft drinks, beer, water. RGB crates must come back as empties; PET packs, cans and cartons do not. BukAm keeps one count of your empties."
               />
+              {returns && !drinks ? (
+                // Kept for businesses that already track other returnables.
+                <CheckboxField
+                  label="Customers bring things back to me"
+                  name="tracksReturns"
+                  defaultChecked={returns}
+                  hint="Gas cylinders, pallets, water bottles. BukAm tracks what each customer still owes you."
+                />
+              ) : null}
               <CheckboxField
                 label="I also sell some items with serial numbers"
                 name="tracksSerials"

@@ -26,11 +26,24 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
     .maybeSingle();
   if (!receipt) notFound();
 
+  // Empties the supplier took away with this delivery, if any.
+  const { data: exchange } = await supabase
+    .from("supplier_exchanges")
+    .select("exchange_no, quantity_taken, voided_at, returnable_items (name)")
+    .eq("receipt_id", receipt.id)
+    .maybeSingle();
+
   const details = [
     ["Date received", formatDate(receipt.received_date, "UTC")],
     ["Location", receipt.locations?.name],
     ["Supplier", receipt.supplier_name],
     ["Reference", receipt.reference],
+    [
+      exchange ? `${exchange.returnable_items?.name ?? "Empties"} given to the supplier` : "",
+      exchange
+        ? `${formatQuantity(Number(exchange.quantity_taken))} (${exchange.exchange_no}${exchange.voided_at ? ", voided" : ""})`
+        : null
+    ],
     ["Recorded by", receipt.profiles?.full_name],
     ["Note", receipt.note]
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));

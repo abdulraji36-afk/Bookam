@@ -56,9 +56,10 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
     await vis(a.getByLabel("Product name")).fill(name);
     await vis(a.getByLabel("Sold by the")).fill(unit);
     await vis(a.getByLabel(/Selling price/)).fill(price);
+    const cost = a.getByLabel(/Buying cost/).filter({ visible: true });
+    if (await cost.getAttribute("required") !== null) await cost.fill(String(Math.round(Number(price) * 0.9)));
     if (returnItem) {
-      await vis(a.getByLabel("Customers must bring something back")).check();
-      await vis(a.getByLabel("What must they bring back?")).fill(returnItem);
+      await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -80,7 +81,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
     await vis(page.getByRole("button", { name: "Save order" })).click();
     await page.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   }
-  const crateCard = () => a.locator("section", { hasText: "Empty crate" }).filter({ hasText: "In store" });
+  const crateCard = () => a.locator("section", { hasText: "Empties" }).filter({ hasText: "In store" });
   async function expectTotals(inStore, owed) {
     await go("/returns");
     const card = crateCard();
@@ -101,14 +102,14 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   // Switching returns on in Settings brings both back.
   await go("/settings");
   const features = a.locator("form", { has: a.getByText("How do you sell?") });
-  await features.getByLabel("Customers bring things back to me").check();
+  await features.getByLabel("I sell drinks (RGB crates and PET packs)").check();
   await features.getByRole("button", { name: "Save" }).click();
   await features.getByText("Saved. The menus and forms now match what you sell.").waitFor();
-  await menu(a).getByRole("link", { name: "Returns", exact: true }).waitFor();
-  await addProduct("Cola 50cl", "crate", "4200", "Empty crate");
+  await menu(a).getByRole("link", { name: "Empties", exact: true }).waitFor();
+  await addProduct("Cola 50cl", "crate", "4200", "Empties");
   // With a product that needs returns, returns cannot be switched off again.
   await go("/settings");
-  await features.getByLabel("Customers bring things back to me").uncheck();
+  await features.getByLabel("I sell drinks (RGB crates and PET packs)").uncheck();
   await features.getByRole("button", { name: "Save" }).click();
   await features.getByText("Returns cannot be switched off while Cola 50cl still needs something brought back.", { exact: false }).waitFor();
   ok("returns stay hidden until switched on in Settings, and cannot be switched off while a product needs them");
@@ -121,6 +122,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await vis(a.getByRole("button", { name: "Add another product" })).click();
   await pick(a, "Product 2", "Water 75cl (pack)");
   await vis(a.getByLabel("Quantity")).nth(1).fill("50");
+  await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-0001");
+  await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
 
@@ -128,8 +131,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await expectTotals(0, 0);
   await a.getByRole("link", { name: "Add or subtract" }).click();
   await a.waitForURL(/\/returns\/adjust/);
-  await vis(a.getByLabel(/How many Empty crate\?/)).fill("200");
-  await vis(a.getByLabel("Reason")).selectOption({ label: "Opening count (already in store)" });
+  await vis(a.getByLabel(/How many Empties\?/)).fill("200");
+  await vis(a.getByLabel("Reason")).selectOption({ label: "Opening empties (already in store)" });
   await a.screenshot({ path: `${SHOTS}/30-adjust.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
@@ -153,7 +156,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
   await expectTotals(200, 60);
   await a.locator("section", { hasText: "Trips to record returns for" }).getByText("Musa Driver").waitFor();
-  const balances = a.locator("section", { hasText: "Customer balances" });
+  const balances = a.locator("section", { hasText: "Empty shortages" });
   await balances.locator("li", { hasText: "Mama Tunde Stores" }).getByText("40 owed").waitFor();
   await balances.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("20 owed").waitFor();
   await a.screenshot({ path: `${SHOTS}/31-returns-out.png`, fullPage: true });
@@ -175,16 +178,16 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   assert.equal(await vis(a.getByRole("button", { name: "Record returns and complete trip" })).count(), 0);
   await a.screenshot({ path: `${SHOTS}/33-trip-returned.png`, fullPage: true });
   await expectTotals(252, 8);
-  await a.locator("section", { hasText: "Customer balances" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("8 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("8 owed").waitFor();
   ok("returns are recorded per customer and the shortage stays on the customer's balance");
 
   // Supplier exchange
-  await a.getByRole("link", { name: "Supplier exchange" }).click();
+  await a.getByRole("link", { name: "Supplier took empties only" }).click();
   await a.waitForURL(/\/returns\/exchange/);
-  await vis(a.getByLabel(/How many Empty crate did the supplier take\?/)).fill("9999");
+  await vis(a.getByLabel(/How many Empties did the supplier take\?/)).fill("9999");
   await vis(a.getByRole("button", { name: "Save exchange" })).click();
-  await a.getByText("You only have 252 Empty crate in store here, so 9999 cannot be taken.").waitFor();
-  await vis(a.getByLabel(/How many Empty crate did the supplier take\?/)).fill("150");
+  await a.getByText("You only have 252 Empties in store here, so 9999 cannot be taken.").waitFor();
+  await vis(a.getByLabel(/How many Empties did the supplier take\?/)).fill("150");
   await vis(a.getByLabel("Supplier (optional)")).fill("Bottling company");
   await vis(a.getByLabel("Delivery reference (optional)")).fill("WB-771");
   await a.screenshot({ path: `${SHOTS}/34-exchange.png`, fullPage: true });
@@ -196,19 +199,19 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
   // Adjustment: customer brings crates without buying -> credit
   await go("/returns/adjust");
-  await vis(a.getByLabel(/How many Empty crate\?/)).fill("10");
+  await vis(a.getByLabel(/How many Empties\?/)).fill("10");
   await pick(a, "Which customer?", "Mama Tunde Stores");
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
   await expectTotals(112, 0);
   await a.getByText("2 of those in store are held for customers in credit.").waitFor();
-  await a.locator("section", { hasText: "Customer balances" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("2 in credit").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("2 in credit").waitFor();
   ok("Add with a customer: the store count rises and the customer's balance falls, into credit");
 
   // Adjustment: subtract damaged, and correction needs a note
   await go("/returns/adjust");
   await vis(a.getByText("− Subtract")).click();
-  await vis(a.getByLabel(/How many Empty crate\?/)).fill("2");
+  await vis(a.getByLabel(/How many Empties\?/)).fill("2");
   assert.equal(await vis(a.getByLabel("Which customer?")).count(), 0, "no customer for damaged or lost");
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
@@ -219,13 +222,13 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await go("/returns/adjust");
   const debt = a.locator("section", { hasText: "A customer already owed some" });
   await pick(debt, "Customer", "Alhaji Musa Kiosk");
-  await vis(debt.getByLabel(/How many Empty crate do they owe\?/)).fill("15");
+  await vis(debt.getByLabel(/How many Empties do they owe\?/)).fill("15");
   await vis(debt.getByRole("button", { name: "Record old debt" })).click();
   await a.getByText("Old debt recorded on the customer's balance.").waitFor();
   await expectTotals(110, 15);
   await go("/customers");
-  await a.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("Empty crate: 15 owed").waitFor();
-  await a.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Empty crate: 2 in credit").waitFor();
+  await a.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("Empties: 15 owed").waitFor();
+  await a.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Empties: 2 in credit").waitFor();
   await go("/returns");
   await a.locator("section", { hasText: "Latest activity" }).getByText("Taken by the supplier").waitFor();
   await a.screenshot({ path: `${SHOTS}/35-returns.png`, fullPage: true });
@@ -242,7 +245,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.getByRole("button", { name: /^Yes, / }).click();
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
   await go("/returns");
-  await a.locator("section", { hasText: "Customer balances" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("10 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("10 owed").waitFor();
   ok("a customer's credit counts against their next order");
 
   // Staff on a phone: can exchange and record returns, cannot adjust
@@ -257,7 +260,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(BASE + base + "/returns");
-  await c.getByRole("link", { name: "Supplier exchange" }).waitFor();
+  await c.getByRole("link", { name: "Supplier took empties only" }).waitFor();
   assert.equal(await c.getByRole("link", { name: "Add or subtract" }).count(), 0);
   await c.goto(BASE + base + "/returns/adjust");
   await c.waitForURL(new RegExp(base + "$"));

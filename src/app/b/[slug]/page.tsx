@@ -121,6 +121,15 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const manager = canManage(role);
   const tracksReturns = (returnables.data ?? []).length > 0;
   const owedBack = (returnables.data ?? []).reduce((sum, item) => sum + Number(item.owed), 0);
+  // A drinks depot counts the empties it already has before it starts.
+  const { count: openingEmpties } = org.sells_drinks
+    ? await supabase
+        .from("returnable_adjustments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", org.id)
+        .eq("reason", "opening_count")
+        .is("voided_at", null)
+    : { count: 0 };
 
   const perDay = new Map<string, number>();
   for (const order of weekOrders.data ?? []) perDay.set(order.order_date, (perDay.get(order.order_date) ?? 0) + 1);
@@ -153,6 +162,15 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       done: productCount > 0,
       href: manager ? `${base}/products/new` : undefined
     },
+    ...(org.sells_drinks
+      ? [
+          {
+            label: "Count your opening empties",
+            done: (openingEmpties ?? 0) > 0,
+            href: manager ? `${base}/returns/adjust?reason=opening_count` : undefined
+          }
+        ]
+      : []),
     {
       label: "Record the stock you have",
       done: (received.count ?? 0) > 0,

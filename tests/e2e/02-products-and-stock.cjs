@@ -46,7 +46,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
   await a.getByText("I count my goods").click();
-  await a.getByLabel("Customers bring things back to me").check();
+  await a.getByLabel("I sell drinks (RGB crates and PET packs)").check();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
   const base = new URL(a.url()).pathname;
@@ -60,25 +60,28 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByLabel(/Selling price/).fill("4200");
   await a.getByLabel(/Buying cost/).fill("3600");
   await a.getByLabel("Warn me when stock falls to").fill("20");
-  assert.equal(await a.getByLabel("What must they bring back?").count(), 0, "return field hidden until ticked");
-  await a.getByLabel("Customers must bring something back").check();
-  await a.getByLabel("What must they bring back?").fill("Empty crate");
+  // A drinks depot names its empties once; each drink is just RGB or PET.
+  assert.equal(await a.getByLabel("What must they bring back?").count(), 0, "nothing to type");
+  await a.getByLabel(/^RGB/).check();
   await a.screenshot({ path: `${SHOTS}/10-product-form.png`, fullPage: true });
   await a.getByRole("button", { name: "Save product" }).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "Cola 50cl" }).getByText("Return due: Empty crate").waitFor();
+  await a.locator("li", { hasText: "Cola 50cl" }).getByText("RGB · empties back").waitFor();
 
   await a.getByRole("link", { name: "+ New product" }).click();
   await a.getByLabel("Product name").fill("cola 50cl");
+  await a.getByLabel(/Selling price/).fill("4200");
+  await a.getByLabel(/Buying cost/).fill("3600");
   await a.getByRole("button", { name: "Save product" }).click();
   await a.getByText("You already have a product called cola 50cl.").waitFor();
   assert.equal(await a.getByLabel("Product name").inputValue(), "cola 50cl", "typed name kept after error");
   await a.getByLabel("Product name").fill("Water 75cl");
   await a.getByLabel("Sold by the").fill("pack");
   await a.getByLabel(/Selling price/).fill("1,800");
+  await a.getByLabel(/Buying cost/).fill("1500");
   await a.getByRole("button", { name: "Save product" }).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("No return").waitFor();
+  await a.locator("li", { hasText: "Water 75cl" }).getByText("PET", { exact: true }).waitFor();
   await a.locator("li", { hasText: "Water 75cl" }).getByText("Per pack · ₦1,800").waitFor();
   await a.screenshot({ path: `${SHOTS}/11-products.png`, fullPage: true });
   ok("owner creates a product with a return and one without; duplicate name refused");
@@ -89,7 +92,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // Earlier pages stay in the DOM hidden, so read only the visible form.
   const visible = (locator) => locator.filter({ visible: true });
   assert.equal(await visible(a.getByLabel(/Buying cost/)).inputValue(), "3600");
-  assert.equal(await visible(a.getByLabel("What must they bring back?")).inputValue(), "Empty crate");
+  assert.equal(await visible(a.getByLabel(/^RGB/)).isChecked(), true);
   assert.equal(await visible(a.getByLabel("Warn me when stock falls to")).inputValue(), "20");
   ok("editing a product shows its saved cost and return item");
 
@@ -109,6 +112,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.locator("li", { hasText: "Cola 50cl" }).getByText("Low stock").waitFor();
   await a.getByText("1 product is running low.").waitFor();
   await a.getByRole("link", { name: "+ Receive stock" }).click();
+  await a.getByLabel("Supplier delivery reference").fill("NBC-0001");
   await a.getByRole("button", { name: "Save and add to stock" }).click();
   await a.getByText("Add at least one product.").waitFor();
   await pick(a, "Product", "Cola 50cl (crate)");
@@ -116,7 +120,10 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByRole("button", { name: "Add another product" }).click();
   await pick(a, "Product 2", "Water 75cl (pack)");
   await a.getByLabel("Quantity").nth(1).fill("40");
-  await a.getByLabel("Supplier (optional)").fill("Main supplier");
+  await a.getByLabel("Supplier", { exact: true }).fill("Main supplier");
+  // No empties in store yet, so none go back with this delivery.
+  assert.equal(await a.getByLabel(/did the supplier take\?/).inputValue(), "100", "starts at the RGB crates received");
+  await a.getByLabel(/did the supplier take\?/).fill("0");
   await a.screenshot({ path: `${SHOTS}/12-receive-stock.png`, fullPage: true });
   await a.getByRole("button", { name: "Save and add to stock" }).click();
   await a.waitForURL(/\/stock\/receipts\//);
@@ -161,6 +168,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.getByRole("link", { name: "+ Receive stock" }).click();
   await pick(c, "Product", "Cola 50cl (crate)");
   await c.getByLabel("Quantity").fill("12.5");
+  await c.getByLabel("Supplier delivery reference").fill("NBC-0002");
+  await c.getByLabel(/did the supplier take\?/).fill("0");
   await c.getByRole("button", { name: "Save and add to stock" }).click();
   await c.waitForURL(/\/stock\/receipts\//);
   await c.getByRole("heading", { name: /^STK-\d{8}-0002$/ }).waitFor();

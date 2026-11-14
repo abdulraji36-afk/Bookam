@@ -118,6 +118,15 @@ These are what keep one business's data away from another's.
    feature, and refuses to switch one off while a product or a customer
    balance still uses it.
 
+13. A drinks business (`organizations.sells_drinks`) works like Bilikis. It
+   has one pool of empties, named "Empties" once, and every drink is RGB
+   (the empty crate comes back) or PET (nothing comes back), with its selling
+   price and buying cost required. A supplier delivery carries the
+   supplier's reference and records the empties given back in the same
+   transaction (`record_stock_delivery`); voiding the delivery gives them
+   back. Staff record customers bringing back empties they owe
+   (`record_customer_empties_return`), never more than they owe.
+
 ## Telegram notifications
 
 One bot serves every business; each business links its own group from its
@@ -186,4 +195,5 @@ version of the app, so the database can always go first.
 | 7 | Serial-numbered products (serial and colour per unit, colour then serial when selling), counter sales, walk-in buyers, serial lookup with warranty | Done |
 | 8 | Forgot password, sign-up questions that shape the app, stock write-offs and corrections, search and paging on long lists, browser walkthroughs in the repo | Done |
 | 9 | Two kinds of business: shops that count goods and shops that sell by serial number, each with its own words, menu and defaults; delivery as its own choice | Done |
+| 10 | Drinks, the Bilikis way: one Empties pool, each drink RGB or PET, price and cost required, opening empties as an adjustment, empties given to the supplier on the delivery itself, empty shortages and customers bringing empties back | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

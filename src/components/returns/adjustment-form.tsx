@@ -17,15 +17,23 @@ type Props = {
   locations: Choice[];
   customers: Choice[];
   today: string;
+  /** A drinks business calls its opening count "opening empties". */
+  drinks?: boolean;
+  /** Start on this reason, e.g. from the "count your opening empties" step. */
+  initialReason?: ReturnableAdjustmentReason;
 };
 
 const NEEDS_CUSTOMER: ReturnableAdjustmentReason[] = ["customer_return", "given_to_customer"];
 
-export function AdjustmentForm({ action, returnables, locations, customers, today }: Props) {
+export function AdjustmentForm({ action, returnables, locations, customers, today, drinks, initialReason }: Props) {
   const { state, pending, form } = useFormAction(action);
-  const [direction, setDirection] = useState<"add" | "subtract">("add");
-  const [reason, setReason] = useState<ReturnableAdjustmentReason>("customer_return");
-  const reasons = direction === "add" ? ADD_REASONS : SUBTRACT_REASONS;
+  const startsOnAdd = !initialReason || ADD_REASONS.some(([value]) => value === initialReason);
+  const [direction, setDirection] = useState<"add" | "subtract">(startsOnAdd ? "add" : "subtract");
+  const [reason, setReason] = useState<ReturnableAdjustmentReason>(initialReason ?? "customer_return");
+  const reasons = (direction === "add" ? ADD_REASONS : SUBTRACT_REASONS).map(
+    ([value, label]) =>
+      [value, drinks && value === "opening_count" ? "Opening empties (already in store)" : label] as const
+  );
   const needsCustomer = NEEDS_CUSTOMER.includes(reason);
 
   function choose(next: "add" | "subtract") {

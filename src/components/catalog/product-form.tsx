@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
-import { CheckboxField, TextField } from "@/components/ui/field";
+import { CheckboxField, SelectField, TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { useFormAction } from "@/lib/use-form-action";
@@ -27,7 +27,7 @@ type Props = {
   /** Things customers already bring back for other products. */
   returnables: string[];
   /** Which product options this business uses. */
-  features: { returns: boolean; serials: boolean; serialByDefault?: boolean };
+  features: { returns: boolean; serials: boolean; serialByDefault?: boolean; drinks?: boolean };
   defaults?: ProductDefaults;
 };
 
@@ -80,7 +80,8 @@ export function ProductForm({
           name="sellingPrice"
           inputMode="decimal"
           defaultValue={defaults?.sellingPrice}
-          hint="Per unit. Leave empty to set it later."
+          hint={features.drinks ? "Per unit. Needed before the drink can be sold." : "Per unit. Leave empty to set it later."}
+          required={features.drinks}
         />
         <TextField
           label={`Buying cost (${currency})`}
@@ -88,6 +89,7 @@ export function ProductForm({
           inputMode="decimal"
           defaultValue={defaults?.costPrice}
           hint="Only owners and admins can see this."
+          required={features.drinks}
         />
         <TextField
           label="Warn me when stock falls to"
@@ -103,7 +105,14 @@ export function ProductForm({
         ))}
       </datalist>
 
-      {features.returns || requiresReturn ? (
+      {features.drinks ? (
+        <DrinkKind
+          returnables={returnables}
+          requiresReturn={requiresReturn}
+          onChange={setRequiresReturn}
+          defaultReturnable={defaults?.returnItemName}
+        />
+      ) : features.returns || requiresReturn ? (
         <div className="space-y-4 rounded-md border-2 border-ink p-4">
           <CheckboxField
             label="Customers must bring something back"
@@ -160,5 +169,75 @@ export function ProductForm({
         Save product
       </SubmitButton>
     </form>
+  );
+}
+
+/**
+ * Like Bilikis: a drink is either RGB (comes in a crate whose empty must come
+ * back) or PET (packs, cans, cartons: nothing comes back). The empties pool is
+ * named once for the business, so nothing is typed here.
+ */
+function DrinkKind({
+  returnables,
+  requiresReturn,
+  onChange,
+  defaultReturnable
+}: {
+  returnables: string[];
+  requiresReturn: boolean;
+  onChange: (rgb: boolean) => void;
+  defaultReturnable?: string;
+}) {
+  const options = [
+    { rgb: true, title: "RGB", detail: "Glass bottles in a crate. The customer must bring the empty crate back." },
+    { rgb: false, title: "PET, can or carton", detail: "Nothing comes back." }
+  ];
+  return (
+    <fieldset className="space-y-3">
+      <legend className="mb-1.5 text-sm font-bold">What kind of drink is it?</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((option) => (
+          <label
+            key={option.title}
+            className={`flex cursor-pointer gap-3 rounded-md border-2 p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${
+              requiresReturn === option.rgb ? "border-ink bg-paper" : "border-line bg-white"
+            }`}
+          >
+            <input
+              type="radio"
+              name="drinkKind"
+              value={option.rgb ? "rgb" : "pet"}
+              checked={requiresReturn === option.rgb}
+              onChange={() => onChange(option.rgb)}
+              className="mt-1 size-5 shrink-0 accent-ink"
+            />
+            <span>
+              <span className="block font-extrabold">{option.title}</span>
+              <span className="text-sm text-ink-soft">{option.detail}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {requiresReturn ? (
+        <>
+          <input type="hidden" name="requiresReturn" value="on" />
+          {returnables.length > 1 ? (
+            <SelectField
+              label="Which empties come back?"
+              name="returnItemName"
+              defaultValue={defaultReturnable ?? returnables[0]}
+            >
+              {returnables.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </SelectField>
+          ) : (
+            <input type="hidden" name="returnItemName" value={returnables[0] ?? "Empties"} />
+          )}
+        </>
+      ) : null}
+    </fieldset>
   );
 }

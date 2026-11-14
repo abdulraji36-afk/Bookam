@@ -11,8 +11,8 @@ import { getReturnsFormData } from "@/lib/returnables";
 
 export const metadata: Metadata = { title: "Add or subtract" };
 
-async function Adjust({ params }: Pick<PageProps<"/b/[slug]/returns/adjust">, "params">) {
-  const { slug } = await params;
+async function Adjust({ params, searchParams }: PageProps<"/b/[slug]/returns/adjust">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   const data = await getReturnsFormData(supabase, org.id);
 
@@ -29,6 +29,8 @@ async function Adjust({ params }: Pick<PageProps<"/b/[slug]/returns/adjust">, "p
             <AdjustmentForm
               action={recordAdjustmentAction.bind(null, org.slug)}
               today={todayIn(org.timezone, await requestNow())}
+              drinks={org.sells_drinks}
+              initialReason={query.reason === "opening_count" ? "opening_count" : undefined}
               {...data}
             />
           </Card>
@@ -49,10 +51,10 @@ async function Adjust({ params }: Pick<PageProps<"/b/[slug]/returns/adjust">, "p
   );
 }
 
-export default function AdjustPage({ params }: PageProps<"/b/[slug]/returns/adjust">) {
+export default function AdjustPage(props: PageProps<"/b/[slug]/returns/adjust">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Adjust params={params} />
+      <Adjust {...props} />
     </Suspense>
   );
 }

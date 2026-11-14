@@ -27,7 +27,8 @@ async function NewProduct({ params }: Pick<PageProps<"/b/[slug]/products/new">, 
           features={{
             returns: org.tracks_returns,
             serials: org.tracks_serials,
-            serialByDefault: org.selling_mode === "serial"
+            serialByDefault: org.selling_mode === "serial",
+            drinks: org.sells_drinks
           }}
         />
       </Card>

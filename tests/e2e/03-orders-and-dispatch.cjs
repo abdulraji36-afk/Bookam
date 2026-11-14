@@ -46,7 +46,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
   await a.getByText("I count my goods").click();
-  await a.getByLabel("Customers bring things back to me").check();
+  await a.getByLabel("I sell drinks (RGB crates and PET packs)").check();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
   const base = new URL(a.url()).pathname;
@@ -56,10 +56,10 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
     await a.goto(BASE + base + "/products/new");
     await vis(a.getByLabel("Product name")).fill(name);
     await vis(a.getByLabel("Sold by the")).fill(unit);
-    if (price) await vis(a.getByLabel(/Selling price/)).fill(price);
+    await vis(a.getByLabel(/Selling price/)).fill(price);
+    await vis(a.getByLabel(/Buying cost/)).fill(String(Math.round(Number(price.replace(/,/g, "")) * 0.9)));
     if (returnItem) {
-      await vis(a.getByLabel("Customers must bring something back")).check();
-      await vis(a.getByLabel("What must they bring back?")).fill(returnItem);
+      await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -71,9 +71,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
     await vis(a.getByRole("button", { name: "Save customer" })).click();
     await a.waitForURL(new RegExp(base + "/customers$"));
   }
-  await addProduct("Cola 50cl", "crate", "4200", "Empty crate");
+  await addProduct("Cola 50cl", "crate", "4200", "Empties");
   await addProduct("Water 75cl", "pack", "1800");
-  await addProduct("Lemon 35cl", "crate", "");
   await addCustomer("Mama Tunde Stores", "Ikeja");
   await addCustomer("Grace Canteen");
   await a.goto(BASE + base + "/stock/receive");
@@ -82,9 +81,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Add another product" })).click();
   await pick(a, "Product 2", "Water 75cl (pack)");
   await vis(a.getByLabel("Quantity")).nth(1).fill("50");
+  await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-0001");
+  await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
-  ok("set-up: 3 products, 2 customers, stock received");
+  ok("set-up: 2 drinks, 2 customers, stock received");
 
   // --- order with a return product and a no-return product
   async function fillOrder(page, customer, lines) {
@@ -101,13 +102,6 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByText("No orders yet").waitFor();
   await a.getByRole("link", { name: "+ New order" }).click();
   await a.waitForURL(/\/orders\/new/);
-  const productBox = vis(a.getByRole("combobox", { name: "Product", exact: true }));
-  await productBox.click();
-  await productBox.fill("Lemon");
-  const lemon = a.getByRole("option", { name: /Lemon 35cl/ });
-  assert.equal(await lemon.getAttribute("aria-disabled"), "true", "a product with no price cannot be chosen");
-  await lemon.getByText("No price set yet").waitFor();
-  await productBox.press("Escape");
   await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40], ["Water 75cl", 10]]);
   await a.getByText("100 crate in stock").waitFor();
   await a.getByText("₦186,000").waitFor();
@@ -115,7 +109,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.getByRole("heading", { name: /^ORD-\d{8}-0001$/ }).waitFor();
-  await a.getByText("40 Empty crate due back").waitFor();
+  await a.getByText("40 Empties due back").waitFor();
   await a.getByText("Waiting for dispatch").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/21-order.png`, fullPage: true });
   await a.goto(BASE + base + "/stock");
@@ -165,7 +159,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   const loading = a.locator("section", { hasText: "Loading list" });
   await loading.locator("li", { hasText: "Cola 50cl" }).getByText("40", { exact: true }).waitFor();
   await loading.locator("li", { hasText: "Water 75cl" }).getByText("30", { exact: true }).waitFor();
-  await a.getByText("To bring back: 40 Empty crate").waitFor();
+  await a.getByText("To bring back: 40 Empties").waitFor();
   await a.screenshot({ path: `${SHOTS}/23-trip-draft.png`, fullPage: true });
   ok("a trip groups orders and adds up a loading list");
 

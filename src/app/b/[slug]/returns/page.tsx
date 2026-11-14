@@ -62,6 +62,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
     ? await supabase.from("returnable_adjustments").select("id, reason").in("id", adjustmentIds)
     : { data: [] };
   const reasonLabels = new Map([...ADD_REASONS, ...SUBTRACT_REASONS]);
+  if (org.sells_drinks) reasonLabels.set("opening_count", "Opening empties (already in store)");
   const reasonById = new Map((adjustments ?? []).map((item) => [item.id, reasonLabels.get(item.reason)]));
 
   if (totals.length === 0) {
@@ -80,19 +81,37 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
     <div className="space-y-6">
       {typeof query.saved === "string" ? (
         <Alert tone="success">
-          {query.saved === "adjustment" ? "Adjustment saved." : `Supplier exchange ${query.saved} saved.`}
+          {query.saved === "adjustment"
+            ? "Adjustment saved."
+            : query.saved === "customer-return"
+              ? "Saved. The customer owes that many fewer, and they are in the store count."
+              : `Supplier exchange ${query.saved} saved.`}
         </Alert>
       ) : null}
 
       <div className="page-head">
-        <PageTitle sub="What is in store, and what customers still have to bring back.">Returns</PageTitle>
+        <PageTitle sub="What is in store, and what customers still have to bring back.">
+          {org.sells_drinks ? "Empties" : "Returns"}
+        </PageTitle>
         <div className="flex flex-wrap gap-2">
-          <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
-            Supplier exchange
-          </Link>
+          {org.sells_drinks ? (
+            // Empties going back to the supplier are recorded on the delivery itself.
+            <Link href={`${base}/returns/customer-return`} className={buttonClass("primary")}>
+              Customer brought back empties
+            </Link>
+          ) : (
+            <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
+              Supplier exchange
+            </Link>
+          )}
           {manager ? (
             <Link href={`${base}/returns/adjust`} className={buttonClass("secondary")}>
               Add or subtract
+            </Link>
+          ) : null}
+          {org.sells_drinks ? (
+            <Link href={`${base}/returns/exchange`} className={buttonClass("ghost")}>
+              Supplier took empties only
             </Link>
           ) : null}
         </div>
@@ -151,7 +170,7 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
         </ListCard>
       ) : null}
 
-      <ListCard title="Customer balances">
+      <ListCard title={org.sells_drinks ? "Empty shortages" : "Customer balances"}>
         {balances.length === 0 ? (
           <p className="px-5 py-4 font-medium text-ink-soft">No customer owes anything right now.</p>
         ) : (

@@ -91,13 +91,17 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
                       <p className="font-medium text-ink-soft">
                         Per {product.unit} · {formatMoney(product.selling_price, org.currency_code)}
                         {product.sku ? ` · ${product.sku}` : ""}
-                        {product.returnable_items || !org.tracks_returns ? "" : " · No return"}
+                        {product.returnable_items || !org.tracks_returns || org.sells_drinks ? "" : " · No return"}
                         {product.tracks_serials && org.selling_mode !== "serial" ? " · Serial numbers" : ""}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       {!product.is_active ? <Badge tone="accent">Switched off</Badge> : null}
-                      {product.returnable_items ? (
+                      {org.sells_drinks ? (
+                        <Badge tone={product.returnable_items ? "solid" : "plain"}>
+                          {product.returnable_items ? "RGB · empties back" : "PET"}
+                        </Badge>
+                      ) : product.returnable_items ? (
                         <Badge tone="solid">Return due: {product.returnable_items.name}</Badge>
                       ) : null}
                       {manager ? (
