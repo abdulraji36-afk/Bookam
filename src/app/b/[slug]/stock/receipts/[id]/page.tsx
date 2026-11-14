@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { voidStockReceiptAction } from "@/app/actions/corrections";
+import { setReceiptItemCostAction } from "@/app/actions/stock";
+import { ReceiptCostForm } from "@/components/stock/receipt-cost-form";
 import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
@@ -25,6 +27,19 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
     .eq("id", id)
     .maybeSingle();
   if (!receipt) notFound();
+
+  // The buying cost on each line; only owners and admins can read these.
+  const manager = canManage(role);
+  const { data: costRows } = manager
+    ? await supabase
+        .from("stock_receipt_item_costs")
+        .select("receipt_item_id, unit_cost")
+        .in(
+          "receipt_item_id",
+          receipt.stock_receipt_items.map((item) => item.id)
+        )
+    : { data: [] };
+  const costByItem = new Map((costRows ?? []).map((row) => [row.receipt_item_id, Number(row.unit_cost)]));
 
   // Empties the supplier took away with this delivery, if any.
   const { data: exchange } = await supabase
@@ -81,6 +96,13 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
                 <span className="text-xl font-extrabold tabular-nums">+{formatQuantity(Number(item.quantity))}</span>{" "}
                 <span className="font-medium text-ink-soft">{item.products?.unit}</span>
               </span>
+              {manager && !receipt.voided_at ? (
+                <ReceiptCostForm
+                  action={setReceiptItemCostAction.bind(null, org.slug, item.id)}
+                  cost={costByItem.get(item.id) ?? null}
+                  label={`Buying cost per ${item.products?.unit ?? "unit"} (${org.currency_code})`}
+                />
+              ) : null}
               {receipt.product_units.some((unit) => unit.product_id === item.product_id) ? (
                 <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
                   {receipt.product_units

@@ -147,7 +147,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByRole("link", { name: "+ New trip" }).click();
   await a.waitForURL(/\/dispatch\/new/);
   await vis(a.getByLabel("Driver's name")).fill("Musa");
-  await vis(a.getByLabel("Vehicle (optional)")).fill("LAG-123-XY");
+  await vis(a.getByLabel("Truck")).fill("LAG-123-XY");
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.getByText("Choose at least one order to put on the trip.").waitFor();
   await vis(a.getByRole("button", { name: "Choose all" })).click();
@@ -213,6 +213,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await c.goto(BASE + base + "/dispatch/new");
   await vis(c.getByLabel("Driver's name")).fill("Tunde");
+  await vis(c.getByLabel("Truck")).fill("LAG-100-AA");
   await vis(c.getByRole("checkbox")).check();
   await vis(c.getByRole("button", { name: "Create trip" })).click();
   await c.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
@@ -230,6 +231,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.goto(BASE + base + "/dispatch/new");
   await vis(a.getByLabel("Driver's name")).fill("Musa");
+  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
   await vis(a.getByRole("checkbox")).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);

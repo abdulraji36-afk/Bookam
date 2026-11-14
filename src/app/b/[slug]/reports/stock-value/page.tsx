@@ -15,11 +15,36 @@ async function StockValue({ params }: Pick<PageProps<"/b/[slug]/reports/stock-va
   const { slug } = await params;
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
 
-  const [rows, costsResult] = await Promise.all([
+  const [rows, costsResult, deliveredResult] = await Promise.all([
     getStockRows(supabase, org.id, null),
-    supabase.from("product_costs").select("product_id, cost_price").eq("organization_id", org.id)
+    supabase.from("product_costs").select("product_id, cost_price").eq("organization_id", org.id),
+    // Every costed delivery line still standing, for the average cost of what came in.
+    supabase
+      .from("stock_receipt_item_costs")
+      .select("unit_cost, stock_receipt_items!inner (product_id, quantity, stock_receipts!inner (voided_at))")
+      .eq("organization_id", org.id)
+      .is("stock_receipt_items.stock_receipts.voided_at", null)
+      .limit(20000)
   ]);
-  const costs = new Map((costsResult.data ?? []).map((row) => [row.product_id, Number(row.cost_price)]));
+  // As in Bilikis: the average buying cost over everything received, weighted
+  // by quantity. A product with no costed delivery uses its current cost.
+  const inbound = new Map<string, { quantity: number; cost: number }>();
+  for (const row of deliveredResult.data ?? []) {
+    const item = row.stock_receipt_items;
+    if (!item) continue;
+    const current = inbound.get(item.product_id) ?? { quantity: 0, cost: 0 };
+    current.quantity += Number(item.quantity);
+    current.cost += Number(item.quantity) * Number(row.unit_cost);
+    inbound.set(item.product_id, current);
+  }
+  const productCosts = new Map((costsResult.data ?? []).map((row) => [row.product_id, Number(row.cost_price)]));
+  const costs = new Map(
+    rows.map((row) => {
+      const received = inbound.get(row.productId);
+      const average = received && received.quantity > 0 ? received.cost / received.quantity : null;
+      return [row.productId, average ?? productCosts.get(row.productId) ?? null] as const;
+    })
+  );
   const valued = rows.map((row) => {
     const cost = costs.get(row.productId) ?? null;
     return { ...row, cost, value: cost === null ? null : cost * row.onHand };
@@ -36,7 +61,9 @@ async function StockValue({ params }: Pick<PageProps<"/b/[slug]/reports/stock-va
 
   return (
     <div className="space-y-6">
-      <PageTitle sub="What the stock you have now cost you, at each product's buying cost.">Stock value</PageTitle>
+      <PageTitle sub="What the stock you have now cost you, at the average buying cost of what you received.">
+        Stock value
+      </PageTitle>
 
       <div className="rounded-md bg-ink px-5 py-4 text-white">
         <p className="text-4xl font-extrabold leading-none tabular-nums">{money(total)}</p>
@@ -59,7 +86,7 @@ async function StockValue({ params }: Pick<PageProps<"/b/[slug]/reports/stock-va
                   <tr className="border-b border-line">
                     <th scope="col" className={HEAD}>Product</th>
                     <th scope="col" className={`${HEAD} text-right`}>On hand</th>
-                    <th scope="col" className={`${HEAD} text-right`}>Buying cost</th>
+                    <th scope="col" className={`${HEAD} text-right`}>Average cost</th>
                     <th scope="col" className={`${HEAD} text-right`}>Value</th>
                   </tr>
                 </thead>

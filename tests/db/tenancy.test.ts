@@ -51,7 +51,8 @@ const TENANT_TABLES = [
   "product_units",
   "stock_adjustments",
   "dispatch_workers",
-  "dispatch_trip_loaders"
+  "dispatch_trip_loaders",
+  "stock_receipt_item_costs"
 ];
 
 describe("tenant isolation", () => {

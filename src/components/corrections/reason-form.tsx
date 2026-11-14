@@ -46,7 +46,14 @@ export function ReasonForm({ action, trigger, explanation, submitLabel, quantity
             required
           />
         ) : null}
-        <TextField label="Reason" name="reason" maxLength={500} placeholder="Why is this being changed?" required />
+        <TextField
+          label="Reason"
+          name="reason"
+          maxLength={500}
+          placeholder="Why is this being changed?"
+          hint="At least 10 characters."
+          required
+        />
         <FormMessage state={state} />
         <SubmitButton variant="danger" size="sm" pending={pending} pendingLabel="Saving…">
           {submitLabel}

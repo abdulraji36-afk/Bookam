@@ -12,7 +12,7 @@ const idSchema = z.uuid();
 const reasonSchema = z
   .string()
   .trim()
-  .min(5, "Give a reason, in at least a few words.")
+  .min(10, "Give a reason of at least 10 characters.")
   .max(500, "Use at most 500 characters for the reason.");
 
 type VoidFunction =

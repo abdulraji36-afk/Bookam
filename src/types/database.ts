@@ -266,6 +266,8 @@ export type Database = {
           phone: string | null;
           area: string | null;
           address: string | null;
+          customer_type: "Retailer" | "Wholesaler" | "Distributor" | null;
+          buys: "both" | "rgb" | "pet";
           is_active: boolean;
           created_by: string | null;
           created_at: string;
@@ -274,6 +276,26 @@ export type Database = {
         Insert: never;
         Update: never;
         Relationships: [];
+      };
+      stock_receipt_item_costs: {
+        Row: {
+          receipt_item_id: string;
+          organization_id: string;
+          unit_cost: number;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "stock_receipt_item_costs_receipt_item_id_fkey";
+            columns: ["receipt_item_id"];
+            isOneToOne: true;
+            referencedRelation: "stock_receipt_items";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       stock_receipts: {
         Row: {
@@ -910,9 +932,12 @@ export type Database = {
           p_phone: string | null;
           p_area: string | null;
           p_address: string | null;
+          p_customer_type?: string | null;
+          p_buys?: "both" | "rgb" | "pet" | null;
         };
         Returns: string;
       };
+      set_receipt_item_cost: { Args: { p_receipt_item_id: string; p_unit_cost: number }; Returns: undefined };
       set_customer_active: {
         Args: { p_customer_id: string; p_is_active: boolean };
         Returns: undefined;

@@ -136,6 +136,8 @@ let dbg;
   await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}\?saved=1/);
   await a.getByText(/^250 \(EXC-\d{8}-0001\)$/).waitFor();
   await a.getByText("NBC-7781").waitFor();
+  // Each delivery line keeps its buying cost, which owners can correct.
+  assert.equal(await vis(a.getByLabel("Buying cost per crate (NGN)")).inputValue(), "3900");
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("250", { exact: true }).waitFor();
   ok("an NBC delivery records the empties taken in the same go, and only 250 come off");
@@ -169,6 +171,35 @@ let dbg;
   await vis(a.getByLabel("Quantity")).nth(1).fill("5");
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  const firstOrderNo = await a.getByRole("heading", { level: 1 }).innerText();
+
+  // Like Bilikis: one waiting RGB order per customer; edit that one instead.
+  await go("/orders/new");
+  await pick(a, "Customer", "Mama Tunde Stores");
+  await pick(a, "Product", "Coca-Cola 50cl RGB");
+  await vis(a.getByLabel("Quantity")).fill("2");
+  await vis(a.getByRole("button", { name: "Save order" })).click();
+  await a.getByText(`Mama Tunde Stores already has order ${firstOrderNo} with RGB crates waiting for dispatch.`, { exact: false }).waitFor();
+
+  // A customer who buys PET only cannot be sold RGB.
+  await go("/customers/new");
+  await vis(a.getByLabel("Customer name")).fill("Grace Canteen");
+  await vis(a.getByLabel("Customer type (optional)")).selectOption("Retailer");
+  await vis(a.getByLabel("Buys")).selectOption({ label: "PET only" });
+  await vis(a.getByRole("button", { name: "Save customer" })).click();
+  await a.waitForURL(new RegExp(base + "/customers$"));
+  await a.locator("li", { hasText: "Grace Canteen" }).getByText(/Retailer · PET only/).waitFor();
+  await go("/orders/new");
+  await pick(a, "Customer", "Grace Canteen");
+  const productBox = vis(a.getByRole("combobox", { name: "Product", exact: true }));
+  await productBox.click();
+  await productBox.fill("Coca-Cola 50cl RGB");
+  const rgbOption = a.getByRole("option", { name: /Coca-Cola 50cl RGB/ });
+  assert.equal(await rgbOption.getAttribute("aria-disabled"), "true");
+  await rgbOption.getByText("This customer buys PET only").waitFor();
+  await productBox.press("Escape");
+  ok("Bilikis rules: delivery costs kept, one waiting RGB order per customer, PET-only customers");
+
   await go("/dispatch");
   await a.getByRole("link", { name: "Drivers and loaders" }).click();
   for (const [name, role] of [["Musa", "Driver"], ["Sule", "Loader"]]) {
@@ -180,6 +211,7 @@ let dbg;
   await a.locator("section", { hasText: "Drivers (1)" }).getByText("Musa").waitFor();
   await go("/dispatch/new");
   await vis(a.getByLabel("Driver's name")).fill("Musa");
+  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
   await vis(a.getByLabel("Sule")).check();
   await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();

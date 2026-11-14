@@ -15,7 +15,7 @@ async function NewCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/new">
     <div className="max-w-2xl space-y-6">
       <PageTitle>New customer</PageTitle>
       <Card>
-        <CustomerForm action={saveCustomerAction.bind(null, org.slug, null)} />
+        <CustomerForm action={saveCustomerAction.bind(null, org.slug, null)} drinks={org.sells_drinks} />
       </Card>
     </div>
   );

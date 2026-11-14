@@ -167,7 +167,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.goto(BASE + base + "/stock");
   await c.getByRole("link", { name: "+ Receive stock" }).click();
   await pick(c, "Product", "Cola 50cl (crate)");
-  await c.getByLabel("Quantity").fill("12.5");
+  await c.getByLabel("Quantity").fill("12");
   await c.getByLabel("Supplier delivery reference").fill("NBC-0002");
   await c.getByLabel(/did the supplier take\?/).fill("0");
   await c.getByRole("button", { name: "Save and add to stock" }).click();
@@ -175,7 +175,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.getByRole("heading", { name: /^STK-\d{8}-0002$/ }).waitFor();
   await c.getByText("Chidi Eze").waitFor();
   await c.getByRole("link", { name: "Back to stock" }).click();
-  await c.locator("li", { hasText: "Cola 50cl" }).getByText("112.5", { exact: true }).waitFor();
+  await c.locator("li", { hasText: "Cola 50cl" }).getByText("112", { exact: true }).waitFor();
   await c.screenshot({ path: `${SHOTS}/15-stock-mobile.png`, fullPage: true });
   ok("staff receives stock on a phone; receipt is numbered and credited to them");
 

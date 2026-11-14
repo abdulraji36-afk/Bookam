@@ -93,6 +93,7 @@ let dbg;
   async function tripWithAll(driver) {
     await go("/dispatch/new");
     await vis(a.getByLabel("Driver's name")).fill(driver);
+    await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
     const boxes = vis(a.getByRole("checkbox"));
     for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).check();
     await vis(a.getByRole("button", { name: "Create trip" })).click();
@@ -145,7 +146,7 @@ let dbg;
   await a.goto(tripUrl);
   const mamaLine = a.locator("section", { hasText: "What came back" }).locator("li", { hasText: "Mama Tunde Stores" });
   await withReason(mamaLine, "Correct this figure", "Save correction", "ok", 36);
-  await a.getByText("Give a reason, in at least a few words.").waitFor();
+  await a.getByText("Give a reason of at least 10 characters.").waitFor();
   await vis(mamaLine.getByLabel("Reason")).fill("Six more crates were found in the truck");
   await vis(mamaLine.getByRole("button", { name: "Save correction" })).click();
   await mamaLine.getByText("Short by 4").waitFor();

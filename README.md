@@ -197,4 +197,5 @@ version of the app, so the database can always go first.
 | 9 | Two kinds of business: shops that count goods and shops that sell by serial number, each with its own words, menu and defaults; delivery as its own choice | Done |
 | 10 | Drinks, the Bilikis way: one Empties pool, each drink RGB or PET, price and cost required, opening empties as an adjustment, empties given to the supplier on the delivery itself, empty shortages and customers bringing empties back | Done |
 | 11 | Running a drinks depot like Bilikis: drink categories (RGB, PET, Juice, Energy, Can, Water), stock by category, stock value at cost, a drivers and loaders list chosen per trip, the NBC product list to add from, and a daily report with deliveries, empties in and out, and empty shortages | Done |
+| 12 | Bilikis rules for drinks: whole crates and empties, customer type and RGB/PET/both, one waiting RGB order per customer, 10-character reasons, buying cost kept per delivery with stock valued at the average, truck required on trips | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

@@ -22,7 +22,7 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
 
   let listQuery = supabase
     .from("customers")
-    .select("id, name, phone, area, is_active", { count: "exact" })
+    .select("id, name, phone, area, is_active, customer_type, buys", { count: "exact" })
     .eq("organization_id", org.id)
     .order("is_active", { ascending: false })
     .order("name")
@@ -77,7 +77,14 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
                     {customer.name}
                   </p>
                   <p className="font-medium text-ink-soft">
-                    {[customer.area, customer.phone].filter(Boolean).join(" · ") || "No area or phone saved"}
+                    {[
+                      customer.area,
+                      customer.phone,
+                      org.sells_drinks ? customer.customer_type : null,
+                      org.sells_drinks && customer.buys !== "both" ? `${customer.buys.toUpperCase()} only` : null
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "No area or phone saved"}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

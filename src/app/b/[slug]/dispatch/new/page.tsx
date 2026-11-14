@@ -64,6 +64,7 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
             orders={orders}
             locations={locationsResult.data ?? []}
             drivers={workers.filter((worker) => worker.role === "driver").map((worker) => worker.name)}
+            truckRequired={org.sells_drinks}
             loaders={workers.filter((worker) => worker.role === "loader").map(({ id, name }) => ({ id, name }))}
             today={todayIn(org.timezone, await requestNow())}
           />

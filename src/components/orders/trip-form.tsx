@@ -28,9 +28,11 @@ type Props = {
   /** From the drivers and loaders list. */
   drivers?: string[];
   loaders?: { id: string; name: string }[];
+  /** A drinks trip must record its truck, as in Bilikis. */
+  truckRequired?: boolean;
 };
 
-export function TripForm({ action, orders, locations, today, drivers = [], loaders = [] }: Props) {
+export function TripForm({ action, orders, locations, today, drivers = [], loaders = [], truckRequired }: Props) {
   const { state, pending, form } = useFormAction(action);
   const [locationId, setLocationId] = useState(
     // Start on the first location that actually has orders waiting.
@@ -70,7 +72,13 @@ export function TripForm({ action, orders, locations, today, drivers = [], loade
             ))}
           </datalist>
         ) : null}
-        <TextField label="Vehicle (optional)" name="vehicle" placeholder="e.g. plate number" maxLength={80} />
+        <TextField
+          label={truckRequired ? "Truck" : "Vehicle (optional)"}
+          name="vehicle"
+          placeholder="e.g. plate number"
+          maxLength={80}
+          required={truckRequired}
+        />
         <TextField label="Dispatch date" name="dispatchDate" type="date" defaultValue={today} max={today} required />
         {locations.length > 1 ? (
           <SelectField

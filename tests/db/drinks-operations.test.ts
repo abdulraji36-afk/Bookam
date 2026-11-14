@@ -115,7 +115,7 @@ describe("running a drinks depot", () => {
       call(
         db,
         owner,
-        `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), 'Musa Ade', null, null, $3::uuid[], $4::uuid[])`,
+        `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), 'Musa Ade', 'LAG-2', null, $3::uuid[], $4::uuid[])`,
         [depot.id, await mainLocation(db, depot.id), [order.id], [id]]
       )
     ).rejects.toThrow(/Choose loaders from your list/);

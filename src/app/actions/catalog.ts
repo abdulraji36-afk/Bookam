@@ -102,7 +102,14 @@ export async function saveCustomerAction(
     p_name: parsed.data.name,
     p_phone: parsed.data.phone || null,
     p_area: parsed.data.area || null,
-    p_address: parsed.data.address || null
+    p_address: parsed.data.address || null,
+    // Drinks only: Retailer, Wholesaler or Distributor, and RGB, PET or both.
+    ...(org.sells_drinks
+      ? {
+          p_customer_type: String(formData.get("customerType") ?? "") || null,
+          p_buys: (["both", "rgb", "pet"] as const).find((value) => value === formData.get("buys")) ?? "both"
+        }
+      : {})
   });
   if (error) return { ok: false, message: describeDbError(error) };
 

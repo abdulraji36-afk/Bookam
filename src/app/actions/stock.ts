@@ -157,7 +157,7 @@ export async function voidStockAdjustmentAction(
   if (!z.uuid().safeParse(adjustmentId).success) return { ok: false, message: "Adjustment not found." };
 
   const reason = String(formData.get("reason") ?? "").trim();
-  if (reason.length < 5) return { ok: false, message: "Give a reason, in at least a few words." };
+  if (reason.length < 10) return { ok: false, message: "Give a reason of at least 10 characters." };
 
   const { error } = await supabase.rpc("void_stock_adjustment", {
     p_adjustment_id: adjustmentId,
@@ -167,4 +167,23 @@ export async function voidStockAdjustmentAction(
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Adjustment voided. The stock is as it was before." };
+}
+
+/** Owners and admins correct the buying cost recorded on one delivery line. */
+export async function setReceiptItemCostAction(
+  slug: string,
+  receiptItemId: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  if (!z.uuid().safeParse(receiptItemId).success) return { ok: false, message: "Delivery line not found." };
+  const cost = readQuantity(String(formData.get("unitCost") ?? ""));
+  if (cost === undefined || cost < 0) return { ok: false, message: "Enter the buying cost, zero or more." };
+
+  const { error } = await supabase.rpc("set_receipt_item_cost", { p_receipt_item_id: receiptItemId, p_unit_cost: cost });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Cost saved." };
 }
