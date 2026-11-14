@@ -176,14 +176,19 @@ export async function createTripAction(
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
-  const { data, error } = await supabase.rpc("create_dispatch_trip", {
+  const loaderIds = formData
+    .getAll("loaderId")
+    .map(String)
+    .filter((id) => idSchema.safeParse(id).success);
+  const { data, error } = await supabase.rpc("create_dispatch_trip_with_crew", {
     p_organization_id: org.id,
     p_location_id: parsed.data.locationId,
     p_dispatch_date: parsed.data.dispatchDate,
     p_driver_name: parsed.data.driverName,
     p_vehicle: parsed.data.vehicle || null,
     p_note: parsed.data.note || null,
-    p_order_ids: parsed.data.orderIds
+    p_order_ids: parsed.data.orderIds,
+    p_loader_ids: loaderIds
   });
   const trip = data?.[0];
   if (error || !trip) return { ok: false, message: describeDbError(error) };

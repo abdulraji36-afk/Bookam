@@ -44,7 +44,7 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
   // Staff see quantities only; money is for owners and admins.
   const showMoney = canManage(role);
 
-  const [stock, returnables, orders, trips, receipts, waiting, loading, out] = await Promise.all([
+  const [stock, returnables, orders, trips, receipts, waiting, loading, out, deliveries, emptiesMoves, shortages] = await Promise.all([
     supabase.rpc("daily_stock_report", { p_organization_id: org.id, p_date: day }),
     supabase.rpc("daily_returnables_report", { p_organization_id: org.id, p_date: day }),
     supabase
@@ -68,8 +68,49 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
       .is("voided_at", null),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "pending"),
     supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "draft"),
-    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "dispatched")
+    supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "dispatched"),
+    // Bilikis-style detail: each delivery, with the empties given back on it.
+    supabase
+      .from("stock_receipts")
+      .select("id, receipt_no, supplier_name, reference, stock_receipt_items (quantity), supplier_exchanges (quantity_taken, voided_at)")
+      .eq("organization_id", org.id)
+      .eq("received_date", day)
+      .is("voided_at", null)
+      .order("created_at"),
+    org.tracks_returns
+      ? supabase
+          .from("returnable_movements")
+          .select("movement_type, customer_id, holding_delta, owed_delta")
+          .eq("organization_id", org.id)
+          .eq("movement_date", day)
+      : Promise.resolve({ data: [], error: null }),
+    org.tracks_returns
+      ? supabase.from("customer_returnable_balances").select("owed").eq("organization_id", org.id).gt("owed", 0)
+      : Promise.resolve({ data: [], error: null })
   ]);
+
+  // Empties in and out on the day, by where they came from or went.
+  const moves = emptiesMoves.data ?? [];
+  const sumHolding = (keep: (move: (typeof moves)[number]) => boolean) =>
+    moves.filter(keep).reduce((sum, move) => sum + Number(move.holding_delta), 0);
+  const emptiesLines: [string, number][] = [
+    ["Came back with trips", sumHolding((move) => move.movement_type === "trip_return")],
+    [
+      "Customers brought back at the depot",
+      sumHolding((move) => move.movement_type === "adjustment" && move.customer_id !== null && Number(move.holding_delta) > 0)
+    ],
+    [
+      "Opening count, purchases and corrections",
+      sumHolding((move) => move.movement_type === "adjustment" && !(move.customer_id !== null && Number(move.holding_delta) > 0))
+    ],
+    ["Taken by the supplier", sumHolding((move) => move.movement_type === "supplier_exchange")]
+  ];
+  const owedNew = moves
+    .filter((move) => move.movement_type === "dispatch")
+    .reduce((sum, move) => sum + Number(move.owed_delta), 0);
+  const shortageRows = shortages.data ?? [];
+  const shortageTotal = shortageRows.reduce((sum, row) => sum + Number(row.owed), 0);
+  const deliveryRows = deliveries.data ?? [];
 
   const stockRows = stock.data ?? [];
   const returnableRows = returnables.data ?? [];
@@ -87,6 +128,11 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
           {formatDay(day)}
         </PageTitle>
         <div className="flex flex-wrap items-end gap-2">
+          {showMoney ? (
+            <Link href={`${base}/reports/stock-value`} className={buttonClass("ghost", "sm")}>
+              Stock value
+            </Link>
+          ) : null}
           <Link href={`${base}/reports/daily?date=${shiftDay(day, -1)}`} className={buttonClass("secondary", "sm")}>
             Previous day
           </Link>
@@ -166,7 +212,7 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
           </ListCard>
 
           {returnableRows.length > 0 ? (
-            <ListCard title="Returnables">
+            <ListCard title={org.sells_drinks ? "Empties count" : "Returnables"}>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[38rem]">
                   <thead>
@@ -193,6 +239,58 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                   </tbody>
                 </table>
               </div>
+            </ListCard>
+          ) : null}
+
+          <ListCard title={`Deliveries received (${deliveryRows.length})`}>
+            {deliveryRows.length === 0 ? (
+              <p className="px-5 py-4 font-medium text-ink-soft">No stock was received on this day.</p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {deliveryRows.map((delivery) => {
+                  const quantity = delivery.stock_receipt_items.reduce((sum, item) => sum + Number(item.quantity), 0);
+                  const given = delivery.supplier_exchanges && !delivery.supplier_exchanges.voided_at ? Number(delivery.supplier_exchanges.quantity_taken) : 0;
+                  return (
+                    <li key={delivery.id}>
+                      <Link
+                        href={`${base}/stock/receipts/${delivery.id}`}
+                        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-extrabold">{delivery.receipt_no}</span>
+                          <span className="text-sm font-medium text-ink-soft">
+                            {[delivery.supplier_name, delivery.reference].filter(Boolean).join(" · ") || "No supplier given"}
+                          </span>
+                        </span>
+                        <span className="text-right text-sm font-bold tabular-nums">
+                          <span className="block">+{formatQuantity(quantity)} items</span>
+                          {given ? <span className="block text-ink-soft">{formatQuantity(given)} empties given back</span> : null}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ListCard>
+
+          {org.tracks_returns ? (
+            <ListCard title={org.sells_drinks ? "Empties in and out" : "Returnables in and out"}>
+              <ul className="divide-y divide-line">
+                {emptiesLines.map(([label, value]) => (
+                  <li key={label} className="flex items-center justify-between gap-3 px-5 py-3">
+                    <span className="font-semibold">{label}</span>
+                    <span className="text-xl font-extrabold tabular-nums">
+                      {value > 0 ? "+" : value < 0 ? "−" : ""}
+                      {formatQuantity(Math.abs(value))}
+                    </span>
+                  </li>
+                ))}
+                <li className="flex items-center justify-between gap-3 px-5 py-3 text-ink-soft">
+                  <span className="font-semibold">Sent out with orders, now owed by customers</span>
+                  <span className="text-xl font-extrabold tabular-nums">{formatQuantity(owedNew)}</span>
+                </li>
+              </ul>
             </ListCard>
           ) : null}
 
@@ -250,7 +348,16 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
               {[
                 ["Orders waiting for dispatch", waiting.count ?? 0, `${base}/orders`],
                 ["Trips being loaded", loading.count ?? 0, `${base}/dispatch`],
-                ["Trips out, returns not yet recorded", out.count ?? 0, `${base}/returns`]
+                ["Trips out, returns not yet recorded", out.count ?? 0, `${base}/returns`],
+                ...(org.tracks_returns
+                  ? [
+                      [
+                        `${org.sells_drinks ? "Empty shortages" : "Customers owing returnables"}: ${shortageRows.length} customer${shortageRows.length === 1 ? "" : "s"}`,
+                        shortageTotal,
+                        `${base}/returns`
+                      ]
+                    ]
+                  : [])
               ].map(([label, count, href]) => (
                 <li key={String(label)}>
                   <Link href={String(href)} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-paper">

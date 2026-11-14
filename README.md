@@ -196,4 +196,5 @@ version of the app, so the database can always go first.
 | 8 | Forgot password, sign-up questions that shape the app, stock write-offs and corrections, search and paging on long lists, browser walkthroughs in the repo | Done |
 | 9 | Two kinds of business: shops that count goods and shops that sell by serial number, each with its own words, menu and defaults; delivery as its own choice | Done |
 | 10 | Drinks, the Bilikis way: one Empties pool, each drink RGB or PET, price and cost required, opening empties as an adjustment, empties given to the supplier on the delivery itself, empty shortages and customers bringing empties back | Done |
+| 11 | Running a drinks depot like Bilikis: drink categories (RGB, PET, Juice, Energy, Can, Water), stock by category, stock value at cost, a drivers and loaders list chosen per trip, the NBC product list to add from, and a daily report with deliveries, empties in and out, and empty shortages | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

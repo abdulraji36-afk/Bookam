@@ -26,7 +26,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     supabase
       .from("dispatch_trips")
       .select(
-        "id, trip_no, dispatch_date, returned_date, driver_name, vehicle, status, note, locations (name), profiles (full_name)"
+        "id, trip_no, dispatch_date, returned_date, driver_name, vehicle, status, note, locations (name), profiles (full_name), dispatch_trip_loaders (dispatch_workers (name))"
       )
       .eq("organization_id", org.id)
       .eq("id", id)
@@ -91,6 +91,13 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
   const details = [
     ["Driver", trip.driver_name],
     ["Vehicle", trip.vehicle],
+    [
+      "Loaders",
+      trip.dispatch_trip_loaders
+        .map((loader) => loader.dispatch_workers?.name)
+        .filter(Boolean)
+        .join(", ") || null
+    ],
     ["Dispatch date", formatDay(trip.dispatch_date)],
     ["Came back", trip.returned_date ? formatDay(trip.returned_date) : null],
     ["Leaving from", trip.locations?.name],

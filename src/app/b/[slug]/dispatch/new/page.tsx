@@ -14,7 +14,7 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
   const { slug } = await params;
   const { supabase, org } = await requireOrg(slug);
 
-  const [ordersResult, locationsResult] = await Promise.all([
+  const [ordersResult, locationsResult, workersResult] = await Promise.all([
     supabase
       .from("order_summaries")
       .select("id, order_no, customer_name, customer_area, total_quantity, has_returns, location_id")
@@ -26,8 +26,15 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
       .select("id, name")
       .eq("organization_id", org.id)
       .eq("is_active", true)
-      .order("created_at")
+      .order("created_at"),
+    supabase
+      .from("dispatch_workers")
+      .select("id, name, role")
+      .eq("organization_id", org.id)
+      .eq("is_active", true)
+      .order("name")
   ]);
+  const workers = workersResult.data ?? [];
   const orders = (ordersResult.data ?? []).map((order) => ({
     id: order.id,
     orderNo: order.order_no,
@@ -56,6 +63,8 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
             action={createTripAction.bind(null, org.slug)}
             orders={orders}
             locations={locationsResult.data ?? []}
+            drivers={workers.filter((worker) => worker.role === "driver").map((worker) => worker.name)}
+            loaders={workers.filter((worker) => worker.role === "loader").map(({ id, name }) => ({ id, name }))}
             today={todayIn(org.timezone, await requestNow())}
           />
         </Card>

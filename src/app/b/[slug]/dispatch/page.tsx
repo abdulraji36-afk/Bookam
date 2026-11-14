@@ -86,9 +86,14 @@ async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch"
         <PageTitle sub={`${waiting} order${waiting === 1 ? "" : "s"} waiting to be put on a trip.`}>
           Dispatch
         </PageTitle>
-        <Link href={`${base}/dispatch/new`} className={buttonClass("primary")}>
-          + New trip
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`${base}/dispatch/crew`} className={buttonClass("secondary")}>
+            Drivers and loaders
+          </Link>
+          <Link href={`${base}/dispatch/new`} className={buttonClass("primary")}>
+            + New trip
+          </Link>
+        </div>
       </div>
 
       {drafts.length > 0 || recent.length > 0 || search.q || search.page > 1 ? (

@@ -5,6 +5,7 @@ import { FormMessage } from "@/components/ui/alert";
 import { CheckboxField, SelectField, TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
+import { DRINK_CATEGORIES } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
 
 const UNITS = ["crate", "pack", "carton", "bag", "cylinder", "bottle", "piece", "phone", "laptop", "unit"];
@@ -17,6 +18,7 @@ export type ProductDefaults = {
   costPrice: string;
   lowStock: string;
   returnItemName: string;
+  category?: string;
   tracksSerials: boolean;
   warrantyMonths: string;
 };
@@ -111,6 +113,7 @@ export function ProductForm({
           requiresReturn={requiresReturn}
           onChange={setRequiresReturn}
           defaultReturnable={defaults?.returnItemName}
+          defaultCategory={defaults?.category}
         />
       ) : features.returns || requiresReturn ? (
         <div className="space-y-4 rounded-md border-2 border-ink p-4">
@@ -181,12 +184,14 @@ function DrinkKind({
   returnables,
   requiresReturn,
   onChange,
-  defaultReturnable
+  defaultReturnable,
+  defaultCategory
 }: {
   returnables: string[];
   requiresReturn: boolean;
   onChange: (rgb: boolean) => void;
   defaultReturnable?: string;
+  defaultCategory?: string;
 }) {
   const options = [
     { rgb: true, title: "RGB", detail: "Glass bottles in a crate. The customer must bring the empty crate back." },
@@ -218,8 +223,22 @@ function DrinkKind({
           </label>
         ))}
       </div>
+      {requiresReturn ? null : (
+        <SelectField
+          label="Category"
+          name="category"
+          defaultValue={defaultCategory && defaultCategory !== "RGB" ? defaultCategory : "PET"}
+        >
+          {DRINK_CATEGORIES.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </SelectField>
+      )}
       {requiresReturn ? (
         <>
+          <input type="hidden" name="category" value="RGB" />
           <input type="hidden" name="requiresReturn" value="on" />
           {returnables.length > 1 ? (
             <SelectField

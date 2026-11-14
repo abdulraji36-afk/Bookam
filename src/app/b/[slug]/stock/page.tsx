@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatDate, formatQuantity } from "@/lib/format";
+import { categoryOrder, formatDate, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { getStockRows } from "@/lib/stock";
 
@@ -57,8 +57,12 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   }
   const lowCount = rows.filter((row) => row.isLow).length;
   // A phone shop sees its serial-numbered stock and its counted accessories apart.
-  const stockGroups: [string | null, typeof rows][] =
-    org.selling_mode === "serial"
+  const stockGroups: [string | null, typeof rows][] = org.sells_drinks
+    ? // A drinks depot sees its stock by category, RGB first, as on the NBC list.
+      [...new Set(rows.map((row) => row.category ?? "Other"))]
+        .sort((x, y) => categoryOrder(x === "Other" ? null : x) - categoryOrder(y === "Other" ? null : y))
+        .map((name) => [name, rows.filter((row) => (row.category ?? "Other") === name)] as [string, typeof rows])
+    : org.selling_mode === "serial"
       ? (
           [
             ["With serial numbers", rows.filter((row) => row.tracksSerials)],

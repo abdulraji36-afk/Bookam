@@ -127,3 +127,13 @@ export const STOCK_REASON_LABELS: Record<StockAdjustmentReason, string> = {
 export function describeUnit(unit: { serial_no: string; colour: string | null }) {
   return [unit.serial_no, unit.colour].filter(Boolean).join(" · ");
 }
+
+/** The drink categories, as on the Bilikis (NBC) price list. RGB is set by the RGB/PET choice. */
+export const DRINK_CATEGORIES = ["PET", "Juice", "Energy", "Can", "Water"] as const;
+
+/** Display order of categories on the stock and value pages. */
+export function categoryOrder(category: string | null) {
+  const order = ["RGB", ...DRINK_CATEGORIES];
+  const index = category ? order.indexOf(category) : -1;
+  return index === -1 ? order.length : index;
+}

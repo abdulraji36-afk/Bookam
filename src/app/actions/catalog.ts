@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { describeDbError, type ActionState } from "@/lib/action-state";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
-import { customerSchema, firstIssue, productSchema } from "@/lib/validation";
+import { NBC_PRODUCTS } from "@/lib/nbc-products";
+import { customerSchema, firstIssue, productSchema, readQuantity } from "@/lib/validation";
 
 const idSchema = z.uuid();
 
@@ -46,7 +47,9 @@ export async function saveProductAction(
     p_requires_return: parsed.data.requiresReturn,
     p_return_item_name: parsed.data.requiresReturn ? parsed.data.returnItemName : null,
     p_tracks_serials: parsed.data.tracksSerials,
-    p_warranty_months: parsed.data.tracksSerials ? parsed.data.warrantyMonths : null
+    p_warranty_months: parsed.data.tracksSerials ? parsed.data.warrantyMonths : null,
+    // Drinks only: RGB, PET, Juice and so on. The database sets RGB itself.
+    p_category: String(formData.get("category") ?? "").trim().slice(0, 30) || null
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
@@ -124,4 +127,64 @@ export async function setCustomerActiveAction(
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: isActive ? "Customer switched back on." : "Customer switched off." };
+}
+
+/**
+ * Drinks only: adds the ticked products from the NBC list, each with the
+ * selling price and buying cost entered beside it. Products that fail are
+ * reported by name; the others are still added.
+ */
+export async function addNbcProductsAction(slug: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  if (!org.sells_drinks) return { ok: false, message: "The NBC list is for drinks businesses." };
+
+  const picked = NBC_PRODUCTS.filter((product) => formData.get(`pick-${product.code}`) === "on");
+  if (picked.length === 0) return { ok: false, message: "Tick at least one product to add." };
+
+  const { data: pool } = await supabase
+    .from("returnable_items")
+    .select("name")
+    .eq("organization_id", org.id)
+    .order("created_at")
+    .limit(1);
+  const emptiesName = pool?.[0]?.name ?? "Empties";
+
+  const missing = picked.filter((product) => {
+    const price = readQuantity(String(formData.get(`price-${product.code}`) ?? ""));
+    const cost = readQuantity(String(formData.get(`cost-${product.code}`) ?? ""));
+    return !price || !cost;
+  });
+  if (missing.length) {
+    return {
+      ok: false,
+      message: `Enter the selling price and buying cost for: ${missing.map((product) => product.name).join(", ")}.`
+    };
+  }
+
+  const failed: string[] = [];
+  for (const product of picked) {
+    const { error } = await supabase.rpc("save_product", {
+      p_organization_id: org.id,
+      p_product_id: null,
+      p_name: product.name,
+      p_sku: product.code,
+      p_unit: product.unit,
+      p_selling_price: readQuantity(String(formData.get(`price-${product.code}`))) ?? null,
+      p_cost_price: readQuantity(String(formData.get(`cost-${product.code}`))) ?? null,
+      p_low_stock_threshold: null,
+      p_requires_return: product.category === "RGB",
+      p_return_item_name: product.category === "RGB" ? emptiesName : null,
+      p_category: product.category
+    });
+    if (error) failed.push(`${product.name}: ${describeDbError(error)}`);
+  }
+
+  revalidatePath(`/b/${slug}`, "layout");
+  if (failed.length) {
+    return {
+      ok: false,
+      message: `${picked.length - failed.length} added. Not added: ${failed.join(" ")}`
+    };
+  }
+  redirect(`/b/${slug}/products?added=${picked.length}`);
 }

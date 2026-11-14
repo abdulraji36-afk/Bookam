@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { setProductActiveAction } from "@/app/actions/catalog";
 import { ActionButton } from "@/components/team/action-button";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
 import { Badge, Card, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
@@ -59,11 +60,24 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
           Products
         </PageTitle>
         {manager ? (
-          <Link href={`${base}/new`} className={buttonClass("primary")}>
-            + New product
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {org.sells_drinks ? (
+              <Link href={`${base}/nbc`} className={buttonClass("secondary")}>
+                Add from the NBC list
+              </Link>
+            ) : null}
+            <Link href={`${base}/new`} className={buttonClass("primary")}>
+              + New product
+            </Link>
+          </div>
         ) : null}
       </div>
+
+      {typeof query.added === "string" && /^\d{1,3}$/.test(query.added) ? (
+        <Alert tone="success">
+          {query.added === "1" ? "1 product added." : `${query.added} products added.`}
+        </Alert>
+      ) : null}
 
       {products.length > 0 || search.q ? (
         <SearchForm action={base} q={search.q} label="Search products" placeholder="Search by name or SKU" />

@@ -185,6 +185,43 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      dispatch_workers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          role: "driver" | "loader";
+          phone: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      dispatch_trip_loaders: {
+        Row: { trip_id: string; worker_id: string; organization_id: string };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_trip_loaders_worker_id_fkey";
+            columns: ["worker_id"];
+            isOneToOne: false;
+            referencedRelation: "dispatch_workers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dispatch_trip_loaders_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "dispatch_trips";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       products: {
         Row: {
           id: string;
@@ -197,6 +234,7 @@ export type Database = {
           returnable_item_id: string | null;
           tracks_serials: boolean;
           warranty_months: number | null;
+          category: string | null;
           is_active: boolean;
           created_by: string | null;
           created_at: string;
@@ -856,6 +894,7 @@ export type Database = {
           p_return_item_name: string | null;
           p_tracks_serials?: boolean;
           p_warranty_months?: number | null;
+          p_category?: string | null;
         };
         Returns: string;
       };
@@ -984,6 +1023,31 @@ export type Database = {
         };
         Returns: { id: string; trip_no: string }[];
       };
+      create_dispatch_trip_with_crew: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_dispatch_date: string;
+          p_driver_name: string;
+          p_vehicle: string | null;
+          p_note: string | null;
+          p_order_ids: string[];
+          p_loader_ids?: string[];
+        };
+        Returns: { id: string; trip_no: string }[];
+      };
+      save_dispatch_worker: {
+        Args: {
+          p_organization_id: string;
+          p_worker_id: string | null;
+          p_name: string;
+          p_role: "driver" | "loader";
+          p_phone: string | null;
+        };
+        Returns: string;
+      };
+      set_dispatch_worker_active: { Args: { p_worker_id: string; p_is_active: boolean }; Returns: undefined };
+      set_trip_loaders: { Args: { p_trip_id: string; p_worker_ids: string[] }; Returns: undefined };
       dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
       cancel_dispatch_trip: { Args: { p_trip_id: string }; Returns: undefined };
       record_trip_returns: {
