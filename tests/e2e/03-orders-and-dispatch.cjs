@@ -91,7 +91,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/stock\/receipts\//);
   ok("set-up: 2 drinks, 2 customers, stock received");
 
-  // --- one New order page: customers and walk-in buyers, RGB and PET tabs
+  // --- one New order page: several customers, RGB and PET tabs
   const biz = BASE + base;
   const orderUrl = (id) => `${biz}/orders/${id}`;
 
@@ -132,7 +132,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.screenshot({ path: `${SHOTS}/21-orders-two-sections.png`, fullPage: true });
   ok("an order sets its stock aside and shows what is due back; RGB and PET are separate orders");
 
-  // --- a missed customer, name or product takes you back to it with a message
+  // --- a missed customer or product takes you back to it with a message
   await a.goto(biz + "/orders/new?kind=pet");
   const save = () => vis(a.getByRole("button", { name: /^Save( \d+ orders| order)$/ })).click();
   await save();
@@ -141,21 +141,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await pick(first, "Customer", "Grace Canteen");
   await save();
   await a.getByText("Add at least one product for Grace Canteen.").waitFor();
-  await first.getByRole("button", { name: "Add Water 75cl for customer 1" }).click();
-  await first.getByRole("textbox", { name: "Water 75cl for customer 1" }).fill("1");
-  await vis(a.getByRole("button", { name: "Add walk-in buyer" })).click();
-  const walkRow = a.getByRole("region", { name: "Walk-in buyer 2" });
-  await walkRow.getByRole("button", { name: "Add Water 75cl for walk-in buyer 2" }).click();
-  await walkRow.getByRole("textbox", { name: "Water 75cl for walk-in buyer 2" }).fill("2");
-  await save();
-  await a.getByText("Enter the name of walk-in buyer 2 before saving.").waitFor();
-  assert.equal(
-    await walkRow.getByLabel("Buyer's name").evaluate((el) => el === document.activeElement),
-    true,
-    "the missing name is focused"
-  );
   assert.match(a.url(), /\/orders\/new(\?.*)?$/, "nothing was saved");
-  ok("a missed customer, buyer name or product is pointed out at the field itself");
+  ok("a missed customer or product is pointed out at the field itself");
 
   // --- cannot take more than is in stock: the quantity stops at what is left
   await newOrders(a, biz, "pet", [{ customer: "Grace Canteen", lines: [["Water 75cl", 99]] }], { save: false });
@@ -284,35 +271,19 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.screenshot({ path: `${SHOTS}/28-dashboard.png`, fullPage: true });
   ok("dashboard shows what is waiting");
 
-  // --- walk-in buyers on the same page as customers
-  await a.goto(biz + "/orders/new");
-  assert.equal(await vis(a.getByRole("button", { name: "Add walk-in buyer" })).isDisabled(), true, "crates must come back, so no walk-ins on RGB");
-  await a.getByText("RGB crates must be brought back, so they are only for saved customers.").waitFor();
-  await newOrders(
-    a,
-    biz,
-    "pet",
-    [
-      { customer: "Grace Canteen", lines: [["Water 75cl", 2]] },
-      { walkIn: { name: "Tunde Bello", phone: "0803 111 2222", takesNow: true }, lines: [["Water 75cl", 3]] },
-      { walkIn: { name: "Ngozi Eze", takesNow: false }, lines: [["Water 75cl", 4]] }
-    ],
-    { beforeSave: () => a.screenshot({ path: `${SHOTS}/29-walk-ins.png`, fullPage: true }) }
-  );
-  await a.getByText("3 orders saved.").waitFor();
-  // Only the two still waiting can go on a trip; the walk-in took his at the counter.
-  await a.getByRole("link", { name: "Put them on a trip" }).waitFor();
-  const petSection = a.locator("section", { hasText: "PET orders" });
-  await petSection.locator("tr", { hasText: "Tunde Bello" }).getByText("Completed", { exact: true }).waitFor();
-  await petSection.locator("tr", { hasText: "Ngozi Eze" }).getByText("Waiting for dispatch").waitFor();
-  await petSection.locator("tr", { hasText: "Tunde Bello" }).getByRole("link").first().click();
-  await a.getByText("Tunde Bello (walk-in)").waitFor();
-  await a.getByText("0803 111 2222").waitFor();
-  await a.getByText("At the counter", { exact: false }).waitFor();
-  await a.goto(BASE + base + "/customers");
-  await a.getByText("Grace Canteen").first().waitFor();
-  assert.equal(await a.getByText("Tunde Bello").count(), 0, "a walk-in is not saved as a customer");
-  ok("walk-in buyers are ordered on the same page; their name and phone stay on the order, not as a customer");
+  // --- drinks are sold to saved customers only: no walk-in buyers, RGB or PET
+  for (const kind of ["rgb", "pet"]) {
+    await a.goto(biz + "/orders/new" + (kind === "pet" ? "?kind=pet" : ""));
+    await a.getByRole("heading", { name: kind === "pet" ? "New PET orders" : "New RGB orders" }).waitFor();
+    assert.equal(await a.getByRole("button", { name: /walk-in/i }).count(), 0, `no walk-in on ${kind}`);
+  }
+  // Nor when editing a waiting order.
+  await a.goto(BASE + base + "/orders?status=waiting");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).first().getByRole("link").first().click();
+  await vis(a.getByRole("link", { name: "Edit order" })).click();
+  await a.waitForURL(/\/edit$/);
+  assert.equal(await a.getByLabel("Walk-in buyer").count(), 0, "no walk-in when editing a drinks order");
+  ok("drinks are sold to saved customers only, with no walk-in buyer anywhere")
 
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));

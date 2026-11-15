@@ -41,8 +41,9 @@ async function NewOrder({
   const data = await getOrderFormData(supabase, org.id);
   const today = todayIn(org.timezone, await requestNow());
 
-  // Drinks: customers and walk-in buyers together on one screen, like the
-  // Bilikis RGB sales page. An order is either RGB or PET, chosen with the tabs.
+  // Drinks: several customers on one screen, like the Bilikis RGB sales page.
+  // Saved customers only (no walk-ins), so every crate owed has a name.
+  // An order is either RGB or PET, chosen with the tabs.
   if (org.sells_drinks) {
     const { data: categories } = await supabase
       .from("products")
@@ -75,7 +76,7 @@ async function NewOrder({
 
     return (
       <div className="max-w-7xl space-y-6">
-        <PageTitle sub="Add each customer or walk-in buyer and what they are taking. Stock left on each product counts down as you type.">
+        <PageTitle sub="Add each customer and what they are taking. Stock left on each product counts down as you type.">
           {kind === "rgb" ? "New RGB orders" : "New PET orders"}
         </PageTitle>
         <StatusTabs
@@ -103,7 +104,6 @@ async function NewOrder({
             stock={data.stock}
             currency={org.currency_code}
             today={today}
-            allowWalkIns={kind === "pet"}
           />
         )}
       </div>

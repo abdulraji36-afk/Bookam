@@ -7,12 +7,7 @@ import { describeDbError, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg, type OrgContext } from "@/lib/org";
-import {
-  firstIssue,
-  orderSchema,
-  readQuantity,
-  tripSchema,
-} from "@/lib/validation";
+import { firstIssue, orderSchema, readQuantity, tripSchema } from "@/lib/validation";
 
 const idSchema = z.uuid();
 
@@ -23,12 +18,7 @@ const idSchema = z.uuid();
  */
 function readLines(formData: FormData) {
   const field = (name: string) => formData.getAll(name).map(String);
-  const [lineKeys, productIds, quantities, tracked] = [
-    "lineKey",
-    "productId",
-    "quantity",
-    "tracked",
-  ].map(field);
+  const [lineKeys, productIds, quantities, tracked] = ["lineKey", "productId", "quantity", "tracked"].map(field);
   const units = field("unit").map((value) => value.split("|"));
 
   return lineKeys
@@ -36,36 +26,23 @@ function readLines(formData: FormData) {
       productId: productIds[index] ?? "",
       tracked: tracked[index] === "1",
       quantity: readQuantity(quantities[index]),
-      unitIds: units
-        .filter(([line]) => line === key)
-        .map(([, unitId]) => unitId ?? ""),
+      unitIds: units.filter(([line]) => line === key).map(([, unitId]) => unitId ?? "")
     }))
-    .filter(
-      (item) =>
-        item.productId !== "" ||
-        item.quantity !== undefined ||
-        item.unitIds.length > 0,
-    );
+    .filter((item) => item.productId !== "" || item.quantity !== undefined || item.unitIds.length > 0);
 }
 
 /** "Mama Tunde: 40 items, ₦168,000" for an order, read back after saving. */
-async function orderLines(
-  context: Pick<OrgContext, "supabase" | "org">,
-  orderId: string,
-  heading: (orderNo: string) => string,
-) {
+async function orderLines(context: Pick<OrgContext, "supabase" | "org">, orderId: string, heading: (orderNo: string) => string) {
   const { data } = await context.supabase
     .from("order_summaries")
-    .select(
-      "order_no, customer_name, total_quantity, total_amount, has_returns",
-    )
+    .select("order_no, customer_name, total_quantity, total_amount, has_returns")
     .eq("id", orderId)
     .maybeSingle();
   if (!data) return [];
   return [
     heading(data.order_no),
     `${data.customer_name}: ${formatQuantity(Number(data.total_quantity))} items, ${formatMoney(Number(data.total_amount), context.org.currency_code)}`,
-    data.has_returns && "Returns are due on this order.",
+    data.has_returns && "Returns are due on this order."
   ];
 }
 
@@ -80,7 +57,7 @@ function readOrder(formData: FormData) {
     handedOver: formData.get("leaving") === "now",
     paymentType: formData.get("paymentType") ?? "",
     note: formData.get("note") ?? "",
-    items: readLines(formData),
+    items: readLines(formData)
   });
 }
 
@@ -88,7 +65,7 @@ export async function saveOrderAction(
   slug: string,
   orderId: string | null,
   _previous: ActionState,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
 
@@ -97,7 +74,7 @@ export async function saveOrderAction(
   const items = parsed.data.items.map((item) =>
     item.tracked
       ? { product_id: item.productId, unit_ids: item.unitIds }
-      : { product_id: item.productId, quantity: item.quantity ?? 0 },
+      : { product_id: item.productId, quantity: item.quantity ?? 0 }
   );
   const customerId = parsed.data.walkIn ? null : parsed.data.customerId;
   const buyerName = parsed.data.walkIn ? parsed.data.buyerName || null : null;
@@ -114,24 +91,21 @@ export async function saveOrderAction(
       p_items: items,
       p_handed_over: parsed.data.handedOver,
       p_buyer_name: buyerName,
-      p_buyer_phone: buyerPhone,
+      p_buyer_phone: buyerPhone
     });
     const order = data?.[0];
     if (error || !order) return { ok: false, message: describeDbError(error) };
 
     notify({ supabase, org }, () =>
       orderLines({ supabase, org }, order.id, (no) =>
-        parsed.data.handedOver
-          ? `Sold at the counter ${no}`
-          : `New order ${no}`,
-      ),
+        parsed.data.handedOver ? `Sold at the counter ${no}` : `New order ${no}`
+      )
     );
     revalidatePath(`/b/${slug}`, "layout");
     redirect(`/b/${slug}/orders/${order.id}?saved=1`);
   }
 
-  if (!idSchema.safeParse(orderId).success)
-    return { ok: false, message: "Order not found." };
+  if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const { error } = await supabase.rpc("update_order", {
     p_order_id: orderId,
@@ -141,13 +115,11 @@ export async function saveOrderAction(
     p_note: parsed.data.note || null,
     p_items: items,
     p_buyer_name: buyerName,
-    p_buyer_phone: buyerPhone,
+    p_buyer_phone: buyerPhone
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
-  notify({ supabase, org }, () =>
-    orderLines({ supabase, org }, orderId, (no) => `Order ${no} was changed`),
-  );
+  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Order ${no} was changed`));
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/orders/${orderId}?saved=1`);
 }
@@ -160,54 +132,25 @@ const batchSchema = z.object({
   orders: z
     .array(
       z.object({
-        // No customer means a walk-in buyer, who is named instead.
-        customer_id: z.uuid("Choose the customer on every card.").nullable(),
-        buyer_name: z
-          .string()
-          .trim()
-          .max(80, "Use at most 80 characters for a buyer's name.")
-          .nullish()
-          .transform((value) => value ?? ""),
-        buyer_phone: z
-          .string()
-          .trim()
-          .max(30, "Use at most 30 characters for a phone number.")
-          .nullish()
-          .transform((value) => value ?? ""),
-        handed_over: z.boolean().default(false),
+        customer_id: z.uuid("Choose the customer on every card."),
         items: z
           .array(
             z.object({
               product_id: z.uuid(),
-              quantity: z
-                .number()
-                .int("Drinks are counted in whole numbers.")
-                .positive()
-                .max(9_999_999),
-            }),
+              quantity: z.number().int("Drinks are counted in whole numbers.").positive().max(9_999_999)
+            })
           )
-          .min(1, "Every customer needs at least one product."),
-      }),
+          .min(1, "Every customer needs at least one product.")
+      })
     )
-    .min(1, "Add at least one customer or walk-in buyer.")
-    .refine(
-      (orders) =>
-        orders.every(
-          (order) => order.customer_id !== null || order.buyer_name.length > 0,
-        ),
-      "Enter the name of each walk-in buyer.",
-    ),
+    .min(1, "Add at least one customer.")
 });
 
-/**
- * Drinks: several customers' and walk-in buyers' orders in one save (the
- * Bilikis RGB sales screen). A walk-in is not saved as a customer; the buyer's
- * name and phone stay on the order.
- */
+/** Drinks: several customers' orders in one save (the Bilikis RGB sales screen). */
 export async function saveOrderBatchAction(
   slug: string,
   _previous: ActionState,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
 
@@ -215,17 +158,14 @@ export async function saveOrderBatchAction(
   try {
     orders = JSON.parse(String(formData.get("orders") ?? "[]"));
   } catch {
-    return {
-      ok: false,
-      message: "Add at least one customer or walk-in buyer.",
-    };
+    return { ok: false, message: "Add at least one customer." };
   }
   const parsed = batchSchema.safeParse({
     locationId: String(formData.get("locationId") ?? ""),
     orderDate: String(formData.get("orderDate") ?? ""),
     paymentType: String(formData.get("paymentType") ?? "cash"),
     note: String(formData.get("note") ?? ""),
-    orders,
+    orders
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
@@ -235,47 +175,30 @@ export async function saveOrderBatchAction(
     p_order_date: parsed.data.orderDate,
     p_payment_type: parsed.data.paymentType,
     p_note: parsed.data.note || null,
-    p_orders: parsed.data.orders.map((order) => ({
-      customer_id: order.customer_id,
-      buyer_name: order.customer_id === null ? order.buyer_name : null,
-      buyer_phone:
-        order.customer_id === null ? order.buyer_phone || null : null,
-      handed_over: order.customer_id === null && order.handed_over,
-      items: order.items,
-    })),
+    p_orders: parsed.data.orders
   });
-  if (error || !data?.length)
-    return { ok: false, message: describeDbError(error) };
+  if (error || !data?.length) return { ok: false, message: describeDbError(error) };
 
   for (const order of data) {
-    notify({ supabase, org }, () =>
-      orderLines({ supabase, org }, order.id, (no) => `New order ${no}`),
-    );
+    notify({ supabase, org }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
   }
   revalidatePath(`/b/${slug}`, "layout");
-  redirect(
-    `/b/${slug}/orders?saved=batch&ids=${data.map((order) => order.id).join(",")}`,
-  );
+  redirect(`/b/${slug}/orders?saved=batch&ids=${data.map((order) => order.id).join(",")}`);
 }
 
 export async function cancelOrderAction(
   slug: string,
   orderId: string,
-  _previous: ActionState,
+  _previous: ActionState
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
-  if (!idSchema.safeParse(orderId).success)
-    return { ok: false, message: "Order not found." };
+  if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const { error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
   if (error) return { ok: false, message: describeDbError(error) };
 
   notify({ supabase, org }, () =>
-    orderLines(
-      { supabase, org },
-      orderId,
-      (no) => `Order ${no} cancelled. Its stock was put back.`,
-    ),
+    orderLines({ supabase, org }, orderId, (no) => `Order ${no} cancelled. Its stock was put back.`)
   );
 
   revalidatePath(`/b/${slug}`, "layout");
@@ -285,24 +208,15 @@ export async function cancelOrderAction(
 export async function handOverOrderAction(
   slug: string,
   orderId: string,
-  _previous: ActionState,
+  _previous: ActionState
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
-  if (!idSchema.safeParse(orderId).success)
-    return { ok: false, message: "Order not found." };
+  if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
-  const { error } = await supabase.rpc("hand_over_order", {
-    p_order_id: orderId,
-  });
+  const { error } = await supabase.rpc("hand_over_order", { p_order_id: orderId });
   if (error) return { ok: false, message: describeDbError(error) };
 
-  notify({ supabase, org }, () =>
-    orderLines(
-      { supabase, org },
-      orderId,
-      (no) => `Handed over at the counter ${no}`,
-    ),
-  );
+  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Handed over at the counter ${no}`));
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Order handed over and completed." };
 }
@@ -310,7 +224,7 @@ export async function handOverOrderAction(
 export async function createTripAction(
   slug: string,
   _previous: ActionState,
-  formData: FormData,
+  formData: FormData
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
 
@@ -320,7 +234,7 @@ export async function createTripAction(
     driverId: formData.get("driverId") ?? "",
     workerIds: formData.getAll("workerId").map(String),
     note: formData.get("note") ?? "",
-    orderIds: formData.getAll("orderId").map(String),
+    orderIds: formData.getAll("orderId").map(String)
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
@@ -331,7 +245,7 @@ export async function createTripAction(
     p_driver_id: parsed.data.driverId,
     p_note: parsed.data.note || null,
     p_order_ids: parsed.data.orderIds,
-    p_worker_ids: parsed.data.workerIds,
+    p_worker_ids: parsed.data.workerIds
   });
   const trip = data?.[0];
   if (error || !trip) return { ok: false, message: describeDbError(error) };
@@ -343,11 +257,10 @@ export async function createTripAction(
 export async function dispatchTripAction(
   slug: string,
   tripId: string,
-  _previous: ActionState,
+  _previous: ActionState
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
-  if (!idSchema.safeParse(tripId).success)
-    return { ok: false, message: "Trip not found." };
+  if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   const { error } = await supabase.rpc("dispatch_trip", { p_trip_id: tripId });
   if (error) return { ok: false, message: describeDbError(error) };
@@ -355,16 +268,14 @@ export async function dispatchTripAction(
   notify({ supabase, org }, async () => {
     const { data } = await supabase
       .from("dispatch_trip_summaries")
-      .select(
-        "trip_no, driver_name, vehicle, order_count, total_quantity, has_returns",
-      )
+      .select("trip_no, driver_name, vehicle, order_count, total_quantity, has_returns")
       .eq("id", tripId)
       .maybeSingle();
     if (!data) return [];
     return [
       `Trip ${data.trip_no} dispatched`,
       `Driver ${data.driver_name}${data.vehicle ? ` (${data.vehicle})` : ""}: ${data.order_count} order${data.order_count === 1 ? "" : "s"}, ${formatQuantity(Number(data.total_quantity))} items`,
-      data.has_returns && "Returns to collect on this trip.",
+      data.has_returns && "Returns to collect on this trip."
     ];
   });
 
@@ -375,33 +286,19 @@ export async function dispatchTripAction(
 export async function cancelTripAction(
   slug: string,
   tripId: string,
-  _previous: ActionState,
+  _previous: ActionState
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
-  if (!idSchema.safeParse(tripId).success)
-    return { ok: false, message: "Trip not found." };
+  if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
-  const { error } = await supabase.rpc("cancel_dispatch_trip", {
-    p_trip_id: tripId,
-  });
+  const { error } = await supabase.rpc("cancel_dispatch_trip", { p_trip_id: tripId });
   if (error) return { ok: false, message: describeDbError(error) };
 
   notify({ supabase, org }, async () => {
-    const { data } = await supabase
-      .from("dispatch_trips")
-      .select("trip_no")
-      .eq("id", tripId)
-      .maybeSingle();
-    return data
-      ? [
-          `Trip ${data.trip_no} cancelled before leaving. Its orders are waiting again.`,
-        ]
-      : [];
+    const { data } = await supabase.from("dispatch_trips").select("trip_no").eq("id", tripId).maybeSingle();
+    return data ? [`Trip ${data.trip_no} cancelled before leaving. Its orders are waiting again.`] : [];
   });
 
   revalidatePath(`/b/${slug}`, "layout");
-  return {
-    ok: true,
-    message: "Trip cancelled. Its orders are waiting for dispatch again.",
-  };
+  return { ok: true, message: "Trip cancelled. Its orders are waiting for dispatch again." };
 }

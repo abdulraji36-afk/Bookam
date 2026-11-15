@@ -128,18 +128,7 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
           .filter((value) => /^[0-9a-f-]{36}$/i.test(value))
           .slice(0, 50)
       : [];
-  // Only orders still waiting can go on a trip; a walk-in who took it at the counter is done.
-  const { data: savedOrders } = savedIds.length
-    ? await supabase
-        .from("orders")
-        .select("id, status")
-        .eq("organization_id", org.id)
-        .in("id", savedIds)
-    : { data: [] };
-  const waitingIds = (savedOrders ?? [])
-    .filter((order) => order.status === "pending")
-    .map((order) => order.id);
-  const tripHref = `${base}/dispatch/new?${waitingIds.map((value) => `order=${value}`).join("&")}`;
+  const tripHref = `${base}/dispatch/new?${savedIds.map((value) => `order=${value}`).join("&")}`;
 
   return (
     <div className="space-y-5">
@@ -150,13 +139,11 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
               {savedIds.length === 1
                 ? "1 order saved."
                 : `${savedIds.length} orders saved.`}{" "}
-              {waitingIds.length > 0
-                ? "Their stock has been set aside."
-                : "They were all handed over."}
+              Their stock has been set aside.
             </span>
-            {delivers && waitingIds.length > 0 ? (
+            {delivers ? (
               <Link href={tripHref} className={buttonClass("primary", "sm")}>
-                Put {waitingIds.length === 1 ? "it" : "them"} on a trip
+                Put {savedIds.length === 1 ? "it" : "them"} on a trip
               </Link>
             ) : null}
           </span>

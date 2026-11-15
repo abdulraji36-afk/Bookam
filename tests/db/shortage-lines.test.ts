@@ -267,8 +267,7 @@ describe("drinks shortage lines", () => {
       { customer_id: two, status: "pending" }
     ]);
   });
-  it("takes walk-in buyers on the same list, any number of them, with their name and phone kept", async () => {
-    const regular = await saveCustomer(db, owner, depot.id, { name: "Batch Regular" });
+  it("sells drinks to saved customers only, never to a walk-in buyer", async () => {
     const location = await mainLocation(db, depot.id);
     const batch = (orders: unknown) =>
       call(db, staff, `select * from public.create_order_batch($1, $2, public_today(), 'cash', null, $3::jsonb)`, [
@@ -276,43 +275,18 @@ describe("drinks shortage lines", () => {
         location,
         JSON.stringify(orders)
       ]);
-    const packs = (quantity: number) => [{ product_id: pet, quantity }];
-
-    // A walk-in needs a name; the phone is optional.
-    await expect(batch([{ customer_id: null, buyer_name: "  ", items: packs(1) }])).rejects.toThrow(
-      /Enter the name of each walk-in buyer/
-    );
-    // Crates must come back, so they are only for saved customers.
+    // Not on the several-customer screen, for PET or RGB...
     await expect(
-      batch([{ customer_id: null, buyer_name: "Tunde Bello", items: [{ product_id: rgb, quantity: 1 }] }])
-    ).rejects.toThrow(/can only be sold to a saved customer/);
-    // Nothing is half saved.
-    const before = await db.query<{ n: string }>(`select count(*)::text as n from public.orders`);
-
-    const saved = (await batch([
-      { customer_id: regular, items: packs(2) },
-      { customer_id: null, buyer_name: "Tunde Bello", buyer_phone: "0803 111 2222", handed_over: true, items: packs(3) },
-      { customer_id: null, buyer_name: "Ngozi Eze", buyer_phone: null, handed_over: false, items: packs(4) }
-    ])) as { id: string; order_no: string }[];
-    expect(saved).toHaveLength(3);
-    const after = await db.query<{ n: string }>(`select count(*)::text as n from public.orders`);
-    expect(Number(after.rows[0].n) - Number(before.rows[0].n)).toBe(3);
-
-    const rows = await db.query<{ customer_id: string | null; buyer_name: string | null; buyer_phone: string | null; status: string }>(
-      `select customer_id, buyer_name, buyer_phone, status from public.orders where id = any($1::uuid[]) order by order_no`,
-      [saved.map((row) => row.id)]
+      batch([{ customer_id: null, buyer_name: "Tunde Bello", items: [{ product_id: pet, quantity: 1 }] }])
+    ).rejects.toThrow(/Choose the customer on every card/);
+    // ...and not as a single order either.
+    await expect(createOrder(db, staff, depot.id, null, [{ product_id: pet, quantity: 1 }])).rejects.toThrow(
+      /Drinks are sold to saved customers only/
     );
-    expect(rows.rows).toEqual([
-      { customer_id: regular, buyer_name: null, buyer_phone: null, status: "pending" },
-      { customer_id: null, buyer_name: "Tunde Bello", buyer_phone: "0803 111 2222", status: "completed" },
-      { customer_id: null, buyer_name: "Ngozi Eze", buyer_phone: null, status: "pending" }
-    ]);
-    // A walk-in is not saved as a customer.
-    const made = await db.query(`select 1 from public.customers where name in ('Tunde Bello', 'Ngozi Eze')`);
+    const made = await db.query(
+      `select 1 from public.orders where organization_id = $1 and customer_id is null`,
+      [depot.id]
+    );
     expect(made.rows).toHaveLength(0);
-    // A saved customer still can only be on the list once.
-    await expect(batch([{ customer_id: regular, items: packs(1) }, { customer_id: regular, items: packs(1) }])).rejects.toThrow(
-      /Batch Regular is in this list twice/
-    );
   });
 });
