@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, PageSkeleton } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
@@ -56,17 +57,23 @@ async function Exchanges({
       ? counting.not("voided_at", "is", null)
       : counting.is("voided_at", null);
   };
-  const [{ data, count: total }, kept, voided, { count: locationCount }] =
-    await Promise.all([
-      listQuery,
-      count(false),
-      count(true),
-      supabase
-        .from("locations")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", org.id),
-    ]);
+  const [
+    { data, count: total, error },
+    kept,
+    voided,
+    { count: locationCount },
+  ] = await Promise.all([
+    listQuery,
+    count(false),
+    count(true),
+    supabase
+      .from("locations")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", org.id),
+  ]);
   const rows = data ?? [];
+  // A failed load must never look like "no exchanges".
+  if (error) console.error("Exchanges could not load:", error);
   type Row = (typeof rows)[number];
   const manyLocations = (locationCount ?? 0) > 1;
   const href = (status: string, page = 1) => {
@@ -110,6 +117,12 @@ async function Exchanges({
           ]}
         />
       </FilterBar>
+      {error ? (
+        <Alert tone="error">
+          The exchanges could not be loaded. Please refresh the page. If this
+          keeps happening, the database may be missing its latest update.
+        </Alert>
+      ) : null}
       <TableCard>
         <DataTable
           label={title}

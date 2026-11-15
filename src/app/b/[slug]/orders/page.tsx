@@ -105,6 +105,11 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
   const total = listResult.count ?? 0;
   const petRows = petResult.data ?? [];
   const petTotal = petResult.count ?? 0;
+  // A failed load must never look like "no orders".
+  const loadError =
+    ("error" in listResult && listResult.error) ||
+    ("error" in petResult && petResult.error);
+  if (loadError) console.error("Orders could not load:", loadError);
   const href = (status: string, page = 1, petPage = 1) => {
     const params = new URLSearchParams();
     if (status !== "all") params.set("status", status);
@@ -186,7 +191,12 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
         />
       </FilterBar>
 
-      {counts[0]?.count === 0 && !search.q ? (
+      {loadError ? (
+        <Alert tone="error">
+          Your {words.many} could not be loaded. Please refresh the page. If
+          this keeps happening, the database may be missing its latest update.
+        </Alert>
+      ) : counts[0]?.count === 0 && !search.q ? (
         <EmptyState title={`No ${words.many} yet`}>
           Record the first {words.one} to a customer.
         </EmptyState>
