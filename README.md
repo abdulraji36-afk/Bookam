@@ -152,6 +152,9 @@ These are what keep one business's data away from another's.
    list. A drinks order is either RGB or PET (trigger
    `drinks_order_one_kind`); `order_summaries` carries each order's empties
    sent out, brought back and left to complete.
+   The several-customer order screen also takes walk-in buyers
+   (`create_order_batch`): a walk-in has no saved customer, only a name and
+   phone on the order, and crates that must come back are refused for them.
 
 ## How screens are laid out
 
@@ -241,4 +244,5 @@ version of the app, so the database can always go first.
 | 18 | Drinks the Bilikis way: an order screen for several customers with a live "Stock left" on every product; empty shortages kept per order with follow-up returns, a shortages page (open and completed, with when each was completed), no credit | Done |
 | 19 | Empty exchanges on their own page (list, new exchange, one record each) instead of on the stock-in form; drink products no longer ask "sold by", and the RGB/PET choice and PET category start empty | Done |
 | 20 | Drinks orders are RGB or PET, never both: New order has RGB and PET tabs, and the orders page shows RGB orders (sent out, brought back, left to complete) above PET orders; one trip still carries both | Done |
+| 21 | One New order page for drinks (RGB and PET tabs): customers and walk-in buyers on the same screen. A walk-in is named (phone optional, kept for warranty), is not saved as a customer, can take it at the counter now, and is PET only. The one-order address (`?single=1`) redirects here; goods and phone shops keep their one-order form | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

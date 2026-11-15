@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, addCrew } = require("./helpers.cjs");
+const { pick, addCrew, newOrders } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -91,45 +91,38 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/stock\/receipts\//);
   ok("set-up: 2 drinks, 2 customers, stock received");
 
-  // --- order with a return product and a no-return product
-  async function fillOrder(page, customer, lines) {
-    await pick(page, "Customer", customer);
-    for (let i = 0; i < lines.length; i++) {
-      if (i > 0) await vis(page.getByRole("button", { name: "Add another product" })).click();
-      const label = i === 0 ? "Product" : `Product ${i + 1}`;
-      await pick(page, label, lines[i][0]);
-      await vis(page.getByLabel("Quantity")).nth(i).fill(String(lines[i][1]));
-    }
-  }
+  // --- one New order page: customers and walk-in buyers, RGB and PET tabs
+  const biz = BASE + base;
+  const orderUrl = (id) => `${biz}/orders/${id}`;
 
   await nav(a, "Orders");
   await a.getByText("No orders yet").waitFor();
   await a.locator("main").getByRole("link", { name: "+ New order" }).click();
   await a.waitForURL(/\/orders\/new/);
-  // A drinks business opens on the several-customer screen; one order is a tap away.
-  await a.getByRole("link", { name: "One order or a walk-in instead" }).click();
-  await a.waitForURL(/\/orders\/new\?single=1/);
-  // A drinks order is RGB or PET; the RGB tab only offers RGB drinks.
-  await pick(a, "Customer", "Mama Tunde Stores (Ikeja)");
-  await vis(a.getByRole("combobox", { name: "Product", exact: true })).click();
-  assert.equal(await a.getByRole("option", { name: /Water 75cl/ }).count(), 0, "no PET on an RGB order");
-  await a.keyboard.press("Escape");
-  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40]]);
-  await a.getByText("100 crate in stock").waitFor();
-  await a.getByText("₦168,000").waitFor();
-  await a.screenshot({ path: `${SHOTS}/20-new-order.png`, fullPage: true });
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  await a.getByRole("heading", { name: "New RGB orders" }).waitFor();
+  // There is only this page: no switch to a one-order form.
+  assert.equal(await a.getByRole("link", { name: /One order|Several customers/ }).count(), 0);
+  // An RGB order is RGB only.
+  assert.equal(await a.getByLabel("Stock left for Water 75cl").count(), 0, "no PET on the RGB tab");
+  // The old one-order address brings you here.
+  await a.goto(biz + "/orders/new?single=1&kind=pet");
+  await a.waitForURL(biz + "/orders/new?kind=pet");
+  await a.getByRole("heading", { name: "New PET orders" }).waitFor();
+
+  const [mamaRgb] = await newOrders(a, biz, "rgb", [{ customer: "Mama Tunde Stores (Ikeja)", lines: [["Cola 50cl", 40]] }], {
+    beforeSave: async () => {
+      assert.equal(await a.getByLabel("Stock left for Cola 50cl").first().innerText(), "Stock left: 60");
+      await a.getByText("₦168,000").waitFor();
+      await a.screenshot({ path: `${SHOTS}/20-new-order.png`, fullPage: true });
+    }
+  });
+  await a.goto(orderUrl(mamaRgb));
   await a.getByRole("heading", { name: /^ORD-\d{8}-0001$/ }).waitFor();
   await a.locator("tr", { hasText: "Cola 50cl" }).getByText("40 Empties", { exact: true }).waitFor();
   await a.getByText("Waiting for dispatch").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/21-order.png`, fullPage: true });
   // Her PET drinks are an order of their own.
-  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
-  await a.getByRole("heading", { name: "New PET order" }).waitFor();
-  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Water 75cl", 10]]);
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  await newOrders(a, biz, "pet", [{ customer: "Mama Tunde Stores (Ikeja)", lines: [["Water 75cl", 10]] }]);
   await a.goto(BASE + base + "/stock");
   await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
   // The orders page shows RGB orders on top and PET orders below.
@@ -139,37 +132,43 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.screenshot({ path: `${SHOTS}/21-orders-two-sections.png`, fullPage: true });
   ok("an order sets its stock aside and shows what is due back; RGB and PET are separate orders");
 
-  // --- a missed field takes you back to it with a message
-  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
-  const save = () => vis(a.getByRole("button", { name: "Save order" })).click();
+  // --- a missed customer, name or product takes you back to it with a message
+  await a.goto(biz + "/orders/new?kind=pet");
+  const save = () => vis(a.getByRole("button", { name: /^Save( \d+ orders| order)$/ })).click();
   await save();
-  await a.getByText("Choose the customer before saving the order.").waitFor();
-  await pick(a, "Customer", "Grace Canteen");
+  await a.getByText("Choose customer 1 before saving.").waitFor();
+  const first = a.getByRole("region", { name: "Customer 1" });
+  await pick(first, "Customer", "Grace Canteen");
   await save();
-  await a.getByText("Choose the product, or remove this line.").waitFor();
-  await pick(a, "Product", "Water 75cl");
+  await a.getByText("Add at least one product for Grace Canteen.").waitFor();
+  await first.getByRole("button", { name: "Add Water 75cl for customer 1" }).click();
+  await first.getByRole("textbox", { name: "Water 75cl for customer 1" }).fill("1");
+  await vis(a.getByRole("button", { name: "Add walk-in buyer" })).click();
+  const walkRow = a.getByRole("region", { name: "Walk-in buyer 2" });
+  await walkRow.getByRole("button", { name: "Add Water 75cl for walk-in buyer 2" }).click();
+  await walkRow.getByRole("textbox", { name: "Water 75cl for walk-in buyer 2" }).fill("2");
   await save();
-  await a.getByText("Enter how many pack of Water 75cl.").waitFor();
+  await a.getByText("Enter the name of walk-in buyer 2 before saving.").waitFor();
   assert.equal(
-    await vis(a.getByLabel("Quantity")).evaluate((el) => el === document.activeElement),
+    await walkRow.getByLabel("Buyer's name").evaluate((el) => el === document.activeElement),
     true,
-    "the quantity box is focused"
+    "the missing name is focused"
   );
   assert.match(a.url(), /\/orders\/new(\?.*)?$/, "nothing was saved");
-  ok("a missed customer, product or quantity is pointed out at the field itself");
+  ok("a missed customer, buyer name or product is pointed out at the field itself");
 
-  // --- cannot oversell; typed values survive the error
-  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
-  await fillOrder(a, "Grace Canteen", [["Water 75cl", 99]]);
-  await a.getByText("40 pack in stock. That is more than you have.").waitFor();
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.getByText("Not enough stock for Water 75cl. Available: 40, requested: 99.").waitFor();
-  assert.equal(await vis(a.getByLabel("Quantity")).inputValue(), "99");
-  await vis(a.getByLabel("Quantity")).fill("15");
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  // --- cannot take more than is in stock: the quantity stops at what is left
+  await newOrders(a, biz, "pet", [{ customer: "Grace Canteen", lines: [["Water 75cl", 99]] }], { save: false });
+  const graceBox = a.getByRole("textbox", { name: "Water 75cl for customer 1" });
+  assert.equal(await graceBox.inputValue(), "40", "capped at what is in stock");
+  assert.equal(await a.getByLabel("Stock left for Water 75cl").first().innerText(), "Stock left: 0");
+  await graceBox.fill("15");
+  await save();
+  await a.waitForURL(/\/orders\?saved=batch&ids=/);
+  const graceOrderId = new URL(a.url()).searchParams.get("ids");
+  await a.goto(orderUrl(graceOrderId));
   await a.getByRole("heading", { name: /^ORD-\d{8}-0003$/ }).waitFor();
-  ok("an order for more than is in stock is refused with a clear message");
+  ok("an order cannot take more than is in stock");
 
   // --- edit while waiting
   await a.getByRole("link", { name: "Edit order" }).click();
@@ -227,10 +226,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("dispatching completes the no-return order and leaves the return order open");
 
   // --- cancel puts stock back
-  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
-  await fillOrder(a, "Grace Canteen", [["Water 75cl", 5]]);
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  const [cancelId] = await newOrders(a, biz, "pet", [{ customer: "Grace Canteen", lines: [["Water 75cl", 5]] }]);
+  await a.goto(orderUrl(cancelId));
   await vis(a.getByRole("button", { name: "Cancel order" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
   await a.getByText("Cancelled").first().waitFor();
@@ -249,11 +246,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await signUp(c, "Chidi Eze", chidi, /\/invite\//);
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
-  await c.goto(BASE + base + "/orders/new?single=1&kind=pet");
-  await fillOrder(c, "Grace Canteen", [["Water 75cl", 4]]);
-  await c.screenshot({ path: `${SHOTS}/25-new-order-mobile.png`, fullPage: true });
-  await vis(c.getByRole("button", { name: "Save order" })).click();
-  await c.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  await newOrders(c, biz, "pet", [{ customer: "Grace Canteen", lines: [["Water 75cl", 4]] }], {
+    beforeSave: () => c.screenshot({ path: `${SHOTS}/25-new-order-mobile.png`, fullPage: true })
+  });
   await c.goto(BASE + base + "/dispatch/new");
   await vis(c.getByLabel("Driver", { exact: true })).selectOption({ label: "Tunde" });
   await vis(c.getByLabel("Sule")).check();
@@ -268,10 +263,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("staff records an order, builds a trip and dispatches it from a phone");
 
   // --- owner can cancel a draft trip
-  await a.goto(BASE + base + "/orders/new?single=1");
-  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 5]]);
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  await newOrders(a, biz, "rgb", [{ customer: "Mama Tunde Stores (Ikeja)", lines: [["Cola 50cl", 5]] }]);
   await a.goto(BASE + base + "/dispatch/new");
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
   await vis(a.getByLabel("Sule")).check();
@@ -291,6 +283,36 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await tile.getByText("1", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/28-dashboard.png`, fullPage: true });
   ok("dashboard shows what is waiting");
+
+  // --- walk-in buyers on the same page as customers
+  await a.goto(biz + "/orders/new");
+  assert.equal(await vis(a.getByRole("button", { name: "Add walk-in buyer" })).isDisabled(), true, "crates must come back, so no walk-ins on RGB");
+  await a.getByText("RGB crates must be brought back, so they are only for saved customers.").waitFor();
+  await newOrders(
+    a,
+    biz,
+    "pet",
+    [
+      { customer: "Grace Canteen", lines: [["Water 75cl", 2]] },
+      { walkIn: { name: "Tunde Bello", phone: "0803 111 2222", takesNow: true }, lines: [["Water 75cl", 3]] },
+      { walkIn: { name: "Ngozi Eze", takesNow: false }, lines: [["Water 75cl", 4]] }
+    ],
+    { beforeSave: () => a.screenshot({ path: `${SHOTS}/29-walk-ins.png`, fullPage: true }) }
+  );
+  await a.getByText("3 orders saved.").waitFor();
+  // Only the two still waiting can go on a trip; the walk-in took his at the counter.
+  await a.getByRole("link", { name: "Put them on a trip" }).waitFor();
+  const petSection = a.locator("section", { hasText: "PET orders" });
+  await petSection.locator("tr", { hasText: "Tunde Bello" }).getByText("Completed", { exact: true }).waitFor();
+  await petSection.locator("tr", { hasText: "Ngozi Eze" }).getByText("Waiting for dispatch").waitFor();
+  await petSection.locator("tr", { hasText: "Tunde Bello" }).getByRole("link").first().click();
+  await a.getByText("Tunde Bello (walk-in)").waitFor();
+  await a.getByText("0803 111 2222").waitFor();
+  await a.getByText("At the counter", { exact: false }).waitFor();
+  await a.goto(BASE + base + "/customers");
+  await a.getByText("Grace Canteen").first().waitFor();
+  assert.equal(await a.getByText("Tunde Bello").count(), 0, "a walk-in is not saved as a customer");
+  ok("walk-in buyers are ordered on the same page; their name and phone stay on the order, not as a customer");
 
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));

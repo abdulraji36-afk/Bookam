@@ -151,8 +151,22 @@ let dbg;
 
   // Orders: search by customer and by number.
   await go("/orders/new");
+  // A goods business has one New order form; a missed customer, product or
+  // quantity is pointed out at the field itself.
+  const saveOrder = () => vis(a.getByRole("button", { name: "Save order" })).click();
+  await saveOrder();
+  await a.getByText("Choose the customer before saving the order.").waitFor();
   await pick(a, "Customer", "Iya Basira Provisions");
+  await saveOrder();
+  await a.getByText("Choose the product, or remove this line.").waitFor();
   await pick(a, "Product", "Rice 50kg");
+  await saveOrder();
+  await a.getByText(/^Enter how many .* of Rice 50kg\.$/).waitFor();
+  assert.equal(
+    await vis(a.getByLabel("Quantity")).evaluate((el) => el === document.activeElement),
+    true,
+    "the quantity box is focused"
+  );
   await vis(a.getByLabel("Quantity")).fill("2");
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);

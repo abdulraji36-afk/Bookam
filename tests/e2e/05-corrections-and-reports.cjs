@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, addCrew } = require("./helpers.cjs");
+const { pick, addCrew, newOrders } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -86,13 +86,9 @@ let dbg;
     return a.url().split("?")[0];
   }
   async function order(customer, product, quantity) {
-    await go(/Water/.test(product) ? "/orders/new?single=1&kind=pet" : "/orders/new?single=1");
-    await pick(a, "Customer", customer);
-    await pick(a, "Product", product);
-    await vis(a.getByLabel("Quantity")).fill(String(quantity));
-    await vis(a.getByRole("button", { name: "Save order" })).click();
-    await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-    return a.url().split("?")[0];
+    const kind = /Water/.test(product) ? "pet" : "rgb";
+    const [id] = await newOrders(a, BASE + base, kind, [{ customer, lines: [[product, quantity]] }]);
+    return `${BASE}${base}/orders/${id}`;
   }
   async function tripWithAll(driver) {
     await go("/dispatch/new");

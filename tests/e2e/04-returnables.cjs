@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, addCrew } = require("./helpers.cjs");
+const { pick, addCrew, newOrders } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -75,18 +75,12 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
     await vis(a.getByRole("button", { name: "Save customer" })).click();
     await a.waitForURL(new RegExp(base + "/customers$"));
   }
+  // One order on the New order page (RGB or PET tab), then open it.
   async function order(page, customer, lines) {
     // A drinks order is RGB or PET: Water is PET.
-    const kind = lines.every(([name]) => /Water/.test(name)) ? "&kind=pet" : "";
-    await page.goto(BASE + base + "/orders/new?single=1" + kind);
-    await pick(page, "Customer", customer);
-    for (let i = 0; i < lines.length; i++) {
-      if (i > 0) await vis(page.getByRole("button", { name: "Add another product" })).click();
-      await pick(page, i === 0 ? "Product" : `Product ${i + 1}`, lines[i][0]);
-      await vis(page.getByLabel("Quantity")).nth(i).fill(String(lines[i][1]));
-    }
-    await vis(page.getByRole("button", { name: "Save order" })).click();
-    await page.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+    const kind = lines.every(([name]) => /Water/.test(name)) ? "pet" : "rgb";
+    const [id] = await newOrders(page, BASE + base, kind, [{ customer, lines }]);
+    await page.goto(BASE + base + "/orders/" + id);
   }
   const crateCard = () => a.locator("section", { hasText: "Empties" }).filter({ hasText: "In store" });
   async function expectTotals(inStore, owed) {
