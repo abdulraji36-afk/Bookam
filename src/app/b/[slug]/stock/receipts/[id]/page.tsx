@@ -198,7 +198,7 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/b/${org.slug}/stock/receipts`} className={buttonClass("secondary")}>
-          Back to deliveries
+          Back to stock in
         </Link>
         <Link href={`/b/${org.slug}/stock/receive`} className={buttonClass("secondary")}>
           + Receive more

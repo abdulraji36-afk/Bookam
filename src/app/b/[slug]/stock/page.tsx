@@ -91,7 +91,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
               + Receive stock
             </Link>
             <Link href={`${base}/receipts`} className={buttonClass("secondary")}>
-              Deliveries
+              Stock in
             </Link>
           </>
         }

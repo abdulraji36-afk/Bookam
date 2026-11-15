@@ -42,7 +42,7 @@ export type NavItem = {
   label: string;
   icon: NavIconName;
   exact?: boolean;
-  /** Pages under href that belong to another entry, e.g. Deliveries under Stock. */
+  /** Pages under href that belong to another entry, e.g. Stock in under Stock. */
   excludes?: readonly string[];
 };
 

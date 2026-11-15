@@ -10,7 +10,7 @@ import { formatDate, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
 
-export const metadata: Metadata = { title: "Deliveries" };
+export const metadata: Metadata = { title: "Stock in" };
 
 async function Receipts({ params, searchParams }: PageProps<"/b/[slug]/stock/receipts">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
@@ -63,8 +63,8 @@ async function Receipts({ params, searchParams }: PageProps<"/b/[slug]/stock/rec
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Deliveries"
-        sub="Every delivery received, newest first. Open one to see it, correct it or void it."
+        title="Stock in"
+        sub="Every time stock came in, newest first. Open one to see it, correct it or void it."
         actions={
           <Link href={`/b/${org.slug}/stock/receive`} className={buttonClass("primary")}>
             + Receive stock
@@ -72,30 +72,30 @@ async function Receipts({ params, searchParams }: PageProps<"/b/[slug]/stock/rec
         }
       />
       <FilterBar>
-        <SearchForm action={base} q={search.q} label="Search deliveries" placeholder="Search by delivery number, supplier or reference" />
+        <SearchForm action={base} q={search.q} label="Search stock in" placeholder="Search by delivery number, supplier or reference" />
         <StatusTabs
-          label="Delivery status"
+          label="Stock in status"
           current={showVoided ? "voided" : "kept"}
           hrefFor={(value) => href(value)}
           tabs={[
-            { value: "kept", label: "Deliveries", count: keptCount.count ?? 0 },
+            { value: "kept", label: "Stock in", count: keptCount.count ?? 0 },
             { value: "voided", label: "Voided", count: voidedCount.count ?? 0 }
           ]}
         />
       </FilterBar>
 
       {(keptCount.count ?? 0) + (voidedCount.count ?? 0) === 0 ? (
-        <EmptyState title="Nothing received yet">Deliveries you record appear here.</EmptyState>
+        <EmptyState title="Nothing received yet">Stock you receive appears here.</EmptyState>
       ) : search.q && receipts.length === 0 ? (
         <NoMatches q={search.q} base={base} />
       ) : (
         <TableCard>
           <DataTable
-            label="Deliveries"
+            label="Stock in"
             rows={receipts}
             rowKey={(receipt: Receipt) => receipt.id}
             rowHref={(receipt: Receipt) => `${base}/${receipt.id}`}
-            empty="No deliveries here."
+            empty="No stock in here."
             columns={[
               { header: "Delivery no.", cell: (receipt: Receipt) => <span className="tabular-nums">{receipt.receipt_no}</span> },
               {

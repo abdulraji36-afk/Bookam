@@ -148,8 +148,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   assert.equal(await cola.getByText("Low stock").count(), 0, "no longer low after receiving");
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/13-stock.png`, fullPage: true });
-  // Deliveries have their own page in the menu.
-  await nav(a, "Deliveries");
+  // Stock in has its own page in the menu.
+  await nav(a, "Stock in");
   await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
   ok("receiving stock updates the stock on hand and clears the low-stock warning");
 
