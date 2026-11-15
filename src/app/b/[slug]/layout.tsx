@@ -84,11 +84,6 @@ async function BusinessShell({
                 label: "Empty shortages",
                 icon: "shortages",
               } as const,
-              {
-                href: `${base}/returns/exchanges`,
-                label: "Empty exchanges",
-                icon: "exchanges",
-              } as const,
             ]
           : []),
         {
@@ -97,6 +92,15 @@ async function BusinessShell({
           icon: "stock",
           excludes: [`${base}/stock/receipts`],
         },
+        ...(org.sells_drinks
+          ? [
+              {
+                href: `${base}/returns/exchanges`,
+                label: "Empty exchanges",
+                icon: "exchanges",
+              } as const,
+            ]
+          : []),
       ],
     },
     {

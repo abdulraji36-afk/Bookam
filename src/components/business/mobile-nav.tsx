@@ -4,7 +4,12 @@ import { Ellipsis, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
-import { isActivePath, NAV_ICONS, type NavGroup, type NavItem } from "@/components/business/nav-items";
+import {
+  isActivePath,
+  NAV_ICONS,
+  type NavGroup,
+  type NavItem,
+} from "@/components/business/nav-items";
 import { TabLink } from "@/components/business/nav-link";
 
 type Props = {
@@ -24,7 +29,9 @@ type Props = {
 export function MobileNav({ primary, more, quick, businessName }: Props) {
   const sheet = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
-  const moreIsActive = more.some((group) => group.items.some((item) => isActivePath(pathname, item)));
+  const moreIsActive = more.some((group) =>
+    group.items.some((item) => isActivePath(pathname, item)),
+  );
   const close = () => sheet.current?.close();
 
   return (
@@ -41,10 +48,14 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
           aria-haspopup="dialog"
           onClick={() => sheet.current?.showModal()}
           className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 text-[0.6875rem] leading-none ${
-            moreIsActive ? "font-extrabold text-accent" : "font-semibold text-nav"
+            moreIsActive ? "font-bold text-accent" : "font-bold text-nav"
           }`}
         >
-          <Ellipsis aria-hidden className="size-6" strokeWidth={moreIsActive ? 2.5 : 2} />
+          <Ellipsis
+            aria-hidden
+            className="size-6"
+            strokeWidth={moreIsActive ? 2.5 : 2}
+          />
           More
         </button>
       </nav>
@@ -59,9 +70,14 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
         className="m-0 mt-auto max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-0 text-ink open:animate-sheet-up md:hidden"
       >
         <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-          <div aria-hidden className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-chip" />
+          <div
+            aria-hidden
+            className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-chip"
+          />
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-lg font-extrabold">{businessName}</p>
+            <p className="min-w-0 truncate text-lg font-extrabold">
+              {businessName}
+            </p>
             <button
               type="button"
               onClick={close}
@@ -79,7 +95,9 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
                 href={action.href}
                 onClick={close}
                 className={`flex min-h-12 items-center justify-center rounded-md px-3 text-sm font-extrabold uppercase tracking-wide ${
-                  index === 0 ? "bg-accent text-accent-ink" : "border-2 border-ink"
+                  index === 0
+                    ? "bg-accent text-accent-ink"
+                    : "border-2 border-ink"
                 }`}
               >
                 {action.label}
@@ -90,7 +108,9 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
           {more.map((group) => (
             <div key={group.label ?? "home"} className="mb-4">
               {group.label ? (
-                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-ink-soft">{group.label}</p>
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-ink-soft">
+                  {group.label}
+                </p>
               ) : null}
               <ul className="grid grid-cols-3 gap-2">
                 {group.items.map((item) => {
@@ -102,12 +122,18 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
                         href={item.href}
                         onClick={close}
                         aria-current={isActive ? "page" : undefined}
-                        className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-md px-2 text-center text-sm ${
-                          isActive ? "bg-accent font-extrabold text-accent-ink" : "bg-paper font-bold active:bg-chip"
+                        // Same weight selected or not, and a fixed height, so a
+                        // label never changes the tile when it turns yellow.
+                        className={`flex h-20 flex-col items-center justify-center gap-1.5 rounded-md px-2 text-center text-sm font-bold ${
+                          isActive
+                            ? "bg-accent text-accent-ink"
+                            : "bg-paper active:bg-chip"
                         }`}
                       >
-                        <Icon aria-hidden className="size-6" />
-                        {item.label}
+                        <Icon aria-hidden className="size-6 shrink-0" />
+                        <span className="line-clamp-2 w-full break-words leading-tight">
+                          {item.label}
+                        </span>
                       </Link>
                     </li>
                   );
