@@ -33,7 +33,7 @@ async function NewOrder({ params, searchParams }: PageProps<"/b/[slug]/orders/ne
       current={kind}
       hrefFor={(value) => kindHref(value)}
       tabs={[
-        { value: "rgb", label: "RGB orders (empties come back)" },
+        { value: "rgb", label: "RGB orders" },
         { value: "pet", label: "PET orders" }
       ]}
     />
