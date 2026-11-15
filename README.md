@@ -121,10 +121,12 @@ These are what keep one business's data away from another's.
 13. A drinks business (`organizations.sells_drinks`) works like Bilikis. It
    has one pool of empties, named "Empties" once, and every drink is RGB
    (the empty crate comes back) or PET (nothing comes back), with its selling
-   price and buying cost required. A supplier delivery carries the
-   supplier's reference and records the empties given back in the same
-   transaction (`record_stock_delivery`); voiding the delivery gives them
-   back. What customers owe is kept per order, never as a running balance
+   price and buying cost required; RGB is sold by the crate and PET by the
+   pack, and a PET drink always has a category chosen on purpose. A
+   supplier delivery carries the supplier's reference. Empties the supplier
+   takes are an empty exchange of their own (`record_empty_exchange`): its
+   own form, list and record, with the delivery reference and the RGB
+   crates delivered kept for the record. What customers owe is kept per order, never as a running balance
    (see 15).
 
 14. A delivery can be corrected after the fact by an owner or admin
@@ -235,4 +237,5 @@ version of the app, so the database can always go first.
 | 16 | Trips take their driver from the list and at least one worker (any number); trucks and plate numbers are no longer recorded | Done |
 | 17 | Order form: walk-in buyer at the bottom, and a missed customer, product or quantity is pointed out at the field itself; a waiting order is cancelled (void is only for one that has gone out); "Put on a trip" from the order page; returned-empties boxes start blank and every one must be filled, 0 included | Done |
 | 18 | Drinks the Bilikis way: an order screen for several customers with a live "Stock left" on every product; empty shortages kept per order with follow-up returns, a shortages page (open and completed, with when each was completed), no credit | Done |
+| 19 | Empty exchanges on their own page (list, new exchange, one record each) instead of on the stock-in form; drink products no longer ask "sold by", and the RGB/PET choice and PET category start empty | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

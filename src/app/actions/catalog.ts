@@ -34,6 +34,15 @@ export async function saveProductAction(
   if (productId !== null && !idSchema.safeParse(productId).success) {
     return { ok: false, message: "Product not found." };
   }
+  // Drinks: RGB or PET is always chosen, and a PET drink always has a category.
+  const drinkKind = String(formData.get("drinkKind") ?? "");
+  const category = String(formData.get("category") ?? "").trim().slice(0, 30);
+  if (org.sells_drinks && drinkKind !== "rgb" && drinkKind !== "pet") {
+    return { ok: false, message: "Choose whether this drink is RGB or PET." };
+  }
+  if (org.sells_drinks && drinkKind === "pet" && !category) {
+    return { ok: false, message: "Choose a category for this drink." };
+  }
 
   const { error } = await supabase.rpc("save_product", {
     p_organization_id: org.id,
@@ -49,7 +58,7 @@ export async function saveProductAction(
     p_tracks_serials: parsed.data.tracksSerials,
     p_warranty_months: parsed.data.tracksSerials ? parsed.data.warrantyMonths : null,
     // Drinks only: RGB, PET, Juice and so on. The database sets RGB itself.
-    p_category: String(formData.get("category") ?? "").trim().slice(0, 30) || null
+    p_category: category || null
   });
   if (error) return { ok: false, message: describeDbError(error) };
 

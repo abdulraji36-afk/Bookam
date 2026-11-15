@@ -55,11 +55,16 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   async function addProduct(name, unit, price, returnItem) {
     await a.goto(BASE + base + "/products/new");
     await vis(a.getByLabel("Product name")).fill(name);
-    await vis(a.getByLabel("Sold by the")).fill(unit);
+    // Drinks are sold by the crate (RGB) or the pack (PET), so the unit is only asked otherwise.
+    const soldBy = vis(a.getByLabel("Sold by the", { exact: true }));
+    if (await soldBy.count()) await soldBy.fill(unit);
     await vis(a.getByLabel(/Selling price/)).fill(price);
     await vis(a.getByLabel(/Buying cost/)).fill(String(Math.round(Number(price.replace(/,/g, "")) * 0.9)));
     if (returnItem) {
       await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
+    } else if (await vis(a.getByLabel(/^PET, can or carton/)).count()) {
+      await vis(a.getByLabel(/^PET, can or carton/)).check();
+      await vis(a.getByLabel("Category")).selectOption("PET");
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -82,7 +87,6 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await pick(a, "Product 2", "Water 75cl (pack)");
   await vis(a.getByLabel("Quantity")).nth(1).fill("50");
   await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-0001");
-  await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
   ok("set-up: 2 drinks, 2 customers, stock received");

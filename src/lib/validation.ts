@@ -204,7 +204,11 @@ export const supplierExchangeSchema = z.object({
   supplierName: z.string().trim().max(80, "Use at most 80 characters for the supplier."),
   reference: z.string().trim().max(80, "Use at most 80 characters for the reference."),
   receivedBy: z.string().trim().max(80, "Use at most 80 characters."),
-  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  cratesDelivered: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || /^\d{1,7}$/.test(value), "Enter the RGB crates delivered as a whole number, or leave it empty.")
 });
 
 export const returnableAdjustmentSchema = z.object({

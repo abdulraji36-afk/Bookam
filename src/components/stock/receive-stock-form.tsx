@@ -37,15 +37,7 @@ export function ReceiveStockForm({ action, products, locations, today, drinks }:
   const nextKey = useRef(1);
   const [lines, setLines] = useState<Line[]>([{ key: 0, productId: "", quantity: "", units: [] }]);
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
-  // The empties given back follow the RGB crates received, until someone types a different number.
-  const [emptiesTyped, setEmptiesTyped] = useState<string | null>(null);
   const productById = new Map(products.map((product) => [product.id, product]));
-  const rgbReceived = lines.reduce((sum, line) => {
-    const quantity = Number(line.quantity);
-    return productById.get(line.productId)?.returnable && Number.isFinite(quantity) && quantity > 0 ? sum + quantity : sum;
-  }, 0);
-  const emptiesGiven = emptiesTyped ?? (rgbReceived > 0 ? String(rgbReceived) : "");
-  const emptiesInStore = drinks?.inStore[locationId] ?? 0;
   // Lets a new serial box take the cursor, so a barcode scanner can keep going.
   const focusSerial = useRef<number | null>(null);
 
@@ -277,22 +269,6 @@ export function ReceiveStockForm({ action, products, locations, today, drinks }:
           Add another product
         </Button>
       </fieldset>
-
-      {drinks ? (
-        <fieldset className="space-y-3 rounded-md border-2 border-ink p-4">
-          <legend className="px-1 text-lg font-extrabold">{drinks.returnableName} given to the supplier</legend>
-          <input type="hidden" name="returnableItemId" value={drinks.returnableItemId} />
-          <TextField
-            label={`How many ${drinks.returnableName.toLowerCase()} did the supplier take?`}
-            name="emptiesGiven"
-            inputMode="numeric"
-            autoComplete="off"
-            value={emptiesGiven}
-            onChange={(event) => setEmptiesTyped(event.currentTarget.value)}
-            hint={`Starts at the RGB crates received; change it if they took fewer. Only this number comes off your ${drinks.returnableName.toLowerCase()}. In store now: ${emptiesInStore}.`}
-          />
-        </fieldset>
-      ) : null}
 
       <TextField label="Note (optional)" name="note" maxLength={500} />
       <FormMessage state={state} />

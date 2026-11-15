@@ -675,6 +675,7 @@ export type Database = {
           supplier_name: string | null;
           reference: string | null;
           receipt_id: string | null;
+          crates_delivered: number | null;
           received_by: string | null;
           note: string | null;
           created_by: string | null;
@@ -686,6 +687,13 @@ export type Database = {
         Insert: never;
         Update: never;
         Relationships: [
+          {
+            foreignKeyName: "supplier_exchanges_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "supplier_exchanges_returnable_item_id_fkey";
             columns: ["returnable_item_id"];
@@ -952,6 +960,21 @@ export type Database = {
       };
     };
     Functions: {
+      record_empty_exchange: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_exchange_date: string;
+          p_returnable_item_id: string;
+          p_quantity: number;
+          p_crates_delivered: number | null;
+          p_supplier_name: string | null;
+          p_reference: string | null;
+          p_received_by: string | null;
+          p_note: string | null;
+        };
+        Returns: { id: string; exchange_no: string }[];
+      };
       record_empties_followup: {
         Args: { p_line_id: string; p_quantity: number; p_received_date: string; p_note?: string | null };
         Returns: string;

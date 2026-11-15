@@ -60,7 +60,8 @@ let dbg;
   // 2. Products: RGB or PET, never a typed return name; price and cost required
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Coca-Cola 50cl RGB");
-  await vis(a.getByLabel("Sold by the")).fill("crate");
+  // Not asked what it is sold by: RGB is by the crate, PET by the pack.
+  assert.equal(await vis(a.getByLabel("Sold by the", { exact: true })).count(), 0);
   assert.equal(await vis(a.getByLabel(/Selling price/)).getAttribute("required"), "");
   assert.equal(await vis(a.getByLabel(/Buying cost/)).getAttribute("required"), "");
   assert.equal(await a.getByLabel("What must they bring back?").count(), 0);
@@ -72,11 +73,13 @@ let dbg;
   await a.waitForURL(new RegExp(base + "/products$"));
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Coca-Cola 50cl PET");
-  await vis(a.getByLabel("Sold by the")).fill("pack");
   await vis(a.getByLabel(/Selling price/)).fill("3000");
   await vis(a.getByLabel(/Buying cost/)).fill("2700");
-  assert.equal(await vis(a.getByLabel(/^PET, can or carton/)).isChecked(), true, "PET is the default");
-  assert.equal(await vis(a.getByLabel("Category")).inputValue(), "PET");
+  // Neither kind nor category is picked for you.
+  assert.equal(await vis(a.getByLabel(/^PET, can or carton/)).isChecked(), false);
+  await vis(a.getByLabel(/^PET, can or carton/)).check();
+  assert.equal(await vis(a.getByLabel("Category")).inputValue(), "", "the category starts empty");
+  await vis(a.getByLabel("Category")).selectOption("PET");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
   await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("RGB", { exact: true }).waitFor();
@@ -119,7 +122,7 @@ let dbg;
   assert.equal(await a.getByRole("link", { name: "Count your opening empties" }).count(), 0, "step done");
   ok("opening empties are added as an adjustment and the count starts at 500");
 
-  // 4. NBC delivery: 500 RGB crates in, 250 empties taken
+  // 4. NBC delivery: 500 RGB crates in; then, on its own sheet, 250 empties taken
   await go("/stock/receive");
   await pick(a, "Product", "Coca-Cola 50cl RGB");
   await vis(a.getByLabel("Quantity")).fill("500");
@@ -128,18 +131,39 @@ let dbg;
   await vis(a.getByLabel("Quantity")).nth(1).fill("40");
   await vis(a.getByLabel("Supplier", { exact: true })).fill("NBC");
   await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-7781");
-  const given = vis(a.getByLabel("How many empties did the supplier take?"));
-  assert.equal(await given.inputValue(), "500", "starts at the RGB crates received, not the PET");
-  await given.fill("250");
-  await a.screenshot({ path: `${SHOTS}/92-delivery-with-empties.png`, fullPage: true });
+  // The stock-in form has no empties: those are an exchange of their own.
+  assert.equal(await a.getByLabel(/did the supplier take/).count(), 0);
+  await a.screenshot({ path: `${SHOTS}/92-delivery.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}\?saved=1/);
-  await a.getByText(/^250 \(EXC-\d{8}-0001\)$/).waitFor();
   await a.getByText("NBC-7781").waitFor();
+  const deliveryUrl = a.url();
   // Each delivery line keeps its buying cost.
   await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("₦3,900", { exact: true }).waitFor();
 
+  // The empty exchange, from the Empty exchanges page in the menu.
+  await menu(a).getByRole("link", { name: "Empty exchanges" }).click();
+  await a.getByText("No exchanges yet.").waitFor();
+  await a.locator("main").getByRole("link", { name: "+ New exchange" }).click();
+  await a.waitForURL(/\/returns\/exchange$/);
+  await vis(a.getByLabel("Empties taken by the supplier")).fill("250");
+  // The supplier's delivery reference is required, as in Bilikis.
+  assert.equal(await vis(a.getByLabel("Supplier delivery reference")).getAttribute("required"), "");
+  await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-7781");
+  await vis(a.getByLabel("RGB crates delivered (optional)")).fill("500");
+  await a.screenshot({ path: `${SHOTS}/92-empty-exchange.png`, fullPage: true });
+  await vis(a.getByRole("button", { name: "Save exchange" })).click();
+  await a.waitForURL(/\/returns\/exchanges\/[0-9a-f-]{36}\?saved=1$/);
+  await a.getByRole("heading", { name: /^EXC-\d{8}-0001$/ }).waitFor();
+  await a.getByText("250 Empties", { exact: true }).first().waitFor();
+  await a.getByRole("link", { name: "Back to all exchanges" }).click();
+  const exchangeRow = a.locator("tr", { hasText: "NBC-7781" });
+  await exchangeRow.getByText("250 Empties").waitFor();
+  await exchangeRow.getByText("500", { exact: true }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/92-empty-exchanges.png`, fullPage: true });
+
   // After offloading: 12 crates broken, handed back to NBC. Correct the delivery.
+  await a.goto(deliveryUrl);
   await vis(a.getByRole("link", { name: "Correct this delivery" })).click();
   await a.waitForURL(/\/correct$/);
   // Lines are in name order: Coca-Cola 50cl PET, then Coca-Cola 50cl RGB.
@@ -153,22 +177,20 @@ let dbg;
   await a.locator("section", { hasText: "Corrections" }).locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("500 → 488 crate").waitFor();
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("250", { exact: true }).waitFor();
-  ok("an NBC delivery records the empties taken in the same go, and only 250 come off");
+  ok("an NBC delivery adds stock, and the empties taken are recorded on their own exchange sheet");
 
-  // Cannot give more empties than are in store; nothing is saved.
-  await go("/stock/receive");
-  await pick(a, "Product", "Coca-Cola 50cl RGB");
-  await vis(a.getByLabel("Quantity")).fill("10");
+  // An exchange cannot take more empties than are in store; nothing is saved.
+  await go("/returns/exchange");
   await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-7782");
-  await vis(a.getByLabel("How many empties did the supplier take?")).fill("300");
-  await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
+  await vis(a.getByLabel("Empties taken by the supplier")).fill("300");
+  await vis(a.getByRole("button", { name: "Save exchange" })).click();
   await a.getByText("You only have 250 Empties in store here, so 300 cannot be taken.", { exact: false }).waitFor();
   await go("/stock");
   await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
   // A drinks depot sees its stock by category, RGB first.
   const headings = await a.locator("main section h2").allInnerTexts();
   assert.deepEqual(headings.slice(0, 3), ["RGB", "PET", "Juice"]);
-  ok("a delivery cannot take more empties than are in store, and then saves nothing");
+  ok("an exchange cannot take more empties than are in store");
 
   // 5. Several customers on one order screen, with Stock left counting down
   for (const name of ["Mama Tunde Stores", "Alhaji Musa Kiosk"]) {
@@ -305,7 +327,8 @@ let dbg;
 
   // Daily report, the Bilikis way
   await go("/reports/daily");
-  await a.locator("section", { hasText: "Deliveries received (1)" }).locator("tr", { hasText: "NBC-7781" }).getByText("250", { exact: true }).waitFor();
+  await a.locator("section", { hasText: "Deliveries received (1)" }).locator("tr", { hasText: "NBC-7781" }).waitFor();
+  await a.locator("section", { hasText: "Empty exchanges (1)" }).locator("tr", { hasText: "NBC-7781" }).getByText("−250").waitFor();
   const emptiesDay = a.locator("section", { hasText: "Empties in and out" });
   const line = async (label) => (await emptiesDay.locator("li, tr", { hasText: label }).innerText()).split("\n").pop().trim();
   assert.equal(await line("Came back with trips"), "+30");

@@ -68,18 +68,10 @@ export async function recordStockReceiptAction(
     )
   };
 
-  // A drinks delivery also records the empties given to the supplier, in one go.
-  const emptiesText = String(formData.get("emptiesGiven") ?? "").trim();
-  const emptiesGiven = emptiesText === "" ? 0 : readQuantity(emptiesText);
-  if (org.sells_drinks && (emptiesGiven === undefined || emptiesGiven < 0)) {
-    return { ok: false, message: "Enter how many empties the supplier took, or 0." };
-  }
+  // Drinks: the supplier's reference is required. Empties the supplier takes
+  // are recorded on their own, as an empty exchange.
   const { data, error } = org.sells_drinks
-    ? await supabase.rpc("record_stock_delivery", {
-        ...receiptArgs,
-        p_empties_given: emptiesGiven ?? 0,
-        p_returnable_item_id: String(formData.get("returnableItemId") ?? "") || null
-      })
+    ? await supabase.rpc("record_stock_delivery", { ...receiptArgs, p_empties_given: 0, p_returnable_item_id: null })
     : await supabase.rpc("record_stock_receipt", receiptArgs);
 
   const receipt = data?.[0];
@@ -92,8 +84,7 @@ export async function recordStockReceiptAction(
   notify({ supabase, org }, () => [
     `Stock received ${receipt.receipt_no}`,
     `${parsed.data.items.length} product${parsed.data.items.length === 1 ? "" : "s"}, ${formatQuantity(total)} items in total`,
-    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`,
-    org.sells_drinks && emptiesGiven ? `Empties given to the supplier: ${formatQuantity(emptiesGiven)}` : null
+    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
   ]);
 
   revalidatePath(`/b/${slug}`, "layout");

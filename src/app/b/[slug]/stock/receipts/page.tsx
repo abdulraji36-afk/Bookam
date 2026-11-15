@@ -122,7 +122,8 @@ async function Receipts({ params, searchParams }: PageProps<"/b/[slug]/stock/rec
                 cell: (receipt: Receipt) =>
                   formatQuantity(receipt.stock_receipt_items.reduce((sum, item) => sum + Number(item.quantity), 0))
               },
-              ...(org.tracks_returns
+              // Only older deliveries carry empties; exchanges are now recorded on their own.
+              ...(org.tracks_returns && receipts.some((receipt) => receipt.supplier_exchanges)
                 ? [
                     {
                       header: org.sells_drinks ? "Empties given" : "Returnables given",

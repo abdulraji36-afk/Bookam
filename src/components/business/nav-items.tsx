@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   Banknote,
   Boxes,
   ChartColumn,
@@ -20,6 +21,7 @@ import {
 export type NavIconName =
   | "dashboard"
   | "shortages"
+  | "exchanges"
   | "orders"
   | "dispatch"
   | "returns"
@@ -62,7 +64,8 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   deliveries: PackageCheck,
   drivers: Contact,
   value: Banknote,
-  shortages: CircleAlert
+  shortages: CircleAlert,
+  exchanges: ArrowLeftRight
 };
 
 export function isActivePath(pathname: string, item: Pick<NavItem, "href" | "exact" | "excludes">) {

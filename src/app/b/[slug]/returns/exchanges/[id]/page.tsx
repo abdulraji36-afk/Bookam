@@ -14,13 +14,13 @@ import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Supplier exchange" };
 
-async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchanges/[id]">, "params">) {
-  const { slug, id } = await params;
+async function Exchange({ params, searchParams }: PageProps<"/b/[slug]/returns/exchanges/[id]">) {
+  const [{ slug, id }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
   const { data: exchange } = await supabase
     .from("supplier_exchanges")
     .select(
-      "id, exchange_no, exchange_date, quantity_taken, supplier_name, reference, received_by, note, receipt_id, created_by, created_at, voided_at, void_reason, returnable_items (name)"
+      "id, exchange_no, exchange_date, quantity_taken, crates_delivered, supplier_name, reference, received_by, note, receipt_id, created_by, created_at, voided_at, void_reason, returnable_items (name)"
     )
     .eq("organization_id", org.id)
     .eq("id", id)
@@ -33,6 +33,9 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchanges/
 
   return (
     <div className="max-w-3xl space-y-6">
+      {query.saved === "1" ? (
+        <Alert tone="success">Exchange saved. The {name.toLowerCase()} taken are off your store count.</Alert>
+      ) : null}
       {exchange.voided_at ? (
         <Alert tone="error">This exchange was voided and the {name.toLowerCase()} put back. Reason: {exchange.void_reason}</Alert>
       ) : null}
@@ -45,9 +48,13 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchanges/
         <RecordDetails
           details={[
             ["Date", formatDay(exchange.exchange_date)],
-            ["Taken", `${formatQuantity(Number(exchange.quantity_taken))} ${name}`],
-            ["Supplier", exchange.supplier_name],
             ["Reference", exchange.reference],
+            [
+              "RGB crates delivered",
+              exchange.crates_delivered === null ? null : formatQuantity(Number(exchange.crates_delivered))
+            ],
+            [`${name} taken by the supplier`, `${formatQuantity(Number(exchange.quantity_taken))} ${name}`],
+            ["Supplier", exchange.supplier_name],
             ["Received by", exchange.received_by],
             ["Note", exchange.note],
             ["Recorded by", person?.full_name],
@@ -73,17 +80,22 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchanges/
           />
         </ActionsPanel>
       ) : null}
-      <Link href={`/b/${org.slug}/returns`} className={buttonClass("secondary")}>
-        Back to {org.sells_drinks ? "empties" : "returns"}
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link href={`/b/${org.slug}/returns/exchanges`} className={buttonClass("secondary")}>
+          Back to all exchanges
+        </Link>
+        <Link href={`/b/${org.slug}/returns/exchange`} className={buttonClass("ghost")}>
+          Record another exchange
+        </Link>
+      </div>
     </div>
   );
 }
 
-export default function ExchangePage({ params }: PageProps<"/b/[slug]/returns/exchanges/[id]">) {
+export default function ExchangePage(props: PageProps<"/b/[slug]/returns/exchanges/[id]">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Exchange params={params} />
+      <Exchange {...props} />
     </Suspense>
   );
 }

@@ -54,12 +54,17 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   async function addProduct(name, unit, price, returnItem) {
     await go("/products/new");
     await vis(a.getByLabel("Product name")).fill(name);
-    await vis(a.getByLabel("Sold by the")).fill(unit);
+    // Drinks are sold by the crate (RGB) or the pack (PET), so the unit is only asked otherwise.
+    const soldBy = vis(a.getByLabel("Sold by the", { exact: true }));
+    if (await soldBy.count()) await soldBy.fill(unit);
     await vis(a.getByLabel(/Selling price/)).fill(price);
     const cost = a.getByLabel(/Buying cost/).filter({ visible: true });
     if (await cost.getAttribute("required") !== null) await cost.fill(String(Math.round(Number(price) * 0.9)));
     if (returnItem) {
       await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
+    } else if (await vis(a.getByLabel(/^PET, can or carton/)).count()) {
+      await vis(a.getByLabel(/^PET, can or carton/)).check();
+      await vis(a.getByLabel("Category")).selectOption("PET");
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -123,7 +128,6 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await pick(a, "Product 2", "Water 75cl (pack)");
   await vis(a.getByLabel("Quantity")).nth(1).fill("50");
   await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-0001");
-  await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
 
@@ -192,19 +196,23 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("8 owed").waitFor();
   ok("returns are recorded per customer and the shortage stays on the customer's balance");
 
-  // Supplier exchange
-  await a.getByRole("link", { name: "Supplier took empties only" }).click();
-  await a.waitForURL(/\/returns\/exchange/);
-  await vis(a.getByLabel(/How many Empties did the supplier take\?/)).fill("9999");
+  // Empty exchange: its own form, list and record, not part of a delivery
+  await a.getByRole("link", { name: "Empty exchange", exact: true }).click();
+  await a.waitForURL(/\/returns\/exchange$/);
+  await vis(a.getByLabel("Empties taken by the supplier")).fill("9999");
+  await vis(a.getByLabel("Supplier delivery reference")).fill("WB-771");
   await vis(a.getByRole("button", { name: "Save exchange" })).click();
   await a.getByText("You only have 252 Empties in store here, so 9999 cannot be taken.").waitFor();
-  await vis(a.getByLabel(/How many Empties did the supplier take\?/)).fill("150");
+  await vis(a.getByLabel("Empties taken by the supplier")).fill("150");
+  await vis(a.getByLabel("RGB crates delivered (optional)")).fill("200");
   await vis(a.getByLabel("Supplier (optional)")).fill("Bottling company");
-  await vis(a.getByLabel("Delivery reference (optional)")).fill("WB-771");
   await a.screenshot({ path: `${SHOTS}/34-exchange.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save exchange" })).click();
-  await a.waitForURL(/\/returns\?saved=EXC-/);
-  await a.getByText(/Supplier exchange EXC-\d{8}-0001 saved\./).waitFor();
+  await a.waitForURL(/\/returns\/exchanges\/[0-9a-f-]{36}\?saved=1$/);
+  await a.getByRole("heading", { name: /^EXC-\d{8}-0001$/ }).waitFor();
+  await a.getByText("RGB crates delivered", { exact: true }).waitFor();
+  await a.getByRole("link", { name: "Back to all exchanges" }).click();
+  await a.locator("tr", { hasText: "WB-771" }).getByText("150 Empties").waitFor();
   await expectTotals(102, 8);
   ok("a supplier exchange takes crates out of the store, and cannot take more than there are");
 
@@ -270,7 +278,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(BASE + base + "/returns");
-  await c.getByRole("link", { name: "Supplier took empties only" }).waitFor();
+  await c.getByRole("link", { name: "Empty exchange", exact: true }).waitFor();
   assert.equal(await c.getByRole("link", { name: "Add or subtract" }).count(), 0);
   // Follow-up returns are for owners and admins, as in Bilikis.
   assert.equal(await c.getByRole("link", { name: "Customer brought back empties" }).count(), 0);

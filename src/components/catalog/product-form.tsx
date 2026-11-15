@@ -8,7 +8,18 @@ import type { ActionState } from "@/lib/action-state";
 import { DRINK_CATEGORIES } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
 
-const UNITS = ["crate", "pack", "carton", "bag", "cylinder", "bottle", "piece", "phone", "laptop", "unit"];
+const UNITS = [
+  "crate",
+  "pack",
+  "carton",
+  "bag",
+  "cylinder",
+  "bottle",
+  "piece",
+  "phone",
+  "laptop",
+  "unit",
+];
 
 export type ProductDefaults = {
   name: string;
@@ -29,7 +40,12 @@ type Props = {
   /** Things customers already bring back for other products. */
   returnables: string[];
   /** Which product options this business uses. */
-  features: { returns: boolean; serials: boolean; serialByDefault?: boolean; drinks?: boolean };
+  features: {
+    returns: boolean;
+    serials: boolean;
+    serialByDefault?: boolean;
+    drinks?: boolean;
+  };
   defaults?: ProductDefaults;
 };
 
@@ -49,6 +65,17 @@ export function ProductForm({
   const [tracksSerials, setTracksSerials] = useState(
     defaults ? defaults.tracksSerials : Boolean(features.serialByDefault),
   );
+  // Drinks: RGB or PET is chosen on purpose for a new product, never assumed.
+  const [drinkKind, setDrinkKind] = useState<"rgb" | "pet" | null>(
+    defaults ? (defaults.returnItemName ? "rgb" : "pet") : null,
+  );
+  // RGB is sold by the crate and PET by the pack, so drinks are not asked.
+  const drinkUnit =
+    drinkKind === "rgb"
+      ? "crate"
+      : defaults?.unit && defaults.unit !== "crate"
+        ? defaults.unit
+        : "pack";
   const unitListId = useId();
   const returnListId = useId();
 
@@ -62,15 +89,19 @@ export function ProductForm({
         required
       />
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
-          label="Sold by the"
-          name="unit"
-          list={unitListId}
-          defaultValue={defaults?.unit ?? "crate"}
-          hint="The unit you count this product in."
-          maxLength={30}
-          required
-        />
+        {features.drinks ? (
+          <input type="hidden" name="unit" value={drinkUnit} />
+        ) : (
+          <TextField
+            label="Sold by the"
+            name="unit"
+            list={unitListId}
+            defaultValue={defaults?.unit ?? "crate"}
+            hint="The unit you count this product in."
+            maxLength={30}
+            required
+          />
+        )}
         <TextField
           label="Product code (optional)"
           name="sku"
@@ -82,7 +113,11 @@ export function ProductForm({
           name="sellingPrice"
           inputMode="decimal"
           defaultValue={defaults?.sellingPrice}
-          hint={features.drinks ? "Per unit. Needed before the drink can be sold." : "Per unit. Leave empty to set it later."}
+          hint={
+            features.drinks
+              ? "Per unit. Needed before the drink can be sold."
+              : "Per unit. Leave empty to set it later."
+          }
           required={features.drinks}
         />
         <TextField
@@ -110,8 +145,11 @@ export function ProductForm({
       {features.drinks ? (
         <DrinkKind
           returnables={returnables}
-          requiresReturn={requiresReturn}
-          onChange={setRequiresReturn}
+          kind={drinkKind}
+          onChange={(next) => {
+            setDrinkKind(next);
+            setRequiresReturn(next === "rgb");
+          }}
           defaultReturnable={defaults?.returnItemName}
           defaultCategory={defaults?.category}
         />
@@ -182,38 +220,53 @@ export function ProductForm({
  */
 function DrinkKind({
   returnables,
-  requiresReturn,
+  kind,
   onChange,
   defaultReturnable,
-  defaultCategory
+  defaultCategory,
 }: {
   returnables: string[];
-  requiresReturn: boolean;
-  onChange: (rgb: boolean) => void;
+  kind: "rgb" | "pet" | null;
+  onChange: (kind: "rgb" | "pet") => void;
   defaultReturnable?: string;
   defaultCategory?: string;
 }) {
+  const requiresReturn = kind === "rgb";
   const options = [
-    { rgb: true, title: "RGB", detail: "Glass bottles in a crate. The customer must bring the empty crate back." },
-    { rgb: false, title: "PET, can or carton", detail: "Nothing comes back." }
+    {
+      value: "rgb" as const,
+      title: "RGB",
+      detail:
+        "Glass bottles, sold by the crate. The customer must bring the empty crate back.",
+    },
+    {
+      value: "pet" as const,
+      title: "PET, can or carton",
+      detail: "Sold by the pack. Nothing comes back.",
+    },
   ];
   return (
     <fieldset className="space-y-3">
-      <legend className="mb-1.5 text-sm font-bold">What kind of drink is it?</legend>
+      <legend className="mb-1.5 text-sm font-bold">
+        What kind of drink is it?
+      </legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
             key={option.title}
             className={`flex cursor-pointer gap-3 rounded-md border-2 p-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${
-              requiresReturn === option.rgb ? "border-ink bg-paper" : "border-line bg-white"
+              kind === option.value
+                ? "border-ink bg-paper"
+                : "border-line bg-white"
             }`}
           >
             <input
               type="radio"
               name="drinkKind"
-              value={option.rgb ? "rgb" : "pet"}
-              checked={requiresReturn === option.rgb}
-              onChange={() => onChange(option.rgb)}
+              value={option.value}
+              checked={kind === option.value}
+              onChange={() => onChange(option.value)}
+              required
               className="mt-1 size-5 shrink-0 accent-ink"
             />
             <span>
@@ -223,19 +276,25 @@ function DrinkKind({
           </label>
         ))}
       </div>
-      {requiresReturn ? null : (
+      {kind === "pet" ? (
         <SelectField
           label="Category"
           name="category"
-          defaultValue={defaultCategory && defaultCategory !== "RGB" ? defaultCategory : "PET"}
+          defaultValue={
+            defaultCategory && defaultCategory !== "RGB" ? defaultCategory : ""
+          }
+          required
         >
+          <option value="" disabled>
+            Choose a category
+          </option>
           {DRINK_CATEGORIES.map((name) => (
             <option key={name} value={name}>
               {name}
             </option>
           ))}
         </SelectField>
-      )}
+      ) : null}
       {requiresReturn ? (
         <>
           <input type="hidden" name="category" value="RGB" />
@@ -253,7 +312,11 @@ function DrinkKind({
               ))}
             </SelectField>
           ) : (
-            <input type="hidden" name="returnItemName" value={returnables[0] ?? "Empties"} />
+            <input
+              type="hidden"
+              name="returnItemName"
+              value={returnables[0] ?? "Empties"}
+            />
           )}
         </>
       ) : null}

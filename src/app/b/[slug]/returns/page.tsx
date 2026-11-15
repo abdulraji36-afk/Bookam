@@ -212,7 +212,7 @@ async function Returns({
                 href={`${base}/returns/exchange`}
                 className={buttonClass("ghost")}
               >
-                Supplier took empties only
+                Empty exchange
               </Link>
             ) : null}
           </>

@@ -65,7 +65,7 @@ let dbg;
 
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Water 75cl");
-  await vis(a.getByLabel("Sold by the")).fill("pack");
+  await vis(a.getByLabel("Sold by the", { exact: true })).fill("pack");
   await vis(a.getByLabel(/Selling price/)).fill("1800");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));

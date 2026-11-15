@@ -56,11 +56,16 @@ let dbg;
   async function addProduct(name, unit, price, returnItem) {
     await go("/products/new");
     await vis(a.getByLabel("Product name")).fill(name);
-    await vis(a.getByLabel("Sold by the")).fill(unit);
+    // Drinks are sold by the crate (RGB) or the pack (PET), so the unit is only asked otherwise.
+    const soldBy = vis(a.getByLabel("Sold by the", { exact: true }));
+    if (await soldBy.count()) await soldBy.fill(unit);
     await vis(a.getByLabel(/Selling price/)).fill(price);
     await vis(a.getByLabel(/Buying cost/)).fill(String(Math.round(Number(price) * 0.9)));
     if (returnItem) {
       await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
+    } else if (await vis(a.getByLabel(/^PET, can or carton/)).count()) {
+      await vis(a.getByLabel(/^PET, can or carton/)).check();
+      await vis(a.getByLabel("Category")).selectOption("PET");
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));
@@ -76,7 +81,6 @@ let dbg;
     await pick(a, "Product", product);
     await vis(a.getByLabel("Quantity")).fill(String(quantity));
     await vis(a.getByLabel("Supplier delivery reference")).fill(`NBC-${Date.now()}`);
-    await vis(a.getByLabel(/did the supplier take\?/)).fill("0");
     await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
     await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}/);
     return a.url().split("?")[0];

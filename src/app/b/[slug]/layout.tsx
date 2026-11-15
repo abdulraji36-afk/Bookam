@@ -13,7 +13,7 @@ import { saleWords } from "@/lib/selling";
 
 async function BusinessShell({
   params,
-  children
+  children,
 }: {
   params: Promise<{ slug: string }>;
   children: ReactNode;
@@ -26,7 +26,10 @@ async function BusinessShell({
     .from("returnable_items")
     .select("id", { count: "exact", head: true })
     .eq("organization_id", org.id);
-  const trialDays = org.plan_code === "trial" ? daysUntil(org.trial_ends_at, await requestNow()) : null;
+  const trialDays =
+    org.plan_code === "trial"
+      ? daysUntil(org.trial_ends_at, await requestNow())
+      : null;
 
   const manager = canManage(role);
   // Shown when the business tracks returns, or still has returnables on record.
@@ -35,13 +38,25 @@ async function BusinessShell({
 
   // Daily work first, then what you set up, then reports, then admin.
   const groups: NavGroup[] = [
-    { label: null, items: [{ href: base, label: "Dashboard", icon: "dashboard", exact: true }] },
+    {
+      label: null,
+      items: [
+        { href: base, label: "Dashboard", icon: "dashboard", exact: true },
+      ],
+    },
     {
       label: "Daily work",
       items: [
         { href: `${base}/orders`, label: words.Many, icon: "orders" },
         ...(org.does_delivery
-          ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch", excludes: [`${base}/dispatch/crew`] } as const]
+          ? [
+              {
+                href: `${base}/dispatch`,
+                label: "Dispatch",
+                icon: "dispatch",
+                excludes: [`${base}/dispatch/crew`],
+              } as const,
+            ]
           : []),
         ...(tracksReturns
           ? [
@@ -49,16 +64,40 @@ async function BusinessShell({
                 href: `${base}/returns`,
                 label: org.sells_drinks ? "Empties" : "Returns",
                 icon: "returns",
-                excludes: [`${base}/returns/shortages`]
-              } as const
+                excludes: [
+                  `${base}/returns/shortages`,
+                  `${base}/returns/exchanges`,
+                  `${base}/returns/exchange`,
+                ],
+              } as const,
             ]
           : []),
         ...(org.sells_drinks
-          ? [{ href: `${base}/returns/shortages`, label: "Empty shortages", icon: "shortages" } as const]
+          ? [
+              {
+                href: `${base}/returns/shortages`,
+                label: "Empty shortages",
+                icon: "shortages",
+              } as const,
+              {
+                href: `${base}/returns/exchanges`,
+                label: "Empty exchanges",
+                icon: "exchanges",
+              } as const,
+            ]
           : []),
-        { href: `${base}/stock`, label: "Stock", icon: "stock", excludes: [`${base}/stock/receipts`] },
-        { href: `${base}/stock/receipts`, label: "Deliveries", icon: "deliveries" }
-      ]
+        {
+          href: `${base}/stock`,
+          label: "Stock",
+          icon: "stock",
+          excludes: [`${base}/stock/receipts`],
+        },
+        {
+          href: `${base}/stock/receipts`,
+          label: "Deliveries",
+          icon: "deliveries",
+        },
+      ],
     },
     {
       label: "Catalogue",
@@ -66,21 +105,35 @@ async function BusinessShell({
         { href: `${base}/products`, label: "Products", icon: "products" },
         { href: `${base}/customers`, label: "Customers", icon: "customers" },
         ...(org.does_delivery
-          ? [{ href: `${base}/dispatch/crew`, label: "Drivers & workers", icon: "drivers" } as const]
-          : [])
-      ]
+          ? [
+              {
+                href: `${base}/dispatch/crew`,
+                label: "Drivers & workers",
+                icon: "drivers",
+              } as const,
+            ]
+          : []),
+      ],
     },
     {
       label: "Reports",
       items: [
-        { href: `${base}/reports/daily`, label: "Daily report", icon: "reports" },
+        {
+          href: `${base}/reports/daily`,
+          label: "Daily report",
+          icon: "reports",
+        },
         ...(manager
           ? ([
-              { href: `${base}/reports/stock-value`, label: "Stock value", icon: "value" },
-              { href: `${base}/activity`, label: "Activity", icon: "activity" }
+              {
+                href: `${base}/reports/stock-value`,
+                label: "Stock value",
+                icon: "value",
+              },
+              { href: `${base}/activity`, label: "Activity", icon: "activity" },
             ] as const)
-          : [])
-      ]
+          : []),
+      ],
     },
     ...(manager
       ? [
@@ -88,11 +141,11 @@ async function BusinessShell({
             label: "Admin",
             items: [
               { href: `${base}/team`, label: "Team", icon: "team" },
-              { href: `${base}/settings`, label: "Settings", icon: "settings" }
-            ] as NavItem[]
-          }
+              { href: `${base}/settings`, label: "Settings", icon: "settings" },
+            ] as NavItem[],
+          },
         ]
-      : [])
+      : []),
   ];
   const all = groups.flatMap((group) => group.items);
   // On a phone the busiest pages are tabs; the rest sit under "More".
@@ -100,18 +153,27 @@ async function BusinessShell({
     base,
     `${base}/orders`,
     `${base}/stock`,
-    tracksReturns ? `${base}/returns` : org.does_delivery ? `${base}/dispatch` : `${base}/customers`
+    tracksReturns
+      ? `${base}/returns`
+      : org.does_delivery
+        ? `${base}/dispatch`
+        : `${base}/customers`,
   ];
   const tabs = tabHrefs
     .map((href) => all.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item))
-    .map((item) => (item.icon === "dashboard" ? { ...item, label: "Home" } : item));
+    .map((item) =>
+      item.icon === "dashboard" ? { ...item, label: "Home" } : item,
+    );
   const moreGroups = groups
-    .map((group) => ({ ...group, items: group.items.filter((item) => !tabHrefs.includes(item.href)) }))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !tabHrefs.includes(item.href)),
+    }))
     .filter((group) => group.items.length > 0);
   const quick = [
     { href: `${base}/orders/new`, label: `+ New ${words.one}` },
-    { href: `${base}/stock/receive`, label: "Receive stock" }
+    { href: `${base}/stock/receive`, label: "Receive stock" },
   ];
 
   return (
@@ -143,7 +205,10 @@ async function BusinessShell({
             </Link>
           ))}
         </div>
-        <nav aria-label="Business" className="menu-scroll flex-1 overflow-y-auto px-3 py-3">
+        <nav
+          aria-label="Business"
+          className="menu-scroll flex-1 overflow-y-auto px-3 py-3"
+        >
           {groups.map((group) => (
             <div key={group.label ?? "home"} className="mb-2">
               {group.label ? (
@@ -167,7 +232,9 @@ async function BusinessShell({
       {/* Phone: a slim bar that stays at the top; the menu is at the bottom. */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-ink px-4 py-2.5 text-white md:hidden">
         <Logo href={base} tone="light" />
-        <span className="min-w-0 truncate text-sm font-semibold text-nav">{org.name}</span>
+        <span className="min-w-0 truncate text-sm font-semibold text-nav">
+          {org.name}
+        </span>
       </header>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -179,15 +246,25 @@ async function BusinessShell({
           </p>
         ) : null}
         {/* Extra room at the bottom on phones so the tab bar never covers content. */}
-        <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">{children}</main>
+        <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">
+          {children}
+        </main>
       </div>
 
-      <MobileNav primary={tabs} more={moreGroups} quick={quick} businessName={org.name} />
+      <MobileNav
+        primary={tabs}
+        more={moreGroups}
+        quick={quick}
+        businessName={org.name}
+      />
     </div>
   );
 }
 
-export default function BusinessLayout({ children, params }: LayoutProps<"/b/[slug]">) {
+export default function BusinessLayout({
+  children,
+  params,
+}: LayoutProps<"/b/[slug]">) {
   return (
     <Suspense
       fallback={

@@ -92,16 +92,18 @@ export async function recordSupplierExchangeAction(
     supplierName: text(formData, "supplierName"),
     reference: text(formData, "reference"),
     receivedBy: text(formData, "receivedBy"),
-    note: text(formData, "note")
+    note: text(formData, "note"),
+    cratesDelivered: text(formData, "cratesDelivered")
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
-  const { data, error } = await supabase.rpc("record_supplier_exchange", {
+  const { data, error } = await supabase.rpc("record_empty_exchange", {
     p_organization_id: org.id,
     p_location_id: parsed.data.locationId,
     p_exchange_date: parsed.data.exchangeDate,
     p_returnable_item_id: parsed.data.returnableItemId,
     p_quantity: parsed.data.quantity,
+    p_crates_delivered: parsed.data.cratesDelivered === "" ? null : Number(parsed.data.cratesDelivered),
     p_supplier_name: parsed.data.supplierName || null,
     p_reference: parsed.data.reference || null,
     p_received_by: parsed.data.receivedBy || null,
@@ -113,11 +115,13 @@ export async function recordSupplierExchangeAction(
   notify({ supabase, org }, async () => [
     `Supplier exchange ${exchange.exchange_no}`,
     `The supplier took ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
-    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
+    parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`,
+    parsed.data.reference && `Delivery reference: ${parsed.data.reference}`
   ]);
 
   revalidatePath(`/b/${slug}`, "layout");
-  redirect(`/b/${slug}/returns?saved=${encodeURIComponent(exchange.exchange_no)}`);
+  // Each exchange is its own record, like a sheet.
+  redirect(`/b/${slug}/returns/exchanges/${exchange.id}?saved=1`);
 }
 
 export async function recordAdjustmentAction(

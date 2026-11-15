@@ -68,7 +68,7 @@ let dbg;
   // Products: a serial-tracked phone with warranty, and a plain charger
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("iPhone 15 128GB");
-  await vis(a.getByLabel("Sold by the")).fill("phone");
+  await vis(a.getByLabel("Sold by the", { exact: true })).fill("phone");
   await vis(a.getByLabel(/Selling price/)).fill("1150000");
   // In a phone shop a new product starts as serial-numbered.
   assert.equal(await vis(a.getByLabel("Track each unit by serial number")).isChecked(), true);
@@ -79,7 +79,7 @@ let dbg;
   await a.locator("tr", { hasText: "iPhone 15 128GB" }).getByText("Serial numbers", { exact: true }).waitFor();
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("USB-C charger");
-  await vis(a.getByLabel("Sold by the")).fill("piece");
+  await vis(a.getByLabel("Sold by the", { exact: true })).fill("piece");
   await vis(a.getByLabel(/Selling price/)).fill("8000");
   await vis(a.getByLabel("Track each unit by serial number")).uncheck(); // accessories are counted
   await vis(a.getByRole("button", { name: "Save product" })).click();
