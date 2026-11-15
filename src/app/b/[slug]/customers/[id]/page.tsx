@@ -6,8 +6,10 @@ import { ActionButton } from "@/components/team/action-button";
 import { ActionsPanel } from "@/components/ui/page-header";
 import { CustomerForm } from "@/components/catalog/customer-form";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { describeOwed } from "@/lib/format";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { describeOwed, formatDay, formatQuantity } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import { formatDateTime, getShortageLines } from "@/lib/shortages";
 
 export const metadata: Metadata = { title: "Edit customer" };
 
@@ -22,10 +24,12 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
     .eq("id", id)
     .maybeSingle();
   if (!customer) notFound();
-  const { data: balances } = await supabase
-    .from("customer_returnable_balances")
-    .select("returnable_name, owed")
-    .eq("customer_id", customer.id);
+  const [{ data: balances }, shortages] = await Promise.all([
+    supabase.from("customer_returnable_balances").select("returnable_name, owed").eq("customer_id", customer.id),
+    org.sells_drinks
+      ? getShortageLines(supabase, org.id, { customerId: customer.id })
+      : Promise.resolve({ rows: [], error: null })
+  ]);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -45,6 +49,37 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
             ))}
           </ul>
         </Card>
+      ) : null}
+      {shortages.rows.length > 0 ? (
+        <TableCard title="Empty shortages">
+          <DataTable
+            label="Empty shortages"
+            rows={shortages.rows}
+            rowKey={(line) => line.id}
+            rowHref={(line) => `/b/${org.slug}/orders/${line.order_id}`}
+            columns={[
+              { header: "Order", cell: (line) => <span className="font-extrabold tabular-nums">{line.order_no}</span> },
+              {
+                header: "Status",
+                phone: "badge",
+                cell: (line) =>
+                  Number(line.outstanding) > 0 ? (
+                    <Badge tone="solid">{formatQuantity(Number(line.outstanding))} owed</Badge>
+                  ) : (
+                    <Badge tone="plain">Completed</Badge>
+                  )
+              },
+              { header: "Back", cell: (line) => (line.returned_date ? formatDay(line.returned_date) : "—") },
+              { header: "Expected", align: "right", cell: (line) => formatQuantity(Number(line.expected)) },
+              { header: "Returned", align: "right", cell: (line) => formatQuantity(Number(line.total_returned)) },
+              {
+                header: "Completed on",
+                wrap: true,
+                cell: (line) => formatDateTime(line.completed_at, org.timezone) ?? <span className="text-ink-soft">—</span>
+              }
+            ]}
+          />
+        </TableCard>
       ) : null}
       <Card>
         <CustomerForm

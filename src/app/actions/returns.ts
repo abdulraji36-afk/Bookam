@@ -192,54 +192,56 @@ export async function recordOpeningDebtAction(
   return { ok: true, message: "Old debt recorded on the customer's balance." };
 }
 
-const customerEmptiesReturnSchema = z.object({
-  locationId: z.uuid("Choose a location."),
-  returnDate: z.iso.date("Enter the date."),
-  returnableItemId: z.uuid("Choose what was brought back."),
-  customerId: z.uuid("Choose the customer."),
+const followupSchema = z.object({
+  lineId: z.uuid("Choose the order the empties are for."),
+  receivedDate: z.iso.date("Enter the date they brought them back."),
   quantity: z.coerce
-    .number("Enter how many they brought.")
-    .positive("Enter how many they brought.")
+    .number("Enter how many they brought back.")
+    .int("Empties are counted in whole numbers.")
+    .positive("Enter how many they brought back, more than 0.")
     .max(9_999_999, "That number is too large."),
-  note: z.string().trim().max(500, "Use at most 500 characters for the note.")
+  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  returnTo: z.enum(["order", "returns", "shortages"]).catch("returns")
 });
 
-/** Any team member: a customer brings back empties they still owed. */
-export async function recordCustomerEmptiesReturnAction(
+/** Any team member: empties brought back later, against one order that came back short. */
+export async function recordEmptiesFollowupAction(
   slug: string,
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   const { supabase, org } = await requireOrg(slug);
 
-  const parsed = customerEmptiesReturnSchema.safeParse({
-    locationId: text(formData, "locationId"),
-    returnDate: text(formData, "returnDate"),
-    returnableItemId: text(formData, "returnableItemId"),
-    customerId: text(formData, "customerId"),
+  const parsed = followupSchema.safeParse({
+    lineId: text(formData, "lineId"),
+    receivedDate: text(formData, "receivedDate"),
     quantity: text(formData, "quantity"),
-    note: text(formData, "note")
+    note: text(formData, "note"),
+    returnTo: text(formData, "returnTo")
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
-  const { error } = await supabase.rpc("record_customer_empties_return", {
-    p_organization_id: org.id,
-    p_location_id: parsed.data.locationId,
-    p_return_date: parsed.data.returnDate,
-    p_returnable_item_id: parsed.data.returnableItemId,
-    p_customer_id: parsed.data.customerId,
+  const { error } = await supabase.rpc("record_empties_followup", {
+    p_line_id: parsed.data.lineId,
     p_quantity: parsed.data.quantity,
+    p_received_date: parsed.data.receivedDate,
     p_note: parsed.data.note || null
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
-  notify({ supabase, org }, async () => {
-    const { data: customer } = await supabase.from("customers").select("name").eq("id", parsed.data.customerId).maybeSingle();
-    return [
-      `${customer?.name ?? "A customer"} brought back ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
-      parsed.data.note && `Note: ${parsed.data.note}`
-    ];
-  });
+  const { data: line } = await supabase
+    .from("empty_shortage_lines")
+    .select("order_id, order_no, customer_name, returnable_name, outstanding")
+    .eq("id", parsed.data.lineId)
+    .maybeSingle();
+
+  notify({ supabase, org }, async () => [
+    `${line?.customer_name ?? "A customer"} brought back ${formatQuantity(parsed.data.quantity)} ${line?.returnable_name ?? "empties"} for ${line?.order_no ?? "an order"}`,
+    line && (Number(line.outstanding) > 0 ? `Still owed: ${formatQuantity(Number(line.outstanding))}` : "Shortage completed"),
+    parsed.data.note && `Note: ${parsed.data.note}`
+  ]);
   revalidatePath(`/b/${slug}`, "layout");
+  if (parsed.data.returnTo === "order" && line) redirect(`/b/${slug}/orders/${line.order_id}?saved=followup`);
+  if (parsed.data.returnTo === "shortages") redirect(`/b/${slug}/returns/shortages?saved=followup`);
   redirect(`/b/${slug}/returns?saved=customer-return`);
 }

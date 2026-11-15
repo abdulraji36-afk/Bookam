@@ -19,13 +19,15 @@ type VoidFunction =
   | "void_order"
   | "void_stock_receipt"
   | "void_supplier_exchange"
-  | "void_returnable_adjustment";
+  | "void_returnable_adjustment"
+  | "void_empties_followup";
 
 const VOIDS: Record<VoidFunction, { argument: string; done: string }> = {
   void_order: { argument: "p_order_id", done: "Order voided. Its stock and returns have been reversed." },
   void_stock_receipt: { argument: "p_receipt_id", done: "Stock receipt voided. Its stock has been taken back out." },
   void_supplier_exchange: { argument: "p_exchange_id", done: "Supplier exchange voided." },
-  void_returnable_adjustment: { argument: "p_adjustment_id", done: "Adjustment voided." }
+  void_returnable_adjustment: { argument: "p_adjustment_id", done: "Adjustment voided." },
+  void_empties_followup: { argument: "p_followup_id", done: "Follow-up return voided. The customer owes those empties again." }
 };
 
 /** "order ORD-…", "stock receipt STK-…": what was voided, for the notification. */
@@ -42,6 +44,7 @@ async function describeVoided(supabase: ServerClient, fn: VoidFunction, id: stri
     const { data } = await supabase.from("supplier_exchanges").select("exchange_no").eq("id", id).maybeSingle();
     return `supplier exchange ${data?.exchange_no ?? ""}`.trim();
   }
+  if (fn === "void_empties_followup") return "a follow-up empties return";
   return "a returnables adjustment";
 }
 
@@ -84,6 +87,10 @@ export async function voidSupplierExchangeAction(slug: string, id: string, _prev
 
 export async function voidAdjustmentAction(slug: string, id: string, _previous: ActionState, formData: FormData) {
   return runVoid("void_returnable_adjustment", slug, id, formData);
+}
+
+export async function voidEmptiesFollowupAction(slug: string, id: string, _previous: ActionState, formData: FormData) {
+  return runVoid("void_empties_followup", slug, id, formData);
 }
 
 export async function correctTripReturnAction(

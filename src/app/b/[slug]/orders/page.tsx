@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { OrderTable } from "@/components/orders/order-table";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { EmptyState, PageSkeleton } from "@/components/ui/card";
 import { TableCard } from "@/components/ui/data-table";
@@ -66,9 +67,29 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
     return `${base}/orders${text ? `?${text}` : ""}`;
   };
   const waiting = counts[1]?.count ?? 0;
+  // After several customers were saved together: offer to put them all on a trip.
+  const savedIds =
+    query.saved === "batch" && typeof query.ids === "string"
+      ? query.ids.split(",").filter((value) => /^[0-9a-f-]{36}$/i.test(value)).slice(0, 50)
+      : [];
+  const tripHref = `${base}/dispatch/new?${savedIds.map((value) => `order=${value}`).join("&")}`;
 
   return (
     <div className="space-y-5">
+      {savedIds.length > 0 ? (
+        <Alert tone="success">
+          <span className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              {savedIds.length === 1 ? "1 order saved." : `${savedIds.length} orders saved.`} Their stock has been set aside.
+            </span>
+            {delivers ? (
+              <Link href={tripHref} className={buttonClass("primary", "sm")}>
+                Put {savedIds.length === 1 ? "it" : "them"} on a trip
+              </Link>
+            ) : null}
+          </span>
+        </Alert>
+      ) : null}
       <PageHeader
         title={words.Many}
         sub={`${waiting} ${(delivers ? "waiting for dispatch" : "waiting to be collected")}.`}

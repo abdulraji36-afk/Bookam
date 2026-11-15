@@ -620,6 +620,46 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "returnable_items";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_return_lines_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "dispatch_trips";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      empties_followups: {
+        Row: {
+          id: string;
+          organization_id: string;
+          trip_return_line_id: string;
+          quantity: number;
+          received_date: string;
+          note: string | null;
+          recorded_by: string | null;
+          created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "empties_followups_trip_return_line_id_fkey";
+            columns: ["trip_return_line_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_return_lines";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "empties_followups_recorded_by_fkey";
+            columns: ["recorded_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
           }
         ];
       };
@@ -796,6 +836,32 @@ export type Database = {
       };
     };
     Views: {
+      empty_shortage_lines: {
+        Row: {
+          id: string;
+          organization_id: string;
+          trip_id: string;
+          trip_no: string;
+          location_id: string;
+          order_id: string;
+          order_no: string;
+          order_date: string;
+          customer_id: string | null;
+          customer_name: string;
+          returnable_item_id: string;
+          returnable_name: string;
+          returned_date: string | null;
+          returned_at: string | null;
+          expected: number;
+          initial_returned: number;
+          followup_returned: number;
+          total_returned: number;
+          outstanding: number;
+          last_followup_at: string | null;
+          completed_at: string | null;
+        };
+        Relationships: [];
+      };
       product_stock_levels: {
         Row: {
           organization_id: string;
@@ -886,6 +952,25 @@ export type Database = {
       };
     };
     Functions: {
+      record_empties_followup: {
+        Args: { p_line_id: string; p_quantity: number; p_received_date: string; p_note?: string | null };
+        Returns: string;
+      };
+      void_empties_followup: {
+        Args: { p_followup_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      create_order_batch: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_order_date: string;
+          p_payment_type: PaymentType;
+          p_note: string | null;
+          p_orders: Json;
+        };
+        Returns: { id: string; order_no: string }[];
+      };
       create_organization: {
         Args: {
           p_name: string;

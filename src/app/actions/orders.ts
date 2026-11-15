@@ -124,6 +124,68 @@ export async function saveOrderAction(
   redirect(`/b/${slug}/orders/${orderId}?saved=1`);
 }
 
+const batchSchema = z.object({
+  locationId: z.uuid("Choose where the stock comes from."),
+  orderDate: z.iso.date("Enter the order date."),
+  paymentType: z.enum(["cash", "transfer", "credit"]).catch("cash"),
+  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  orders: z
+    .array(
+      z.object({
+        customer_id: z.uuid("Choose the customer on every card."),
+        items: z
+          .array(
+            z.object({
+              product_id: z.uuid(),
+              quantity: z.number().int("Drinks are counted in whole numbers.").positive().max(9_999_999)
+            })
+          )
+          .min(1, "Every customer needs at least one product.")
+      })
+    )
+    .min(1, "Add at least one customer.")
+});
+
+/** Drinks: several customers' orders in one save (the Bilikis RGB sales screen). */
+export async function saveOrderBatchAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug);
+
+  let orders: unknown;
+  try {
+    orders = JSON.parse(String(formData.get("orders") ?? "[]"));
+  } catch {
+    return { ok: false, message: "Add at least one customer." };
+  }
+  const parsed = batchSchema.safeParse({
+    locationId: String(formData.get("locationId") ?? ""),
+    orderDate: String(formData.get("orderDate") ?? ""),
+    paymentType: String(formData.get("paymentType") ?? "cash"),
+    note: String(formData.get("note") ?? ""),
+    orders
+  });
+  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+
+  const { data, error } = await supabase.rpc("create_order_batch", {
+    p_organization_id: org.id,
+    p_location_id: parsed.data.locationId,
+    p_order_date: parsed.data.orderDate,
+    p_payment_type: parsed.data.paymentType,
+    p_note: parsed.data.note || null,
+    p_orders: parsed.data.orders
+  });
+  if (error || !data?.length) return { ok: false, message: describeDbError(error) };
+
+  for (const order of data) {
+    notify({ supabase, org }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
+  }
+  revalidatePath(`/b/${slug}`, "layout");
+  redirect(`/b/${slug}/orders?saved=batch&ids=${data.map((order) => order.id).join(",")}`);
+}
+
 export async function cancelOrderAction(
   slug: string,
   orderId: string,

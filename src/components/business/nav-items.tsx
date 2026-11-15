@@ -3,6 +3,7 @@ import {
   Boxes,
   ChartColumn,
   ClipboardList,
+  CircleAlert,
   Contact,
   History,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
 
 export type NavIconName =
   | "dashboard"
+  | "shortages"
   | "orders"
   | "dispatch"
   | "returns"
@@ -59,7 +61,8 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   settings: Settings,
   deliveries: PackageCheck,
   drivers: Contact,
-  value: Banknote
+  value: Banknote,
+  shortages: CircleAlert
 };
 
 export function isActivePath(pathname: string, item: Pick<NavItem, "href" | "exact" | "excludes">) {

@@ -81,25 +81,49 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
     org.tracks_returns
       ? supabase
           .from("returnable_movements")
-          .select("movement_type, customer_id, holding_delta, owed_delta")
+          .select("movement_type, source_type, customer_id, holding_delta, owed_delta")
           .eq("organization_id", org.id)
           .eq("movement_date", day)
       : Promise.resolve({ data: [], error: null }),
-    org.tracks_returns
-      ? supabase.from("customer_returnable_balances").select("owed").eq("organization_id", org.id).gt("owed", 0)
-      : Promise.resolve({ data: [], error: null })
+    // Drinks: open shortage lines (per order); otherwise customer balances.
+    org.sells_drinks
+      ? supabase
+          .from("empty_shortage_lines")
+          .select("customer_id, customer_name, outstanding")
+          .eq("organization_id", org.id)
+          .gt("outstanding", 0)
+          .then(({ data, error }) => ({
+            data: (data ?? []).map((row) => ({ owed: row.outstanding, customer: row.customer_id ?? row.customer_name })),
+            error
+          }))
+      : org.tracks_returns
+        ? supabase
+            .from("customer_returnable_balances")
+            .select("owed, customer_id")
+            .eq("organization_id", org.id)
+            .gt("owed", 0)
+            .then(({ data, error }) => ({
+              data: (data ?? []).map((row) => ({ owed: row.owed, customer: row.customer_id })),
+              error
+            }))
+        : Promise.resolve({ data: [], error: null })
   ]);
 
   // Empties in and out on the day, by where they came from or went.
   const moves = emptiesMoves.data ?? [];
   const sumHolding = (keep: (move: (typeof moves)[number]) => boolean) =>
     moves.filter(keep).reduce((sum, move) => sum + Number(move.holding_delta), 0);
+  const followup = (move: (typeof moves)[number]) => move.source_type === "empties_followup";
   const emptiesLines: [string, number][] = [
-    ["Came back with trips", sumHolding((move) => move.movement_type === "trip_return")],
-    [
-      "Customers brought back at the depot",
-      sumHolding((move) => move.movement_type === "adjustment" && move.customer_id !== null && Number(move.holding_delta) > 0)
-    ],
+    ["Came back with trips", sumHolding((move) => move.movement_type === "trip_return" && !followup(move))],
+    ...(org.sells_drinks
+      ? ([["Brought back later (follow-ups)", sumHolding(followup)]] as [string, number][])
+      : ([
+          [
+            "Customers brought back at the depot",
+            sumHolding((move) => move.movement_type === "adjustment" && move.customer_id !== null && Number(move.holding_delta) > 0)
+          ]
+        ] as [string, number][])),
     [
       "Opening count, purchases and corrections",
       sumHolding((move) => move.movement_type === "adjustment" && !(move.customer_id !== null && Number(move.holding_delta) > 0))
@@ -110,6 +134,7 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
     .filter((move) => move.movement_type === "dispatch")
     .reduce((sum, move) => sum + Number(move.owed_delta), 0);
   const shortageRows = shortages.data ?? [];
+  const shortageCustomers = new Set(shortageRows.map((row) => row.customer)).size;
   const shortageTotal = shortageRows.reduce((sum, row) => sum + Number(row.owed), 0);
   const deliveryRows = deliveries.data ?? [];
 
@@ -356,9 +381,9 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
                 ...(org.tracks_returns
                   ? [
                       [
-                        `${org.sells_drinks ? "Empty shortages" : "Customers owing returnables"}: ${shortageRows.length} customer${shortageRows.length === 1 ? "" : "s"}`,
+                        `${org.sells_drinks ? "Empty shortages" : "Customers owing returnables"}: ${shortageCustomers} customer${shortageCustomers === 1 ? "" : "s"}`,
                         shortageTotal,
-                        `${base}/returns`
+                        org.sells_drinks ? `${base}/returns/shortages` : `${base}/returns`
                       ]
                     ]
                   : [])

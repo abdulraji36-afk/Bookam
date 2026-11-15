@@ -23,22 +23,52 @@ type Props = {
   initialReason?: ReturnableAdjustmentReason;
 };
 
-const NEEDS_CUSTOMER: ReturnableAdjustmentReason[] = ["customer_return", "given_to_customer"];
+const NEEDS_CUSTOMER: ReturnableAdjustmentReason[] = [
+  "customer_return",
+  "given_to_customer",
+];
 
-export function AdjustmentForm({ action, returnables, locations, customers, today, drinks, initialReason }: Props) {
+export function AdjustmentForm({
+  action,
+  returnables,
+  locations,
+  customers,
+  today,
+  drinks,
+  initialReason,
+}: Props) {
   const { state, pending, form } = useFormAction(action);
-  const startsOnAdd = !initialReason || ADD_REASONS.some(([value]) => value === initialReason);
-  const [direction, setDirection] = useState<"add" | "subtract">(startsOnAdd ? "add" : "subtract");
-  const [reason, setReason] = useState<ReturnableAdjustmentReason>(initialReason ?? "customer_return");
-  const reasons = (direction === "add" ? ADD_REASONS : SUBTRACT_REASONS).map(
-    ([value, label]) =>
-      [value, drinks && value === "opening_count" ? "Opening empties (already in store)" : label] as const
+  const startsOnAdd =
+    !initialReason || ADD_REASONS.some(([value]) => value === initialReason);
+  const [direction, setDirection] = useState<"add" | "subtract">(
+    startsOnAdd ? "add" : "subtract",
   );
+  // Drinks: what customers owe is kept per order, so no customer reasons here.
+  const [reason, setReason] = useState<ReturnableAdjustmentReason>(
+    initialReason ?? (drinks ? "purchase" : "customer_return"),
+  );
+  const reasons = (direction === "add" ? ADD_REASONS : SUBTRACT_REASONS)
+    .filter(([value]) => !drinks || !NEEDS_CUSTOMER.includes(value))
+    .map(
+      ([value, label]) =>
+        [
+          value,
+          drinks && value === "opening_count"
+            ? "Opening empties (already in store)"
+            : label,
+        ] as const,
+    );
   const needsCustomer = NEEDS_CUSTOMER.includes(reason);
 
   function choose(next: "add" | "subtract") {
     setDirection(next);
-    setReason(next === "add" ? "customer_return" : "damaged_or_lost");
+    setReason(
+      next === "add"
+        ? drinks
+          ? "purchase"
+          : "customer_return"
+        : "damaged_or_lost",
+    );
   }
 
   return (
@@ -69,7 +99,11 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
 
       <div className="grid gap-5 sm:grid-cols-2">
         {returnables.length > 1 ? (
-          <SelectField label="Which item?" name="returnableItemId" defaultValue={returnables[0].id}>
+          <SelectField
+            label="Which item?"
+            name="returnableItemId"
+            defaultValue={returnables[0].id}
+          >
             {returnables.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -77,10 +111,18 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
             ))}
           </SelectField>
         ) : (
-          <input type="hidden" name="returnableItemId" value={returnables[0]?.id ?? ""} />
+          <input
+            type="hidden"
+            name="returnableItemId"
+            value={returnables[0]?.id ?? ""}
+          />
         )}
         <TextField
-          label={returnables.length > 1 ? "How many?" : `How many ${returnables[0]?.name ?? ""}?`}
+          label={
+            returnables.length > 1
+              ? "How many?"
+              : `How many ${returnables[0]?.name ?? ""}?`
+          }
           name="quantity"
           inputMode="decimal"
           autoComplete="off"
@@ -90,7 +132,9 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
           label="Reason"
           name="reason"
           value={reason}
-          onChange={(event) => setReason(event.currentTarget.value as ReturnableAdjustmentReason)}
+          onChange={(event) =>
+            setReason(event.currentTarget.value as ReturnableAdjustmentReason)
+          }
         >
           {reasons.map(([value, label]) => (
             <option key={value} value={value}>
@@ -103,7 +147,10 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
             label="Which customer?"
             name="customerId"
             placeholder="Type a name to search"
-            options={customers.map((customer) => ({ value: customer.id, label: customer.name }))}
+            options={customers.map((customer) => ({
+              value: customer.id,
+              label: customer.name,
+            }))}
             hint={
               reason === "customer_return"
                 ? "This also takes the quantity off what they owe."
@@ -113,9 +160,20 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
         ) : (
           <input type="hidden" name="customerId" value="" />
         )}
-        <TextField label="Date" name="adjustmentDate" type="date" defaultValue={today} max={today} required />
+        <TextField
+          label="Date"
+          name="adjustmentDate"
+          type="date"
+          defaultValue={today}
+          max={today}
+          required
+        />
         {locations.length > 1 ? (
-          <SelectField label="At which location?" name="locationId" defaultValue={locations[0].id}>
+          <SelectField
+            label="At which location?"
+            name="locationId"
+            defaultValue={locations[0].id}
+          >
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
@@ -123,11 +181,19 @@ export function AdjustmentForm({ action, returnables, locations, customers, toda
             ))}
           </SelectField>
         ) : (
-          <input type="hidden" name="locationId" value={locations[0]?.id ?? ""} />
+          <input
+            type="hidden"
+            name="locationId"
+            value={locations[0]?.id ?? ""}
+          />
         )}
       </div>
       <TextField
-        label={reason === "correction" ? "Why is the count being corrected?" : "Note (optional)"}
+        label={
+          reason === "correction"
+            ? "Why is the count being corrected?"
+            : "Note (optional)"
+        }
         name="note"
         maxLength={500}
         required={reason === "correction"}

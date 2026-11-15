@@ -78,7 +78,7 @@ async function NewTrip({ params, searchParams }: PageProps<"/b/[slug]/dispatch/n
             locations={locationsResult.data ?? []}
             drivers={drivers}
             workers={crew}
-            preselected={typeof query.order === "string" ? [query.order] : []}
+            preselected={typeof query.order === "string" ? [query.order] : Array.isArray(query.order) ? query.order : []}
             today={todayIn(org.timezone, await requestNow())}
           />
         </Card>

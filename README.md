@@ -124,8 +124,8 @@ These are what keep one business's data away from another's.
    price and buying cost required. A supplier delivery carries the
    supplier's reference and records the empties given back in the same
    transaction (`record_stock_delivery`); voiding the delivery gives them
-   back. Staff record customers bringing back empties they owe
-   (`record_customer_empties_return`), never more than they owe.
+   back. What customers owe is kept per order, never as a running balance
+   (see 15).
 
 14. A delivery can be corrected after the fact by an owner or admin
    (`correct_stock_receipt`), as in Bilikis: date, supplier, reference,
@@ -134,6 +134,19 @@ These are what keep one business's data away from another's.
    so stock on hand and every daily report recalculate from the ledger.
    It is refused if any product would go below zero, and each changed
    quantity is kept in `stock_receipt_corrections` with the reason.
+
+15. Drinks empties are owed per order, as in Bilikis. Each order that comes
+   back short is a line in `empty_shortage_lines`:
+   Outstanding = expected − (returned with the trip + follow-ups), never
+   below 0; open while above 0, completed at 0, and it stays listed with
+   the time it was completed. Follow-ups (`record_empties_followup`) pay off
+   one line only and never more than it still owes. Extra empties at the
+   trip go into the store but are not credit, so a customer never has a
+   balance below zero; old debts and customer adjustments are refused for
+   drinks. Empties in store = opening + trip returns + follow-ups +
+   adjustments − taken by the supplier. Orders for several customers are
+   saved together (`create_order_batch`), with stock checked for the whole
+   list.
 
 ## How screens are laid out
 
@@ -220,4 +233,5 @@ version of the app, so the database can always go first.
 | 15 | Reorganised screens: a grouped side menu (daily work, catalogue, reports, admin) with New order and Receive stock at the top; every list a table with search and status tabs that turns into cards on a phone; changes such as edit, switch off and void on each record's own page | Done |
 | 16 | Trips take their driver from the list and at least one worker (any number); trucks and plate numbers are no longer recorded | Done |
 | 17 | Order form: walk-in buyer at the bottom, and a missed customer, product or quantity is pointed out at the field itself; a waiting order is cancelled (void is only for one that has gone out); "Put on a trip" from the order page; returned-empties boxes start blank and every one must be filled, 0 included | Done |
+| 18 | Drinks the Bilikis way: an order screen for several customers with a live "Stock left" on every product; empty shortages kept per order with follow-up returns, a shortages page (open and completed, with when each was completed), no credit | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

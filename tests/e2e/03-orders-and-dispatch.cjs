@@ -102,6 +102,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByText("No orders yet").waitFor();
   await a.locator("main").getByRole("link", { name: "+ New order" }).click();
   await a.waitForURL(/\/orders\/new/);
+  // A drinks business opens on the several-customer screen; one order is a tap away.
+  await a.getByRole("link", { name: "One order or a walk-in instead" }).click();
+  await a.waitForURL(/\/orders\/new\?single=1/);
   await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40], ["Water 75cl", 10]]);
   await a.getByText("100 crate in stock").waitFor();
   await a.getByText("₦186,000").waitFor();
@@ -117,7 +120,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("an order sets its stock aside and shows what is due back");
 
   // --- a missed field takes you back to it with a message
-  await a.goto(BASE + base + "/orders/new");
+  await a.goto(BASE + base + "/orders/new?single=1");
   const save = () => vis(a.getByRole("button", { name: "Save order" })).click();
   await save();
   await a.getByText("Choose the customer before saving the order.").waitFor();
@@ -132,11 +135,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
     true,
     "the quantity box is focused"
   );
-  assert.match(a.url(), /\/orders\/new$/, "nothing was saved");
+  assert.match(a.url(), /\/orders\/new(\?single=1)?$/, "nothing was saved");
   ok("a missed customer, product or quantity is pointed out at the field itself");
 
   // --- cannot oversell; typed values survive the error
-  await a.goto(BASE + base + "/orders/new");
+  await a.goto(BASE + base + "/orders/new?single=1");
   await fillOrder(a, "Grace Canteen", [["Water 75cl", 99]]);
   await a.getByText("40 pack in stock. That is more than you have.").waitFor();
   await vis(a.getByRole("button", { name: "Save order" })).click();
@@ -204,7 +207,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("dispatching completes the no-return order and leaves the return order open");
 
   // --- cancel puts stock back
-  await a.goto(BASE + base + "/orders/new");
+  await a.goto(BASE + base + "/orders/new?single=1");
   await fillOrder(a, "Grace Canteen", [["Water 75cl", 5]]);
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
@@ -226,7 +229,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await signUp(c, "Chidi Eze", chidi, /\/invite\//);
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
-  await c.goto(BASE + base + "/orders/new");
+  await c.goto(BASE + base + "/orders/new?single=1");
   await fillOrder(c, "Grace Canteen", [["Water 75cl", 4]]);
   await c.screenshot({ path: `${SHOTS}/25-new-order-mobile.png`, fullPage: true });
   await vis(c.getByRole("button", { name: "Save order" })).click();
@@ -245,7 +248,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("staff records an order, builds a trip and dispatches it from a phone");
 
   // --- owner can cancel a draft trip
-  await a.goto(BASE + base + "/orders/new");
+  await a.goto(BASE + base + "/orders/new?single=1");
   await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 5]]);
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);

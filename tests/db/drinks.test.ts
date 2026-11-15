@@ -173,45 +173,34 @@ describe("drinks, the Bilikis way", () => {
     expect(await owedBy(db, mama)).toBe(20);
     expect(await totals()).toEqual({ holding: 280, owed: 20 });
 
-    const back = (customer: string, quantity: number, user = staff) =>
-      call(db, user, `select public.record_customer_empties_return($1, $2, public_today(), $3, $4, $5, 'Brought to the depot')`, [
-        depot.id,
-        null,
-        empties,
-        customer,
-        quantity
-      ]);
-    // location is required
-    await expect(back(mama, 15)).rejects.toThrow();
+    // The old "customer brought back empties" form is closed for drinks:
+    // returns go against the order that came back short.
     const location = await mainLocation(db, depot.id);
-    const backHere = (customer: string, quantity: number, user = staff) =>
-      call(db, user, `select public.record_customer_empties_return($1, $2, public_today(), $3, $4, $5, null)`, [
+    await expect(
+      call(db, staff, `select public.record_customer_empties_return($1, $2, public_today(), $3, $4, 15, null)`, [
         depot.id,
         location,
         empties,
-        customer,
-        quantity
-      ]);
-    await backHere(mama, 15);
-    expect(await owedBy(db, mama)).toBe(5);
-    expect(await totals()).toEqual({ holding: 295, owed: 5 });
-    await expect(backHere(mama, 6)).rejects.toThrow(/Mama Tunde owes 5 Empties, so 6 cannot be recorded/);
-
-    // Another business cannot record against this one's customers.
-    const other = await createUser(db, "other@example.com");
-    const otherOrg = (
-      (await call(db, other, `select * from public.create_organization('Other Drinks', null, false, false, 'quantity', true, true)`)) as {
-        id: string;
-      }[]
-    )[0];
-    await expect(
-      call(db, other, `select public.record_customer_empties_return($1, $2, public_today(), $3, $4, 1, null)`, [
-        otherOrg.id,
-        await mainLocation(db, otherOrg.id),
-        await returnableId(db, otherOrg.id, "Empties"),
         mama
       ])
-    ).rejects.toThrow(/Choose one of your customers/);
+    ).rejects.toThrow(/against their order on the Empty shortages page/);
+
+    const line = (
+      await db.query<{ id: string }>(`select id from public.trip_return_lines where order_id = $1`, [order.id])
+    ).rows[0].id;
+    const followUp = (quantity: number, user = staff) =>
+      call(db, user, `select public.record_empties_followup($1, $2, public_today(), 'Brought to the depot')`, [
+        line,
+        quantity
+      ]);
+    await followUp(15);
+    expect(await owedBy(db, mama)).toBe(5);
+    expect(await totals()).toEqual({ holding: 295, owed: 5 });
+    await expect(followUp(6)).rejects.toThrow(/Only 5 empties are still owed on ORD-/);
+
+    // Another business cannot record against this one's orders.
+    const other = await createUser(db, "other@example.com");
+    await expect(followUp(1, other)).rejects.toThrow();
   });
 
   it("switching drinks on later creates the Empties pool once", async () => {

@@ -71,7 +71,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
     await a.waitForURL(new RegExp(base + "/customers$"));
   }
   async function order(page, customer, lines) {
-    await page.goto(BASE + base + "/orders/new");
+    await page.goto(BASE + base + "/orders/new?single=1");
     await pick(page, "Customer", customer);
     for (let i = 0; i < lines.length; i++) {
       if (i > 0) await vis(page.getByRole("button", { name: "Add another product" })).click();
@@ -158,11 +158,10 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
   await expectTotals(200, 60);
   await a.locator("section", { hasText: "Trips to record returns for" }).getByText("Musa Driver").waitFor();
-  const balances = a.locator("section", { hasText: "Empty shortages" });
-  await balances.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("40 owed").waitFor();
-  await balances.locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("20 owed").waitFor();
+  // Drinks: a shortage is per order, and only once the trip's returns are in.
+  await a.locator("section", { hasText: "Empty shortages" }).getByText("No order is waiting for empties.").waitFor();
   await a.screenshot({ path: `${SHOTS}/31-returns-out.png`, fullPage: true });
-  ok("dispatching makes each customer owe their crates");
+  ok("dispatching makes customers owe their crates; no shortage until the trip comes back");
 
   // Record returns with a shortage
   await a.locator("section", { hasText: "Trips to record returns for" }).getByRole("link").click();
@@ -209,16 +208,22 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await expectTotals(102, 8);
   ok("a supplier exchange takes crates out of the store, and cannot take more than there are");
 
-  // Adjustment: customer brings crates without buying -> credit
+  // Drinks: no customer on an adjustment; what a customer brings back goes against their order.
   await go("/returns/adjust");
-  await vis(a.getByLabel(/How many Empties\?/)).fill("10");
-  await pick(a, "Which customer?", "Mama Tunde Stores");
-  await vis(a.getByRole("button", { name: "Save adjustment" })).click();
-  await a.waitForURL(/\/returns\?saved=adjustment/);
-  await expectTotals(112, 0);
-  await a.getByText("2 of those in store are held for customers in credit.").waitFor();
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("2 in credit").waitFor();
-  ok("Add with a customer: the store count rises and the customer's balance falls, into credit");
+  const reasons = await vis(a.getByLabel("Reason")).locator("option").allInnerTexts();
+  assert.ok(!reasons.includes("A customer brought them back"), "no customer reasons for drinks");
+  assert.equal(await a.getByText("A customer already owed some").count(), 0, "no old debts for drinks");
+  await go("/returns/customer-return");
+  await pick(a, "Customer", "Mama Tunde Stores");
+  await vis(a.getByLabel("How many empties did they bring?")).fill("10");
+  await vis(a.getByRole("button", { name: "Save" })).click();
+  await a.getByText("Only 8 empties are still owed on ORD-", { exact: false }).waitFor();
+  await vis(a.getByLabel("How many empties did they bring?")).fill("8");
+  await vis(a.getByRole("button", { name: "Save" })).click();
+  await a.waitForURL(/\/returns\/shortages\?saved=followup/);
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Completed", { exact: true }).waitFor();
+  await expectTotals(110, 0);
+  ok("a customer brings back what one order owes, never more, and nothing becomes credit");
 
   // Adjustment: subtract damaged, and correction needs a note
   await go("/returns/adjust");
@@ -227,26 +232,16 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   assert.equal(await vis(a.getByLabel("Which customer?")).count(), 0, "no customer for damaged or lost");
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
-  await expectTotals(110, 0);
+  await expectTotals(108, 0);
   ok("Subtract for damaged or lost lowers the store count only");
 
-  // Old debt
-  await go("/returns/adjust");
-  const debt = a.locator("section", { hasText: "A customer already owed some" });
-  await pick(debt, "Customer", "Alhaji Musa Kiosk");
-  await vis(debt.getByLabel(/How many Empties do they owe\?/)).fill("15");
-  await vis(debt.getByRole("button", { name: "Record old debt" })).click();
-  await a.getByText("Old debt recorded on the customer's balance.").waitFor();
-  await expectTotals(110, 15);
-  await go("/customers");
-  await a.locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("15 owed", { exact: true }).waitFor();
-  await a.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("2 in credit", { exact: true }).waitFor();
   await go("/returns");
   await a.locator("section", { hasText: "Latest movements" }).getByText("Taken by the supplier").waitFor();
+  await a.locator("section", { hasText: "Latest movements" }).getByText("Brought back later (follow-up)").waitFor();
   await a.screenshot({ path: `${SHOTS}/35-returns.png`, fullPage: true });
-  ok("an old debt is recorded and shows on the customer list");
+  ok("follow-ups and supplier exchanges show in the latest movements");
 
-  // Credit counts against the next order: Mama (2 in credit) takes 12 -> owes 10
+  // A new order owes in full: there is no credit from before.
   await order(a, "Mama Tunde Stores", [["Cola 50cl", 12]]);
   // Straight from the order to a trip: the order comes already ticked.
   assert.equal(await vis(a.getByText("Void this order", { exact: true })).count(), 0, "a waiting order is cancelled, not voided");
@@ -260,9 +255,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await vis(a.getByRole("button", { name: "Dispatch now" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
-  await go("/returns");
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("10 owed").waitFor();
-  ok("a customer's credit counts against their next order");
+  await expectTotals(108, 12);
+  ok("a new order is put on a trip straight from its page, and owes its crates in full");
 
   // Staff on a phone: can exchange and record returns, cannot adjust
   await go("/team");
@@ -290,7 +284,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   ok("staff records returns on a phone but cannot open the adjustment screen");
 
   await go("");
-  await a.getByRole("link", { name: /Owed back by customers/ }).getByText("15", { exact: true }).waitFor();
+  await a.getByRole("link", { name: /Owed back by customers/ }).getByText("0", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/37-dashboard.png`, fullPage: true });
   ok("dashboard shows the total owed back");
 

@@ -82,7 +82,7 @@ let dbg;
     return a.url().split("?")[0];
   }
   async function order(customer, product, quantity) {
-    await go("/orders/new");
+    await go("/orders/new?single=1");
     await pick(a, "Customer", customer);
     await pick(a, "Product", product);
     await vis(a.getByLabel("Quantity")).fill(String(quantity));

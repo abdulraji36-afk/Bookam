@@ -44,7 +44,17 @@ async function BusinessShell({
           ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch", excludes: [`${base}/dispatch/crew`] } as const]
           : []),
         ...(tracksReturns
-          ? [{ href: `${base}/returns`, label: org.sells_drinks ? "Empties" : "Returns", icon: "returns" } as const]
+          ? [
+              {
+                href: `${base}/returns`,
+                label: org.sells_drinks ? "Empties" : "Returns",
+                icon: "returns",
+                excludes: [`${base}/returns/shortages`]
+              } as const
+            ]
+          : []),
+        ...(org.sells_drinks
+          ? [{ href: `${base}/returns/shortages`, label: "Empty shortages", icon: "shortages" } as const]
           : []),
         { href: `${base}/stock`, label: "Stock", icon: "stock", excludes: [`${base}/stock/receipts`] },
         { href: `${base}/stock/receipts`, label: "Deliveries", icon: "deliveries" }

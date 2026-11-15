@@ -1,55 +1,63 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { recordCustomerEmptiesReturnAction } from "@/app/actions/returns";
-import { CustomerReturnForm } from "@/components/returns/customer-return-form";
+import { recordEmptiesFollowupAction } from "@/app/actions/returns";
+import { CustomerFollowupForm } from "@/components/returns/followup-form";
+import { buttonClass } from "@/components/ui/button";
 import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { todayIn } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
-import { getReturnsFormData } from "@/lib/returnables";
+import { getShortageLines } from "@/lib/shortages";
 
 export const metadata: Metadata = { title: "Customer brought back empties" };
 
 async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/customer-return">, "params">) {
   const { slug } = await params;
   const { supabase, org } = await requireOrg(slug);
-  const data = await getReturnsFormData(supabase, org.id);
-  const returnable = data.returnables[0];
+  const base = `/b/${org.slug}`;
+  if (!org.sells_drinks) redirect(`${base}/returns`);
 
-  const { data: balances } = returnable
-    ? await supabase
-        .from("customer_returnable_balances")
-        .select("customer_id, customer_name, customer_area, owed")
-        .eq("organization_id", org.id)
-        .eq("returnable_item_id", returnable.id)
-        .gt("owed", 0)
-        .order("customer_name")
-    : { data: [] };
-  const owing = (balances ?? []).map((row) => ({
-    id: row.customer_id,
-    name: row.customer_area ? `${row.customer_name} (${row.customer_area})` : row.customer_name,
-    owed: Number(row.owed)
-  }));
-  const word = returnable?.name.toLowerCase() ?? "empties";
+  // Oldest shortage first, so the one that has waited longest is on top.
+  const { rows } = await getShortageLines(supabase, org.id, { openOnly: true });
+  const shortages = rows
+    .map((line) => ({
+      id: line.id,
+      customerId: line.customer_id,
+      customerName: line.customer_name,
+      orderNo: line.order_no,
+      tripNo: line.trip_no,
+      returnedDate: line.returned_date,
+      outstanding: Number(line.outstanding)
+    }))
+    .reverse();
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageTitle sub={`For ${word} a customer still owed from an earlier delivery. They come off what the customer owes and go into the store count.`}>
-        Customer brought back {word}
+      <PageTitle sub="For empties a customer still owes from an order that came back short. They pay off that order only, and go into the store count.">
+        Customer brought back empties
       </PageTitle>
-      {!returnable || owing.length === 0 ? (
-        <EmptyState title="Nobody owes anything">No customer owes {word} right now.</EmptyState>
+      {shortages.length === 0 ? (
+        <EmptyState title="Nobody owes empties">
+          No order is waiting for empties right now.{" "}
+          <Link href={`${base}/returns/shortages`} className="font-bold underline underline-offset-4">
+            See every shortage
+          </Link>
+        </EmptyState>
       ) : (
         <Card>
-          <CustomerReturnForm
-            action={recordCustomerEmptiesReturnAction.bind(null, org.slug)}
-            returnable={returnable}
-            locations={data.locations}
-            owing={owing}
+          <CustomerFollowupForm
+            action={recordEmptiesFollowupAction.bind(null, org.slug)}
+            shortages={shortages}
             today={todayIn(org.timezone, await requestNow())}
+            returnTo="shortages"
           />
         </Card>
       )}
+      <Link href={`${base}/returns/shortages`} className={buttonClass("secondary")}>
+        Back to empty shortages
+      </Link>
     </div>
   );
 }

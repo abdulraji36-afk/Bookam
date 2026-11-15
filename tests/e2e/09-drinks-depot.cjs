@@ -170,30 +170,53 @@ let dbg;
   assert.deepEqual(headings.slice(0, 3), ["RGB", "PET", "Juice"]);
   ok("a delivery cannot take more empties than are in store, and then saves nothing");
 
-  // 5. RGB and PET on one trip; only the RGB crates are owed back
-  await go("/customers/new");
-  await vis(a.getByLabel("Customer name")).fill("Mama Tunde Stores");
-  await vis(a.getByRole("button", { name: "Save customer" })).click();
-  await a.waitForURL(new RegExp(base + "/customers$"));
+  // 5. Several customers on one order screen, with Stock left counting down
+  for (const name of ["Mama Tunde Stores", "Alhaji Musa Kiosk"]) {
+    await go("/customers/new");
+    await vis(a.getByLabel("Customer name")).fill(name);
+    await vis(a.getByRole("button", { name: "Save customer" })).click();
+    await a.waitForURL(new RegExp(base + "/customers$"));
+  }
   await go("/orders/new");
-  await pick(a, "Customer", "Mama Tunde Stores");
-  await pick(a, "Product", "Coca-Cola 50cl RGB");
-  await vis(a.getByLabel("Quantity")).fill("50");
-  await vis(a.getByRole("button", { name: "Add another product" })).click();
-  await pick(a, "Product 2", "Coca-Cola 50cl PET");
-  await vis(a.getByLabel("Quantity")).nth(1).fill("5");
+  await a.getByRole("heading", { name: "New orders" }).waitFor();
+  const stockLeft = async (product) =>
+    (await a.getByLabel(`Stock left for ${product}`).first().innerText()).replace("Stock left: ", "");
+  assert.equal(await stockLeft("Coca-Cola 50cl RGB"), "488");
+  // Saving with nothing chosen points at the customer still missing.
   await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-  const firstOrderNo = await a.getByRole("heading", { level: 1 }).innerText();
+  await a.getByText("Choose customer 1 before saving.").waitFor();
+  const first = a.getByRole("region", { name: "Customer 1" });
+  await pick(first, "Customer", "Mama Tunde Stores");
+  await first.getByRole("button", { name: "Add Coca-Cola 50cl RGB for customer 1" }).click();
+  await first.getByLabel("Coca-Cola 50cl RGB for customer 1").fill("50");
+  await first.getByRole("button", { name: "Add Coca-Cola 50cl PET for customer 1" }).click();
+  await first.getByLabel("Coca-Cola 50cl PET for customer 1").fill("5");
+  assert.equal(await stockLeft("Coca-Cola 50cl RGB"), "438", "the counter drops as the quantity is typed");
+  await vis(a.getByRole("button", { name: "Add customer" })).click();
+  const second = a.getByRole("region", { name: "Customer 2" });
+  await pick(second, "Customer", "Alhaji Musa Kiosk");
+  await second.getByRole("button", { name: "Add Coca-Cola 50cl PET for customer 2" }).click();
+  // More than is left is capped at what is left: 40 PET came in, Mama takes 5.
+  await second.getByLabel("Coca-Cola 50cl PET for customer 2").fill("99");
+  assert.equal(await second.getByLabel("Coca-Cola 50cl PET for customer 2").inputValue(), "35");
+  assert.equal(await stockLeft("Coca-Cola 50cl PET"), "0");
+  await second.getByLabel("Coca-Cola 50cl PET for customer 2").fill("10");
+  assert.equal(await stockLeft("Coca-Cola 50cl PET"), "25");
+  await a.getByText("Total quantity").waitFor();
+  await a.screenshot({ path: `${SHOTS}/90-batch-order.png`, fullPage: true });
+  await vis(a.getByRole("button", { name: "Save 2 orders" })).click();
+  await a.waitForURL(/\/orders\?saved=batch/);
+  await a.getByText("2 orders saved.").waitFor();
+  const batchUrl = a.url();
+  ok("several customers are ordered on one screen, and Stock left counts down across all of them");
 
   // Like Bilikis: one waiting RGB order per customer; edit that one instead.
   await go("/orders/new");
-  await pick(a, "Customer", "Mama Tunde Stores");
-  await pick(a, "Product", "Coca-Cola 50cl RGB");
-  await vis(a.getByLabel("Quantity")).fill("2");
+  await pick(a.getByRole("region", { name: "Customer 1" }), "Customer", "Mama Tunde Stores");
+  await a.getByRole("button", { name: "Add Coca-Cola 50cl RGB for customer 1" }).click();
+  await a.getByLabel("Coca-Cola 50cl RGB for customer 1").fill("2");
   await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.getByText(`Mama Tunde Stores already has order ${firstOrderNo} with RGB crates waiting for dispatch.`, { exact: false }).waitFor();
-
+  await a.getByText("Mama Tunde Stores already has order", { exact: false }).waitFor();
   ok("Bilikis rules: a delivery corrected after offloading, and one waiting RGB order per customer");
 
   await go("/dispatch");
@@ -205,18 +228,25 @@ let dbg;
     await a.getByText(`${name} added.`).waitFor();
   }
   await a.locator("tr", { hasText: "Musa" }).getByText("Driver", { exact: true }).waitFor();
-  await go("/dispatch/new");
+  // Straight from the saved list to a trip, both orders already ticked.
+  await a.goto(batchUrl);
+  await a.getByRole("link", { name: "Put them on a trip" }).click();
+  await a.waitForURL(/\/dispatch\/new\?order=/);
+  assert.equal(await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).isChecked(), true);
+  assert.equal(await vis(a.getByRole("checkbox", { name: /Alhaji Musa Kiosk/ })).isChecked(), true);
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
   await vis(a.getByLabel("Sule")).check();
-  await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
+  const tripUrl = a.url();
   await a.getByText("To bring back: 50 Empties").waitFor();
-  await a.getByRole("definition").filter({ hasText: "Sule" }).waitFor(); // the loader is on the trip
+  await a.getByRole("definition").filter({ hasText: "Sule" }).waitFor(); // the worker is on the trip
   await vis(a.getByRole("button", { name: "Dispatch now" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
+  // Only Mama took RGB crates, so only she has a box.
   const mamaBox = vis(a.getByLabel("Returned by Mama Tunde Stores"));
   await mamaBox.fill("30");
+  assert.equal(await vis(a.getByLabel("Returned by Alhaji Musa Kiosk")).count(), 0);
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
   // Wait for the save itself: "Short by 20" also shows as a hint while typing.
   await vis(a.getByText("Completed", { exact: true })).first().waitFor();
@@ -224,27 +254,53 @@ let dbg;
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("280", { exact: true }).waitFor();
   await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("20 owed").waitFor();
-  ok("RGB and PET go on one trip; the 20 empties not brought back show as an empty shortage");
+  ok("RGB and PET go on one trip; the 20 empties not brought back show as an empty shortage on that order");
 
-  // 6. The customer brings some back later, at the depot
+  // 6. The customer brings some back later: against that order, never more than it owes
   await a.getByRole("link", { name: "Customer brought back empties" }).click();
   await a.waitForURL(/\/returns\/customer-return/);
   await pick(a, "Customer", "Mama Tunde Stores");
   await vis(a.getByLabel("How many empties did they bring?")).fill("21");
   await vis(a.getByRole("button", { name: "Save" })).click();
-  await a.getByText("Mama Tunde Stores owes 20 Empties, so 21 cannot be recorded.", { exact: false }).waitFor();
+  await a.getByText("Only 20 empties are still owed on ORD-", { exact: false }).waitFor();
   await vis(a.getByLabel("How many empties did they bring?")).fill("15");
   await a.screenshot({ path: `${SHOTS}/93-customer-brought-back.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save" })).click();
-  await a.waitForURL(/\/returns\?saved=customer-return/);
-  await card.locator("div", { hasText: "In store" }).getByText("295", { exact: true }).waitFor();
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("5 owed").waitFor();
-  await a.screenshot({ path: `${SHOTS}/94-empties-page.png`, fullPage: true });
-  ok("a customer bringing back owed empties later settles the shortage and adds to the store");
+  await a.waitForURL(/\/returns\/shortages\?saved=followup/);
+  const mamaLine = a.locator("tr", { hasText: "Mama Tunde Stores" });
+  await mamaLine.getByText("Open", { exact: true }).waitFor();
+  assert.deepEqual(
+    (await mamaLine.locator("td").allInnerTexts()).slice(3, 7).map((text) => text.trim()),
+    ["50", "30", "15", "5"],
+    "expected, returned with the trip, follow-up, outstanding"
+  );
 
-  // Stock value at cost: 438 RGB at 3,900 and 35 PET at 2,700.
+  // The last 5, on the order's own page; the line is then completed and stays listed.
+  await mamaLine.getByRole("link").first().click();
+  await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
+  await a.getByText("Follow-up history").waitFor();
+  await vis(a.getByLabel("How many empties did they bring?")).fill("5");
+  await vis(a.getByRole("button", { name: "Record follow-up return" })).click();
+  await vis(a.getByText("Follow-up return saved.")).first().waitFor();
+  await vis(a.getByText("Completed", { exact: true })).first().waitFor();
+  assert.equal(await vis(a.getByRole("button", { name: "Record follow-up return" })).count(), 0);
+  await go("/returns/shortages");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Completed", { exact: true }).waitFor();
+  const completedOn = (await a.locator("tr", { hasText: "Mama Tunde Stores" }).locator("td").last().innerText()).trim();
+  assert.match(completedOn, /\d{4}/, "the date and time it was completed are shown");
+  await a.getByText("Outstanding empties").waitFor();
+  await a.waitForTimeout(500); // let the page finish fading in
+  await a.screenshot({ path: `${SHOTS}/94-empty-shortages.png`, fullPage: true });
+  await go("/returns");
+  await card.locator("div", { hasText: "In store" }).getByText("300", { exact: true }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/95-empties-page.png`, fullPage: true });
+  await a.goto(tripUrl);
+  await a.locator("section", { hasText: "What came back" }).locator("tr", { hasText: "Mama Tunde Stores" }).getByText("20", { exact: true }).waitFor();
+  ok("follow-ups pay off that order only; a completed shortage stays listed with when it was completed");
+
+  // Stock value at cost: 438 RGB at 3,900 and 25 PET at 2,700.
   await go("/reports/stock-value");
-  await a.getByText("₦1,802,700").first().waitFor();
+  await a.getByText("₦1,775,700").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/96-stock-value.png`, fullPage: true });
 
   // Daily report, the Bilikis way
@@ -253,10 +309,10 @@ let dbg;
   const emptiesDay = a.locator("section", { hasText: "Empties in and out" });
   const line = async (label) => (await emptiesDay.locator("li, tr", { hasText: label }).innerText()).split("\n").pop().trim();
   assert.equal(await line("Came back with trips"), "+30");
-  assert.equal(await line("Customers brought back at the depot"), "+15");
+  assert.equal(await line("Brought back later (follow-ups)"), "+20");
   assert.equal(await line("Opening count, purchases and corrections"), "+500");
   assert.equal(await line("Taken by the supplier"), "−250");
-  await a.locator("section", { hasText: "Still open right now" }).getByText("Empty shortages: 1 customer").waitFor();
+  await a.locator("section", { hasText: "Still open right now" }).getByText("Empty shortages: 0 customers").waitFor();
   await a.screenshot({ path: `${SHOTS}/97-daily-report.png`, fullPage: true });
   ok("stock value at cost, and a daily report with deliveries, empties in and out, and empty shortages");
 
