@@ -353,7 +353,7 @@ let dbg;
 
   // Daily report, the Bilikis way
   await go("/reports/daily");
-  await a.locator("section", { hasText: "Deliveries received (1)" }).locator("tr", { hasText: "NBC-7781" }).waitFor();
+  await a.locator("section", { hasText: "Stock in (1)" }).locator("tr", { hasText: "NBC-7781" }).waitFor();
   await a.locator("section", { hasText: "Empty exchanges (1)" }).locator("tr", { hasText: "NBC-7781" }).getByText("−250").waitFor();
   const emptiesDay = a.locator("section", { hasText: "Empties in and out" });
   const line = async (label) => (await emptiesDay.locator("li, tr", { hasText: label }).innerText()).split("\n").pop().trim();

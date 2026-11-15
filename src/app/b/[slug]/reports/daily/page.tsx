@@ -340,7 +340,7 @@ async function DailyReport({
               <Figure label="Trips sent out" value={String(tripRows.length)} />
             )}
             <Figure
-              label="Deliveries received"
+              label="Stock in"
               value={String(receipts.count ?? 0)}
             />
           </div>
@@ -484,9 +484,9 @@ async function DailyReport({
             </ListCard>
           ) : null}
 
-          <TableCard title={`Deliveries received (${deliveryRows.length})`}>
+          <TableCard title={`Stock in (${deliveryRows.length})`}>
             <DataTable
-              label="Deliveries received"
+              label="Stock in"
               rows={deliveryRows}
               rowKey={(delivery) => delivery.id}
               rowHref={(delivery) => `${base}/stock/receipts/${delivery.id}`}
