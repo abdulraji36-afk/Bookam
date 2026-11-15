@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { saveProductAction } from "@/app/actions/catalog";
+import { saveProductAction, setProductActiveAction } from "@/app/actions/catalog";
+import { ActionButton } from "@/components/team/action-button";
+import { ActionsPanel } from "@/components/ui/page-header";
 import { ProductForm } from "@/components/catalog/product-form";
-import { Card, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Edit product" };
@@ -17,7 +19,7 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
   const [productResult, costResult, returnablesResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, unit, selling_price, low_stock_threshold, tracks_serials, warranty_months, category, returnable_items (name)")
+      .select("id, name, sku, unit, selling_price, low_stock_threshold, tracks_serials, warranty_months, category, is_active, returnable_items (name)")
       .eq("organization_id", org.id)
       .eq("id", id)
       .maybeSingle(),
@@ -31,7 +33,10 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
 
   return (
     <div className="max-w-2xl space-y-6">
-      <PageTitle>Edit product</PageTitle>
+      <div className="page-head">
+        <PageTitle sub="Change its details, or switch it off when you stop selling it.">{product.name}</PageTitle>
+        {product.is_active ? null : <Badge tone="accent">Switched off</Badge>}
+      </div>
       <Card>
         <ProductForm
           action={saveProductAction.bind(null, org.slug, product.id)}
@@ -52,6 +57,19 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
           }}
         />
       </Card>
+      <ActionsPanel>
+        <p className="text-sm font-medium text-ink-soft">
+          {product.is_active
+            ? "A switched-off product can no longer be ordered or received. Its history stays."
+            : "Switch it back on to order and receive it again."}
+        </p>
+        <ActionButton
+          action={setProductActiveAction.bind(null, org.slug, product.id, !product.is_active)}
+          label={product.is_active ? "Switch off this product" : "Switch this product back on"}
+          variant={product.is_active ? "danger" : "secondary"}
+          showSuccess
+        />
+      </ActionsPanel>
     </div>
   );
 }

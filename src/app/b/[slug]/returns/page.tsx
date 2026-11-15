@@ -1,36 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { voidAdjustmentAction, voidSupplierExchangeAction } from "@/app/actions/corrections";
-import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import {
-  ADD_REASONS,
-  describeOwed,
-  formatDay,
-  formatQuantity,
-  MOVEMENT_LABELS,
-  SUBTRACT_REASONS
-} from "@/lib/format";
+import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { PageHeader } from "@/components/ui/page-header";
+import { ADD_REASONS, describeOwed, formatDay, formatQuantity, MOVEMENT_LABELS, SUBTRACT_REASONS } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
-export const metadata: Metadata = { title: "Returns" };
+export const metadata: Metadata = { title: "Empties" };
 
-const signed = (value: number) => `${value > 0 ? "+" : "−"}${formatQuantity(Math.abs(value))}`;
+const signed = (value: number) =>
+  value === 0 ? <span className="text-ink-soft">—</span> : `${value > 0 ? "+" : "−"}${formatQuantity(Math.abs(value))}`;
 
 async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
+  const word = org.sells_drinks ? "Empties" : "Returns";
 
   const [totalsResult, tripsResult, balancesResult, activityResult] = await Promise.all([
     supabase.from("returnable_totals").select("returnable_item_id, name, holding, owed, credit").eq("organization_id", org.id).order("name"),
     supabase
       .from("dispatch_trip_summaries")
-      .select("id, trip_no, dispatch_date, driver_name, order_count")
+      .select("id, trip_no, dispatch_date, driver_name, vehicle, order_count")
       .eq("organization_id", org.id)
       .eq("status", "dispatched")
       .order("dispatch_date"),
@@ -47,38 +42,56 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
       )
       .eq("organization_id", org.id)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(30)
   ]);
   const totals = totalsResult.data ?? [];
   const trips = tripsResult.data ?? [];
   const balances = balancesResult.data ?? [];
   const activity = activityResult.data ?? [];
+  const manyItems = totals.length > 1;
 
-  // Say why each adjustment was made, not just that there was one.
-  const adjustmentIds = activity
-    .filter((movement) => movement.movement_type === "adjustment")
-    .map((movement) => movement.source_id);
-  const { data: adjustments } = adjustmentIds.length
-    ? await supabase.from("returnable_adjustments").select("id, reason").in("id", adjustmentIds)
-    : { data: [] };
-  const reasonLabels = new Map([...ADD_REASONS, ...SUBTRACT_REASONS]);
+  // Say why each adjustment was made, and where an exchange came from.
+  const adjustmentIds = activity.filter((move) => move.source_type === "returnable_adjustment").map((move) => move.source_id);
+  const exchangeIds = activity.filter((move) => move.source_type === "supplier_exchange").map((move) => move.source_id);
+  const [{ data: adjustments }, { data: exchanges }] = await Promise.all([
+    adjustmentIds.length
+      ? supabase.from("returnable_adjustments").select("id, reason, voided_at").in("id", adjustmentIds)
+      : Promise.resolve({ data: [] }),
+    exchangeIds.length
+      ? supabase.from("supplier_exchanges").select("id, receipt_id, exchange_no").in("id", exchangeIds)
+      : Promise.resolve({ data: [] })
+  ]);
+  const reasonLabels = new Map<string, string>([...ADD_REASONS, ...SUBTRACT_REASONS]);
   if (org.sells_drinks) reasonLabels.set("opening_count", "Opening empties (already in store)");
   const reasonById = new Map((adjustments ?? []).map((item) => [item.id, reasonLabels.get(item.reason)]));
+  const exchangeById = new Map((exchanges ?? []).map((item) => [item.id, item]));
+
+  type Move = (typeof activity)[number];
+  const moveHref = (move: Move) => {
+    if (move.source_type === "dispatch_trip") return `${base}/dispatch/${move.source_id}`;
+    if (move.source_type === "returnable_adjustment") return `${base}/returns/adjustments/${move.source_id}`;
+    if (move.source_type === "supplier_exchange") {
+      const exchange = exchangeById.get(move.source_id);
+      return exchange?.receipt_id ? `${base}/stock/receipts/${exchange.receipt_id}` : `${base}/returns/exchanges/${move.source_id}`;
+    }
+    return `${base}/returns`;
+  };
 
   if (totals.length === 0) {
     return (
       <div className="space-y-6">
-        <PageTitle>Returns</PageTitle>
+        <PageHeader title={word} />
         <EmptyState title="Nothing to track yet">
-          None of your products need anything brought back. To start, edit a product and tick
-          &ldquo;Customers must bring something back&rdquo;.
+          {org.sells_drinks
+            ? "Add an RGB drink first; its empties are counted here."
+            : "None of your products need anything brought back."}
         </EmptyState>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {typeof query.saved === "string" ? (
         <Alert tone="success">
           {query.saved === "adjustment"
@@ -89,51 +102,45 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
         </Alert>
       ) : null}
 
-      <div className="page-head">
-        <PageTitle sub="What is in store, and what customers still have to bring back.">
-          {org.sells_drinks ? "Empties" : "Returns"}
-        </PageTitle>
-        <div className="flex flex-wrap gap-2">
-          {org.sells_drinks ? (
-            // Empties going back to the supplier are recorded on the delivery itself.
-            <Link href={`${base}/returns/customer-return`} className={buttonClass("primary")}>
-              Customer brought back empties
-            </Link>
-          ) : (
-            <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
-              Supplier exchange
-            </Link>
-          )}
-          {manager ? (
-            <Link href={`${base}/returns/adjust`} className={buttonClass("secondary")}>
-              Add or subtract
-            </Link>
-          ) : null}
-          {org.sells_drinks ? (
-            <Link href={`${base}/returns/exchange`} className={buttonClass("ghost")}>
-              Supplier took empties only
-            </Link>
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        title={word}
+        sub="What is in store, what customers still have to bring back, and every movement."
+        actions={
+          <>
+            {org.sells_drinks ? (
+              <Link href={`${base}/returns/customer-return`} className={buttonClass("primary")}>
+                Customer brought back empties
+              </Link>
+            ) : (
+              <Link href={`${base}/returns/exchange`} className={buttonClass("primary")}>
+                Supplier exchange
+              </Link>
+            )}
+            {manager ? (
+              <Link href={`${base}/returns/adjust`} className={buttonClass("secondary")}>
+                Add or subtract
+              </Link>
+            ) : null}
+            {org.sells_drinks ? (
+              <Link href={`${base}/returns/exchange`} className={buttonClass("ghost")}>
+                Supplier took empties only
+              </Link>
+            ) : null}
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {totals.map((item) => (
           <section key={item.returnable_item_id} className="overflow-hidden rounded-md bg-white">
-            <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold">
-              {item.name}
-            </h2>
+            <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold">{item.name}</h2>
             <dl className="grid grid-cols-2 divide-x divide-line">
               <div className="px-5 py-4">
-                <dd className="text-4xl font-extrabold leading-none tabular-nums">
-                  {formatQuantity(Number(item.holding))}
-                </dd>
+                <dd className="text-4xl font-extrabold leading-none tabular-nums">{formatQuantity(Number(item.holding))}</dd>
                 <dt className="mt-2 text-sm font-bold uppercase tracking-wide text-ink-soft">In store</dt>
               </div>
               <div className="px-5 py-4">
-                <dd className="text-4xl font-extrabold leading-none tabular-nums">
-                  {formatQuantity(Number(item.owed))}
-                </dd>
+                <dd className="text-4xl font-extrabold leading-none tabular-nums">{formatQuantity(Number(item.owed))}</dd>
                 <dt className="mt-2 text-sm font-bold uppercase tracking-wide text-ink-soft">Owed by customers</dt>
               </div>
             </dl>
@@ -147,101 +154,73 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
       </div>
 
       {trips.length > 0 ? (
-        <ListCard title="Trips to record returns for">
-          <ul className="divide-y divide-line">
-            {trips.map((trip) => (
-              <li key={trip.id}>
-                <Link
-                  href={`${base}/dispatch/${trip.id}`}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 hover:bg-paper"
-                >
-                  <span>
-                    <span className="block text-lg font-extrabold">{trip.driver_name}</span>
-                    <span className="font-medium text-ink-soft">
-                      {trip.trip_no} · left {formatDay(trip.dispatch_date)} · {trip.order_count} order
-                      {trip.order_count === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                  <Badge tone="accent">Record returns</Badge>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </ListCard>
+        <TableCard title="Trips to record returns for">
+          <DataTable
+            label="Trips to record returns for"
+            rows={trips}
+            rowKey={(trip) => trip.id}
+            rowHref={(trip) => `${base}/dispatch/${trip.id}`}
+            columns={[
+              { header: "Trip no.", cell: (trip) => <span className="tabular-nums">{trip.trip_no}</span> },
+              { header: "Action", phone: "badge", cell: () => <Badge tone="accent">Record returns</Badge> },
+              { header: "Left", cell: (trip) => formatDay(trip.dispatch_date) },
+              { header: "Driver", cell: (trip) => trip.driver_name },
+              { header: "Truck", cell: (trip) => trip.vehicle ?? <span className="text-ink-soft">—</span> },
+              { header: "Orders", align: "right", cell: (trip) => trip.order_count }
+            ]}
+          />
+        </TableCard>
       ) : null}
 
-      <ListCard title={org.sells_drinks ? "Empty shortages" : "Customer balances"}>
-        {balances.length === 0 ? (
-          <p className="px-5 py-4 font-medium text-ink-soft">No customer owes anything right now.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {balances.map((balance) => (
-              <li
-                key={`${balance.customer_id}-${balance.returnable_item_id}`}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
-              >
-                <span className="min-w-0">
-                  <span className="block font-extrabold">
-                    {balance.customer_name}
-                    {balance.customer_area ? ` (${balance.customer_area})` : ""}
-                  </span>
-                  <span className="text-sm font-medium text-ink-soft">{balance.returnable_name}</span>
-                </span>
+      <TableCard title={org.sells_drinks ? "Empty shortages" : "Customer balances"}>
+        <DataTable
+          label={org.sells_drinks ? "Empty shortages" : "Customer balances"}
+          rows={balances}
+          rowKey={(balance) => `${balance.customer_id}-${balance.returnable_item_id}`}
+          rowHref={manager ? (balance) => `${base}/customers/${balance.customer_id}` : undefined}
+          empty="No customer owes anything right now."
+          columns={[
+            { header: "Customer", wrap: true, cell: (balance) => balance.customer_name },
+            {
+              header: "Owes",
+              align: "right",
+              phone: "badge",
+              cell: (balance) => (
                 <Badge tone={Number(balance.owed) > 0 ? "solid" : "plain"}>{describeOwed(Number(balance.owed))}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </ListCard>
+              )
+            },
+            { header: "Area", cell: (balance) => balance.customer_area ?? <span className="text-ink-soft">—</span> },
+            ...(manyItems ? [{ header: "Item", cell: (balance: (typeof balances)[number]) => balance.returnable_name }] : [])
+          ]}
+        />
+      </TableCard>
 
       {activity.length > 0 ? (
-        <ListCard title="Latest activity">
-          <ul className="divide-y divide-line">
-            {activity.map((movement) => (
-              <li key={movement.id} className="space-y-2 px-5 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <span className="min-w-0">
-                  <span className="block font-extrabold">
-                    {MOVEMENT_LABELS[movement.movement_type]}
-                    {reasonById.get(movement.source_id) ? `: ${reasonById.get(movement.source_id)}` : ""}
-                  </span>
-                  <span className="text-sm font-medium text-ink-soft">
-                    {[formatDay(movement.movement_date), movement.returnable_items?.name, movement.customers?.name]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </span>
-                <span className="text-right text-sm font-bold tabular-nums">
-                  {Number(movement.holding_delta) !== 0 ? (
-                    <span className="block">In store {signed(Number(movement.holding_delta))}</span>
-                  ) : null}
-                  {Number(movement.owed_delta) !== 0 ? (
-                    <span className="block text-ink-soft">Owed {signed(Number(movement.owed_delta))}</span>
-                  ) : null}
-                </span>
-                </div>
-                {manager && movement.source_type === "supplier_exchange" ? (
-                  <ReasonForm
-                    compact
-                    action={voidSupplierExchangeAction.bind(null, org.slug, movement.source_id)}
-                    trigger="Void this exchange"
-                    explanation="Use this when the exchange was recorded by mistake. The quantity goes back into the store count."
-                    submitLabel="Void exchange"
-                  />
-                ) : null}
-                {manager && movement.source_type === "returnable_adjustment" ? (
-                  <ReasonForm
-                    compact
-                    action={voidAdjustmentAction.bind(null, org.slug, movement.source_id)}
-                    trigger="Void this adjustment"
-                    explanation="Use this when the adjustment was recorded by mistake. Its effect on the store count, and on the customer's balance if one was named, is reversed."
-                    submitLabel="Void adjustment"
-                  />
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </ListCard>
+        <TableCard title="Latest movements">
+          <DataTable
+            label="Latest movements"
+            rows={activity}
+            rowKey={(move) => move.id}
+            rowHref={moveHref}
+            columns={[
+              {
+                header: "What happened",
+                wrap: true,
+                cell: (move) => (
+                  <>
+                    {MOVEMENT_LABELS[move.movement_type]}
+                    {reasonById.get(move.source_id) ? `: ${reasonById.get(move.source_id)}` : ""}
+                  </>
+                )
+              },
+              { header: "Date", cell: (move) => formatDay(move.movement_date) },
+              ...(manyItems ? [{ header: "Item", cell: (move: Move) => move.returnable_items?.name ?? "" }] : []),
+              { header: "Customer", wrap: true, cell: (move) => move.customers?.name ?? <span className="text-ink-soft">—</span> },
+              { header: "In store", align: "right", cell: (move) => signed(Number(move.holding_delta)) },
+              { header: "Owed", align: "right", cell: (move) => signed(Number(move.owed_delta)) }
+            ]}
+          />
+        </TableCard>
       ) : null}
     </div>
   );

@@ -6,7 +6,9 @@ import { voidStockReceiptAction } from "@/app/actions/corrections";
 import { ReasonForm } from "@/components/corrections/reason-form";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Card, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { ActionsPanel } from "@/components/ui/page-header";
 import { describeUnit, formatDate, formatMoney, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
@@ -94,81 +96,114 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
         </dl>
       </Card>
 
-      <Card>
-        <CardHeader title="Products received" />
-        <ul className="-my-3 divide-y divide-line">
-          {receipt.stock_receipt_items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3">
-              <span className="font-extrabold">{item.products?.name}</span>
-              <span>
-                <span className="text-xl font-extrabold tabular-nums">+{formatQuantity(Number(item.quantity))}</span>{" "}
-                <span className="font-medium text-ink-soft">{item.products?.unit}</span>
-              </span>
-              {manager && costByItem.has(item.id) ? (
-                <span className="basis-full text-sm font-medium text-ink-soft">
-                  Bought at {formatMoney(costByItem.get(item.id)!, org.currency_code)} per {item.products?.unit}
+      <TableCard title="Products received">
+        <DataTable
+          label="Products received"
+          rows={receipt.stock_receipt_items}
+          rowKey={(item) => item.id}
+          columns={[
+            {
+              header: "Product",
+              wrap: true,
+              cell: (item) => (
+                <>
+                  <span className="font-extrabold">{item.products?.name}</span>
+                  {receipt.product_units.some((unit) => unit.product_id === item.product_id) ? (
+                    <span className="block space-y-0.5 text-sm font-medium text-ink-soft">
+                      {receipt.product_units
+                        .filter((unit) => unit.product_id === item.product_id)
+                        .sort((a, b) => a.serial_no.localeCompare(b.serial_no))
+                        .map((unit) => (
+                          <span key={unit.id} className="block tabular-nums">
+                            {describeUnit(unit)}
+                          </span>
+                        ))}
+                    </span>
+                  ) : null}
+                </>
+              )
+            },
+            {
+              header: "Received",
+              align: "right",
+              phone: "badge",
+              cell: (item) => (
+                <span className="text-lg font-extrabold">
+                  +{formatQuantity(Number(item.quantity))}{" "}
+                  <span className="text-sm font-medium text-ink-soft">{item.products?.unit}</span>
                 </span>
-              ) : null}
-              {receipt.product_units.some((unit) => unit.product_id === item.product_id) ? (
-                <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
-                  {receipt.product_units
-                    .filter((unit) => unit.product_id === item.product_id)
-                    .sort((a, b) => a.serial_no.localeCompare(b.serial_no))
-                    .map((unit) => (
-                      <li key={unit.id} className="tabular-nums">
-                        {describeUnit(unit)}
-                      </li>
-                    ))}
-                </ul>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Card>
+              )
+            },
+            ...(manager
+              ? [
+                  {
+                    header: "Cost each",
+                    align: "right" as const,
+                    cell: (item: (typeof receipt.stock_receipt_items)[number]) =>
+                      costByItem.has(item.id) ? (
+                        formatMoney(costByItem.get(item.id)!, org.currency_code)
+                      ) : (
+                        <span className="text-ink-soft">—</span>
+                      )
+                  }
+                ]
+              : [])
+          ]}
+        />
+      </TableCard>
 
       {(corrections ?? []).length > 0 ? (
-        <Card>
-          <CardHeader title="Corrections" />
-          <ul className="-my-3 divide-y divide-line">
-            {(corrections ?? []).map((change) => (
-              <li key={change.id} className="py-3">
-                <p className="font-extrabold">
-                  {change.products?.name}: {formatQuantity(Number(change.old_quantity))} →{" "}
-                  {formatQuantity(Number(change.new_quantity))} {change.products?.unit}
-                </p>
-                <p className="text-sm font-medium text-ink-soft">
-                  {[change.reason, change.profiles?.full_name, formatDate(change.created_at, org.timezone)]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <TableCard title="Corrections">
+          <DataTable
+            label="Corrections"
+            rows={corrections ?? []}
+            rowKey={(change) => change.id}
+            columns={[
+              { header: "Product", wrap: true, cell: (change) => <span className="font-extrabold">{change.products?.name}</span> },
+              {
+                header: "Change",
+                align: "right",
+                phone: "badge",
+                cell: (change) =>
+                  `${formatQuantity(Number(change.old_quantity))} → ${formatQuantity(Number(change.new_quantity))} ${change.products?.unit ?? ""}`
+              },
+              { header: "Reason", wrap: true, cell: (change) => change.reason },
+              { header: "By", cell: (change) => change.profiles?.full_name ?? "" },
+              { header: "When", cell: (change) => formatDate(change.created_at, org.timezone) }
+            ]}
+          />
+        </TableCard>
+      ) : null}
+
+      {manager && !receipt.voided_at ? (
+        <ActionsPanel>
+          {receipt.product_units.length === 0 ? (
+            <div className="space-y-1">
+              <Link href={`/b/${org.slug}/stock/receipts/${receipt.id}/correct`} className={buttonClass("primary")}>
+                Correct this delivery
+              </Link>
+              <p className="text-sm font-medium text-ink-soft">
+                Breakages handed back to the supplier, a wrong count, a product left out, or the wrong date.
+              </p>
+            </div>
+          ) : null}
+          <ReasonForm
+            action={voidStockReceiptAction.bind(null, org.slug, receipt.id)}
+            trigger="Void this delivery"
+            explanation="Use this when the delivery was recorded by mistake. Its quantities are taken back out of stock. It cannot be voided once that stock has been sold."
+            submitLabel="Void delivery"
+          />
+        </ActionsPanel>
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Link href={`/b/${org.slug}/stock`} className={buttonClass("secondary")}>
-          Back to stock
+        <Link href={`/b/${org.slug}/stock/receipts`} className={buttonClass("secondary")}>
+          Back to deliveries
         </Link>
-        {manager && !receipt.voided_at && receipt.product_units.length === 0 ? (
-          <Link href={`/b/${org.slug}/stock/receipts/${receipt.id}/correct`} className={buttonClass("secondary")}>
-            Correct this delivery
-          </Link>
-        ) : null}
-        <Link href={`/b/${org.slug}/stock/receive`} className={buttonClass("primary")}>
+        <Link href={`/b/${org.slug}/stock/receive`} className={buttonClass("secondary")}>
           + Receive more
         </Link>
       </div>
-
-      {canManage(role) && !receipt.voided_at ? (
-        <ReasonForm
-          action={voidStockReceiptAction.bind(null, org.slug, receipt.id)}
-          trigger="Void this receipt"
-          explanation="Use this when the delivery was recorded by mistake. Its quantities are taken back out of stock. It cannot be voided once that stock has been sold."
-          submitLabel="Void receipt"
-        />
-      ) : null}
     </div>
   );
 }

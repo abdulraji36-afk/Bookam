@@ -4,14 +4,16 @@ import { Ellipsis, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
-import { isActivePath, NAV_ICONS, type NavItem } from "@/components/business/nav-items";
+import { isActivePath, NAV_ICONS, type NavGroup, type NavItem } from "@/components/business/nav-items";
 import { TabLink } from "@/components/business/nav-link";
 
 type Props = {
   /** Shown as tabs. Keep to four so they fit beside "More" on a small phone. */
   primary: NavItem[];
-  /** Everything else, reached through "More". */
-  more: NavItem[];
+  /** Everything else, reached through "More", in the same groups as the side menu. */
+  more: NavGroup[];
+  /** The main actions, at the top of "More". */
+  quick: { href: string; label: string }[];
   businessName: string;
 };
 
@@ -19,10 +21,10 @@ type Props = {
  * Phone navigation: a bar fixed to the bottom of the screen, where thumbs
  * reach, with the less-used pages in a sheet that slides up from it.
  */
-export function MobileNav({ primary, more, businessName }: Props) {
+export function MobileNav({ primary, more, quick, businessName }: Props) {
   const sheet = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
-  const moreIsActive = more.some((item) => isActivePath(pathname, item));
+  const moreIsActive = more.some((group) => group.items.some((item) => isActivePath(pathname, item)));
   const close = () => sheet.current?.close();
 
   return (
@@ -70,27 +72,49 @@ export function MobileNav({ primary, more, businessName }: Props) {
             </button>
           </div>
 
-          <ul className="grid grid-cols-3 gap-2">
-            {more.map((item) => {
-              const Icon = NAV_ICONS[item.icon];
-              const isActive = isActivePath(pathname, item);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={close}
-                    aria-current={isActive ? "page" : undefined}
-                    className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-md px-2 text-center text-sm ${
-                      isActive ? "bg-accent font-extrabold text-accent-ink" : "bg-paper font-bold active:bg-chip"
-                    }`}
-                  >
-                    <Icon aria-hidden className="size-6" />
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {quick.map((action, index) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                onClick={close}
+                className={`flex min-h-12 items-center justify-center rounded-md px-3 text-sm font-extrabold uppercase tracking-wide ${
+                  index === 0 ? "bg-accent text-accent-ink" : "border-2 border-ink"
+                }`}
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
+
+          {more.map((group) => (
+            <div key={group.label ?? "home"} className="mb-4">
+              {group.label ? (
+                <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.12em] text-ink-soft">{group.label}</p>
+              ) : null}
+              <ul className="grid grid-cols-3 gap-2">
+                {group.items.map((item) => {
+                  const Icon = NAV_ICONS[item.icon];
+                  const isActive = isActivePath(pathname, item);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={close}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-md px-2 text-center text-sm ${
+                          isActive ? "bg-accent font-extrabold text-accent-ink" : "bg-paper font-bold active:bg-chip"
+                        }`}
+                      >
+                        <Icon aria-hidden className="size-6" />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
 
           <div className="mt-4 grid grid-cols-2 gap-2 border-t border-line pt-4">
             <Link

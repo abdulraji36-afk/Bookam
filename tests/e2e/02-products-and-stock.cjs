@@ -54,7 +54,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // Products: one with a return, one without
   await nav(a, "Products");
   await a.getByText("No products yet").waitFor();
-  await a.getByRole("link", { name: "+ New product" }).click();
+  await a.locator("main").getByRole("link", { name: "+ New product" }).click();
   await a.getByLabel("Product name").fill("Cola 50cl");
   await a.getByLabel("Product code (optional)").fill("COLA-50");
   await a.getByLabel(/Selling price/).fill("4200");
@@ -66,9 +66,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.screenshot({ path: `${SHOTS}/10-product-form.png`, fullPage: true });
   await a.getByRole("button", { name: "Save product" }).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "Cola 50cl" }).getByText("RGB · empties back").waitFor();
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("RGB", { exact: true }).waitFor();
 
-  await a.getByRole("link", { name: "+ New product" }).click();
+  await a.locator("main").getByRole("link", { name: "+ New product" }).click();
   await a.getByLabel("Product name").fill("cola 50cl");
   await a.getByLabel(/Selling price/).fill("4200");
   await a.getByLabel(/Buying cost/).fill("3600");
@@ -81,14 +81,15 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByLabel(/Buying cost/).fill("1500");
   await a.getByRole("button", { name: "Save product" }).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("PET", { exact: true }).waitFor();
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("Per pack · ₦1,800").waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("PET", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("₦1,800", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/11-products.png`, fullPage: true });
   ok("owner creates a product with a return and one without; duplicate name refused");
 
   // Edit shows saved values including the admin-only cost
-  await a.locator("li", { hasText: "Cola 50cl" }).getByRole("link", { name: "Edit" }).click();
-  await a.getByRole("heading", { name: "Edit product" }).waitFor();
+  // A product opens on its own page.
+  await a.locator("tr", { hasText: "Cola 50cl" }).getByRole("link", { name: "Cola 50cl" }).click();
+  await a.getByRole("heading", { name: "Cola 50cl" }).waitFor();
   // Earlier pages stay in the DOM hidden, so read only the visible form.
   const visible = (locator) => locator.filter({ visible: true });
   assert.equal(await visible(a.getByLabel(/Buying cost/)).inputValue(), "3600");
@@ -98,20 +99,22 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
 
   // Customers
   await nav(a, "Customers");
-  await a.getByRole("link", { name: "+ New customer" }).click();
+  await a.locator("main").getByRole("link", { name: "+ New customer" }).click();
   await a.getByLabel("Customer name").fill("Mama Tunde Stores");
   await a.getByLabel("Area (optional)").fill("Ikeja");
   await a.getByLabel("Phone (optional)").fill("0803 000 0000");
   await a.getByRole("button", { name: "Save customer" }).click();
   await a.waitForURL(new RegExp(base + "/customers$"));
-  await a.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Ikeja · 0803 000 0000").waitFor();
+  const mamaRow = a.locator("tr", { hasText: "Mama Tunde Stores" });
+  await mamaRow.getByText("Ikeja", { exact: true }).waitFor();
+  await mamaRow.getByText("0803 000 0000", { exact: true }).waitFor();
   ok("owner adds a customer");
 
   // Stock: starts at zero and low, then receive
   await nav(a, "Stock");
-  await a.locator("li", { hasText: "Cola 50cl" }).getByText("Low stock").waitFor();
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("Low stock").waitFor();
   await a.getByText("1 product is running low.").waitFor();
-  await a.getByRole("link", { name: "+ Receive stock" }).click();
+  await a.locator("main").getByRole("link", { name: "+ Receive stock" }).click();
   await a.getByLabel("Supplier delivery reference").fill("NBC-0001");
   await a.getByRole("button", { name: "Save and add to stock" }).click();
   await a.getByText("Add at least one product.").waitFor();
@@ -129,14 +132,16 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/stock\/receipts\//);
   await a.getByText("Saved. The stock below has been added.").waitFor();
   await a.getByRole("heading", { name: /^STK-\d{8}-0001$/ }).waitFor();
-  await a.getByRole("link", { name: "Back to stock" }).click();
+  await nav(a, "Stock");
   await a.waitForURL(new RegExp(base + "/stock$"));
-  const cola = a.locator("li", { hasText: "Cola 50cl" });
+  const cola = a.locator("li, tr", { hasText: "Cola 50cl" });
   await cola.getByText("100", { exact: true }).waitFor();
   assert.equal(await cola.getByText("Low stock").count(), 0, "no longer low after receiving");
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
-  await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/13-stock.png`, fullPage: true });
+  // Deliveries have their own page in the menu.
+  await nav(a, "Deliveries");
+  await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
   ok("receiving stock updates the stock on hand and clears the low-stock warning");
 
   // Dashboard reflects it
@@ -157,15 +162,16 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(BASE + base + "/products");
-  await c.locator("li", { hasText: "Cola 50cl" }).waitFor();
-  assert.equal(await c.getByRole("link", { name: "+ New product" }).count(), 0);
-  assert.equal(await c.getByRole("link", { name: "Edit" }).count(), 0);
+  await c.locator("li, tr", { hasText: "Cola 50cl" }).waitFor();
+  assert.equal(await c.locator("main").getByRole("link", { name: "+ New product" }).count(), 0);
+  // Staff can see products but cannot open them to change them.
+  assert.equal(await c.locator("tr", { hasText: "Cola 50cl" }).getByRole("link").count(), 0);
   await c.goto(BASE + base + "/products/new");
   await c.waitForURL(new RegExp(base + "$"));
   ok("staff can see products but cannot add or edit them");
 
   await c.goto(BASE + base + "/stock");
-  await c.getByRole("link", { name: "+ Receive stock" }).click();
+  await c.locator("main").getByRole("link", { name: "+ Receive stock" }).click();
   await pick(c, "Product", "Cola 50cl (crate)");
   await c.getByLabel("Quantity").fill("12");
   await c.getByLabel("Supplier delivery reference").fill("NBC-0002");
@@ -174,23 +180,26 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.waitForURL(/\/stock\/receipts\//);
   await c.getByRole("heading", { name: /^STK-\d{8}-0002$/ }).waitFor();
   await c.getByText("Chidi Eze").waitFor();
-  await c.getByRole("link", { name: "Back to stock" }).click();
-  await c.locator("li", { hasText: "Cola 50cl" }).getByText("112", { exact: true }).waitFor();
+  await c.goto(BASE + base + "/stock");
+  await c.locator("li, tr", { hasText: "Cola 50cl" }).getByText("112", { exact: true }).waitFor();
   await c.screenshot({ path: `${SHOTS}/15-stock-mobile.png`, fullPage: true });
   ok("staff receives stock on a phone; receipt is numbered and credited to them");
 
   await c.goto(BASE + base + "/customers");
-  await c.getByRole("link", { name: "+ New customer" }).click();
+  await c.locator("main").getByRole("link", { name: "+ New customer" }).click();
   await c.getByLabel("Customer name").fill("Grace Canteen");
   await c.getByRole("button", { name: "Save customer" }).click();
   await c.waitForURL(new RegExp(base + "/customers$"));
-  await c.locator("li", { hasText: "Grace Canteen" }).waitFor();
+  await c.locator("li, tr", { hasText: "Grace Canteen" }).waitFor();
   ok("staff can add a customer");
 
   // Switch a product off: disappears from receive list
   await nav(a, "Products");
-  await a.locator("li", { hasText: "Water 75cl" }).getByRole("button", { name: "Switch off" }).click();
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("Switched off").waitFor();
+  await a.locator("tr", { hasText: "Water 75cl" }).getByRole("link", { name: "Water 75cl" }).click();
+  await visible(a.getByRole("button", { name: "Switch off this product" })).click();
+  await a.getByText("Switched off", { exact: true }).first().waitFor();
+  await a.goto(BASE + base + "/products?status=off");
+  await a.locator("tr", { hasText: "Water 75cl" }).waitFor();
   await a.goto(BASE + base + "/stock/receive");
   const receiveBox = a.getByRole("combobox", { name: "Product", exact: true }).filter({ visible: true });
   await receiveBox.click();

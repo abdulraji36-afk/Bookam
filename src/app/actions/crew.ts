@@ -11,8 +11,14 @@ const workerSchema = z.object({
   phone: z.string().trim().max(30, "That phone number is too long.")
 });
 
-/** Owners and admins add a driver or loader to the list. */
-export async function saveWorkerAction(slug: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
+/** Owners and admins add a driver or loader to the list, or change one (workerId set). */
+export async function saveWorkerAction(
+  slug: string,
+  workerId: string | null,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  if (workerId !== null && !z.uuid().safeParse(workerId).success) return { ok: false, message: "Not found." };
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   const parsed = workerSchema.safeParse({
     name: String(formData.get("name") ?? ""),
@@ -23,7 +29,7 @@ export async function saveWorkerAction(slug: string, _previous: ActionState, for
 
   const { error } = await supabase.rpc("save_dispatch_worker", {
     p_organization_id: org.id,
-    p_worker_id: null,
+    p_worker_id: workerId,
     p_name: parsed.data.name,
     p_role: parsed.data.role,
     p_phone: parsed.data.phone || null
@@ -31,7 +37,7 @@ export async function saveWorkerAction(slug: string, _previous: ActionState, for
   if (error) return { ok: false, message: describeDbError(error) };
 
   revalidatePath(`/b/${slug}`, "layout");
-  return { ok: true, message: `${parsed.data.name} added.` };
+  return { ok: true, message: workerId ? "Saved." : `${parsed.data.name} added.` };
 }
 
 export async function setWorkerActiveAction(

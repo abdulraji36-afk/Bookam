@@ -95,7 +95,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
   await go("/stock");
-  await a.locator("li", { hasText: "Rice 50kg" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Rice 50kg" }).getByText("20", { exact: true }).waitFor();
   assert.equal(await a.getByRole("link", { name: "Write off / correct" }).count(), 0);
   const gone = await a.goto(BASE + base + "/stock/adjust");
   assert.equal(gone.status(), 404);
@@ -157,13 +157,13 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await go("/orders?q=basira");
-  await a.locator("section", { hasText: "Orders matching “basira”" }).getByText("Iya Basira Provisions").waitFor();
+  await a.locator("tr", { hasText: "Iya Basira Provisions" }).first().waitFor();
   await go("/orders?q=nobody-here");
   await a.getByText("Nothing matches “nobody-here”.").waitFor();
   await go("/products?q=rice");
   await a.getByText("Rice 50kg").waitFor();
   await go("/stock/receipts?q=STK");
-  await a.locator("section", { hasText: "Deliveries matching" }).getByText(/^STK-/).first().waitFor();
+  await a.locator("tr").getByText(/^STK-/).first().waitFor();
   ok("customers page in fifties; orders, customers, products and deliveries can be searched");
 
   // 4. Switching serial numbers on later, and a serial write-off.

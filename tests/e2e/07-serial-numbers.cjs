@@ -60,7 +60,7 @@ let dbg;
   await menu.getByRole("link", { name: "Sales", exact: true }).waitFor();
   assert.equal(await menu.getByRole("link", { name: "Orders", exact: true }).count(), 0);
   assert.equal(await menu.getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
-  await a.getByRole("link", { name: "+ New sale" }).waitFor();
+  await a.locator("main").getByRole("link", { name: "+ New sale" }).waitFor();
   await a.getByLabel("Find a serial number").waitFor();
   await a.getByText("Waiting to be collected").first().waitFor();
   ok("a phone shop sees Sales instead of Orders, no Dispatch, and the serial search on its dashboard");
@@ -76,7 +76,7 @@ let dbg;
   await a.screenshot({ path: `${SHOTS}/70-product-serial.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("section", { hasText: "With serial numbers" }).getByText("iPhone 15 128GB").waitFor();
+  await a.locator("tr", { hasText: "iPhone 15 128GB" }).getByText("Serial numbers", { exact: true }).waitFor();
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("USB-C charger");
   await vis(a.getByLabel("Sold by the")).fill("piece");
@@ -84,7 +84,7 @@ let dbg;
   await vis(a.getByLabel("Track each unit by serial number")).uncheck(); // accessories are counted
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("section", { hasText: "Counted items" }).getByText("USB-C charger").waitFor();
+  await a.locator("tr", { hasText: "USB-C charger" }).getByText("Counted", { exact: true }).waitFor();
   ok("a product can be set to track each unit by serial number, with a warranty");
 
   // Stock in phone by phone; Enter (as a scanner sends) starts the next line
@@ -124,7 +124,7 @@ let dbg;
 
   // Stock page breakdown
   await go("/stock");
-  const phoneRow = a.locator("li", { hasText: "iPhone 15 128GB" });
+  const phoneRow = a.locator("li, tr", { hasText: "iPhone 15 128GB" });
   await phoneRow.getByText("3", { exact: true }).waitFor();
   await phoneRow.getByText("Black ×2 · Blue ×1").waitFor();
   await a.screenshot({ path: `${SHOTS}/72-stock-breakdown.png`, fullPage: true });

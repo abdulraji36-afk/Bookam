@@ -158,8 +158,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await expectTotals(200, 60);
   await a.locator("section", { hasText: "Trips to record returns for" }).getByText("Musa Driver").waitFor();
   const balances = a.locator("section", { hasText: "Empty shortages" });
-  await balances.locator("li", { hasText: "Mama Tunde Stores" }).getByText("40 owed").waitFor();
-  await balances.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("20 owed").waitFor();
+  await balances.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("40 owed").waitFor();
+  await balances.locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("20 owed").waitFor();
   await a.screenshot({ path: `${SHOTS}/31-returns-out.png`, fullPage: true });
   ok("dispatching makes each customer owe their crates");
 
@@ -173,13 +173,13 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.screenshot({ path: `${SHOTS}/32-record-returns.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
   const cameBack = a.locator("section", { hasText: "What came back" });
-  await cameBack.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Short by 8").waitFor();
-  await cameBack.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("All back").waitFor();
+  await cameBack.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("Short by 8").waitFor();
+  await cameBack.locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("All back").waitFor();
   await vis(a.getByText("Completed", { exact: true })).first().waitFor();
   assert.equal(await vis(a.getByRole("button", { name: "Record returns and complete trip" })).count(), 0);
   await a.screenshot({ path: `${SHOTS}/33-trip-returned.png`, fullPage: true });
   await expectTotals(252, 8);
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("8 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("8 owed").waitFor();
   ok("returns are recorded per customer and the shortage stays on the customer's balance");
 
   // Supplier exchange
@@ -206,7 +206,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.waitForURL(/\/returns\?saved=adjustment/);
   await expectTotals(112, 0);
   await a.getByText("2 of those in store are held for customers in credit.").waitFor();
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("2 in credit").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("2 in credit").waitFor();
   ok("Add with a customer: the store count rises and the customer's balance falls, into credit");
 
   // Adjustment: subtract damaged, and correction needs a note
@@ -228,10 +228,10 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.getByText("Old debt recorded on the customer's balance.").waitFor();
   await expectTotals(110, 15);
   await go("/customers");
-  await a.locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("Empties: 15 owed").waitFor();
-  await a.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Empties: 2 in credit").waitFor();
+  await a.locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("15 owed", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("2 in credit", { exact: true }).waitFor();
   await go("/returns");
-  await a.locator("section", { hasText: "Latest activity" }).getByText("Taken by the supplier").waitFor();
+  await a.locator("section", { hasText: "Latest movements" }).getByText("Taken by the supplier").waitFor();
   await a.screenshot({ path: `${SHOTS}/35-returns.png`, fullPage: true });
   ok("an old debt is recorded and shows on the customer list");
 
@@ -247,7 +247,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.getByRole("button", { name: /^Yes, / }).click();
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
   await go("/returns");
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("10 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("10 owed").waitFor();
   ok("a customer's credit counts against their next order");
 
   // Staff on a phone: can exchange and record returns, cannot adjust

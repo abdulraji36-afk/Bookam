@@ -100,7 +100,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
 
   await nav(a, "Orders");
   await a.getByText("No orders yet").waitFor();
-  await a.getByRole("link", { name: "+ New order" }).click();
+  await a.locator("main").getByRole("link", { name: "+ New order" }).click();
   await a.waitForURL(/\/orders\/new/);
   await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40], ["Water 75cl", 10]]);
   await a.getByText("100 crate in stock").waitFor();
@@ -109,11 +109,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.getByRole("heading", { name: /^ORD-\d{8}-0001$/ }).waitFor();
-  await a.getByText("40 Empties due back").waitFor();
+  await a.locator("tr", { hasText: "Cola 50cl" }).getByText("40 Empties", { exact: true }).waitFor();
   await a.getByText("Waiting for dispatch").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/21-order.png`, fullPage: true });
   await a.goto(BASE + base + "/stock");
-  await a.locator("li", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
   ok("an order sets its stock aside and shows what is due back");
 
   // --- cannot oversell; typed values survive the error
@@ -136,15 +136,15 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByLabel("Quantity")).fill("20");
   await vis(a.getByRole("button", { name: "Save changes" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-  await a.getByText("20 pack × ₦1,800").waitFor();
+  await a.locator("tr", { hasText: "Water 75cl" }).getByText("20 pack", { exact: true }).waitFor();
   await a.goto(BASE + base + "/stock");
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
   ok("editing a waiting order adjusts the stock it holds");
 
   // --- trip
   await nav(a, "Dispatch");
   await a.getByText("2 orders waiting to be put on a trip.").waitFor();
-  await a.getByRole("link", { name: "+ New trip" }).click();
+  await a.locator("main").getByRole("link", { name: "+ New trip" }).click();
   await a.waitForURL(/\/dispatch\/new/);
   await vis(a.getByLabel("Driver's name")).fill("Musa");
   await vis(a.getByLabel("Truck")).fill("LAG-123-XY");
@@ -157,14 +157,14 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
   await a.getByRole("heading", { name: /^TRP-\d{8}-0001$/ }).waitFor();
   const loading = a.locator("section", { hasText: "Loading list" });
-  await loading.locator("li", { hasText: "Cola 50cl" }).getByText("40", { exact: true }).waitFor();
-  await loading.locator("li", { hasText: "Water 75cl" }).getByText("30", { exact: true }).waitFor();
+  await loading.locator("li, tr", { hasText: "Cola 50cl" }).getByText(/^40\s/).waitFor();
+  await loading.locator("li, tr", { hasText: "Water 75cl" }).getByText(/^30\s/).waitFor();
   await a.getByText("To bring back: 40 Empties").waitFor();
   await a.screenshot({ path: `${SHOTS}/23-trip-draft.png`, fullPage: true });
   ok("a trip groups orders and adds up a loading list");
 
   // an order on a trip can no longer be edited
-  await a.locator("li", { hasText: "Grace Canteen" }).getByRole("link").click();
+  await a.locator("li, tr", { hasText: "Grace Canteen" }).getByRole("link").click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
   await vis(a.getByText("On a trip", { exact: true })).waitFor();
   assert.equal(await vis(a.getByRole("link", { name: "Edit order" })).count(), 0);
@@ -177,8 +177,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Dispatch now" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
   await vis(a.getByRole("heading", { name: "Record what came back" })).waitFor();
-  await a.locator("li", { hasText: "Grace Canteen" }).getByText("Completed").waitFor();
-  await a.locator("li", { hasText: "Mama Tunde Stores" }).getByText("Out · returns due").waitFor();
+  await a.locator("li, tr", { hasText: "Grace Canteen" }).getByText("Completed").waitFor();
+  await a.locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("Out · returns due").waitFor();
   assert.equal(await vis(a.getByRole("button", { name: "Dispatch now" })).count(), 0);
   await a.screenshot({ path: `${SHOTS}/24-trip-dispatched.png`, fullPage: true });
   ok("dispatching completes the no-return order and leaves the return order open");
@@ -192,7 +192,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByRole("button", { name: /^Yes, / }).click();
   await a.getByText("Cancelled").first().waitFor();
   await a.goto(BASE + base + "/stock");
-  await a.locator("li", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
   ok("cancelling a waiting order puts its stock back");
 
   // --- staff on a phone: order -> trip -> dispatch
@@ -238,8 +238,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Cancel trip" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
   await a.getByText("The orders were sent back to the waiting list").waitFor();
-  await nav(a, "Orders");
-  await a.locator("section", { hasText: "Waiting for dispatch" }).locator("li", { hasText: "Mama Tunde Stores" }).waitFor();
+  await a.goto(BASE + base + "/orders?status=waiting");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).first().waitFor();
   await a.screenshot({ path: `${SHOTS}/27-orders.png`, fullPage: true });
   ok("an owner cancels a trip that has not left and its order waits again");
 

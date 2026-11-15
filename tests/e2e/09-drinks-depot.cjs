@@ -79,8 +79,8 @@ let dbg;
   assert.equal(await vis(a.getByLabel("Category")).inputValue(), "PET");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await a.locator("li", { hasText: "Coca-Cola 50cl RGB" }).getByText("RGB · empties back").waitFor();
-  await a.locator("li", { hasText: "Coca-Cola 50cl PET" }).getByText("PET", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("RGB", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Coca-Cola 50cl PET" }).getByText("PET", { exact: true }).waitFor();
   ok("each drink is RGB or PET, and cannot be saved without its price and cost");
 
   // The NBC list: tick, enter price and cost, add.
@@ -97,7 +97,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Add 2 products" })).click();
   await a.waitForURL(/\/products\?added=2/);
   await a.getByText("2 products added.").waitFor();
-  await a.locator("li", { hasText: "FANTA ULTRA 50CL X24 RGB" }).getByText("RGB · empties back").waitFor();
+  await a.locator("li, tr", { hasText: "FANTA ULTRA 50CL X24 RGB" }).getByText("RGB", { exact: true }).waitFor();
   await go("/products/nbc");
   await a.locator("tr", { hasText: "FANTA ULTRA 50CL X24 RGB" }).getByText("Already added").waitFor();
   ok("drinks can be added from the NBC list, each with its own price and cost");
@@ -137,7 +137,7 @@ let dbg;
   await a.getByText(/^250 \(EXC-\d{8}-0001\)$/).waitFor();
   await a.getByText("NBC-7781").waitFor();
   // Each delivery line keeps its buying cost.
-  await a.getByText("Bought at ₦3,900 per crate").waitFor();
+  await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("₦3,900", { exact: true }).waitFor();
 
   // After offloading: 12 crates broken, handed back to NBC. Correct the delivery.
   await vis(a.getByRole("link", { name: "Correct this delivery" })).click();
@@ -150,7 +150,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save correction" })).click();
   await a.waitForURL(/\?corrected=1/);
   await a.getByText("Correction saved. Stock and the reports have been updated.").waitFor();
-  await a.locator("section", { hasText: "Corrections" }).getByText("Coca-Cola 50cl RGB: 500 → 488 crate").waitFor();
+  await a.locator("section", { hasText: "Corrections" }).locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("500 → 488 crate").waitFor();
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("250", { exact: true }).waitFor();
   ok("an NBC delivery records the empties taken in the same go, and only 250 come off");
@@ -164,7 +164,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.getByText("You only have 250 Empties in store here, so 300 cannot be taken.", { exact: false }).waitFor();
   await go("/stock");
-  await a.locator("li", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
   // A drinks depot sees its stock by category, RGB first.
   const headings = await a.locator("main section h2").allInnerTexts();
   assert.deepEqual(headings.slice(0, 3), ["RGB", "PET", "Juice"]);
@@ -204,7 +204,7 @@ let dbg;
     await vis(a.getByRole("button", { name: "Add to the list" })).click();
     await a.getByText(`${name} added.`).waitFor();
   }
-  await a.locator("section", { hasText: "Drivers (1)" }).getByText("Musa").waitFor();
+  await a.locator("tr", { hasText: "Musa" }).getByText("Driver", { exact: true }).waitFor();
   await go("/dispatch/new");
   await vis(a.getByLabel("Driver's name")).fill("Musa");
   await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
@@ -224,7 +224,7 @@ let dbg;
   await a.locator("section", { hasText: "What came back" }).getByText("Short by 20").waitFor();
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("280", { exact: true }).waitFor();
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("20 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("20 owed").waitFor();
   ok("RGB and PET go on one trip; the 20 empties not brought back show as an empty shortage");
 
   // 6. The customer brings some back later, at the depot
@@ -239,7 +239,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save" })).click();
   await a.waitForURL(/\/returns\?saved=customer-return/);
   await card.locator("div", { hasText: "In store" }).getByText("295", { exact: true }).waitFor();
-  await a.locator("section", { hasText: "Empty shortages" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("5 owed").waitFor();
+  await a.locator("section", { hasText: "Empty shortages" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("5 owed").waitFor();
   await a.screenshot({ path: `${SHOTS}/94-empties-page.png`, fullPage: true });
   ok("a customer bringing back owed empties later settles the shortage and adds to the store");
 
@@ -250,9 +250,9 @@ let dbg;
 
   // Daily report, the Bilikis way
   await go("/reports/daily");
-  await a.locator("section", { hasText: "Deliveries received (1)" }).getByText("250 empties given back").waitFor();
+  await a.locator("section", { hasText: "Deliveries received (1)" }).locator("tr", { hasText: "NBC-7781" }).getByText("250", { exact: true }).waitFor();
   const emptiesDay = a.locator("section", { hasText: "Empties in and out" });
-  const line = async (label) => (await emptiesDay.locator("li", { hasText: label }).innerText()).split("\n").pop().trim();
+  const line = async (label) => (await emptiesDay.locator("li, tr", { hasText: label }).innerText()).split("\n").pop().trim();
   assert.equal(await line("Came back with trips"), "+30");
   assert.equal(await line("Customers brought back at the depot"), "+15");
   assert.equal(await line("Opening count, purchases and corrections"), "+500");

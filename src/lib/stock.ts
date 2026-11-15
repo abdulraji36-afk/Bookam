@@ -7,6 +7,7 @@ export type StockRow = {
   unit: string;
   onHand: number;
   isLow: boolean;
+  lowLevel: number;
   tracksSerials: boolean;
   category: string | null;
 };
@@ -52,6 +53,7 @@ export async function getStockRows(
       unit: product.unit,
       onHand,
       isLow: threshold > 0 && onHand <= threshold,
+      lowLevel: threshold,
       tracksSerials: product.tracks_serials,
       category: product.category
     };

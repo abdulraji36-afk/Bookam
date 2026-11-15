@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MobileNav } from "@/components/business/mobile-nav";
-import type { NavItem } from "@/components/business/nav-items";
+import type { NavGroup, NavItem } from "@/components/business/nav-items";
 import { NavLink } from "@/components/business/nav-link";
 import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
@@ -31,25 +31,78 @@ async function BusinessShell({
   const manager = canManage(role);
   // Shown when the business tracks returns, or still has returnables on record.
   const tracksReturns = org.tracks_returns || Boolean(returnableCount);
-  const items: NavItem[] = [
-    { href: base, label: "Dashboard", icon: "dashboard", exact: true },
-    { href: `${base}/orders`, label: saleWords(org.selling_mode).Many, icon: "orders" },
-    ...(org.does_delivery ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch" } as const] : []),
-    ...(tracksReturns ? [{ href: `${base}/returns`, label: org.sells_drinks ? "Empties" : "Returns", icon: "returns" } as const] : []),
-    { href: `${base}/stock`, label: "Stock", icon: "stock" },
-    { href: `${base}/products`, label: "Products", icon: "products" },
-    { href: `${base}/customers`, label: "Customers", icon: "customers" },
-    { href: `${base}/reports/daily`, label: "Reports", icon: "reports" },
+  const words = saleWords(org.selling_mode);
+
+  // Daily work first, then what you set up, then reports, then admin.
+  const groups: NavGroup[] = [
+    { label: null, items: [{ href: base, label: "Dashboard", icon: "dashboard", exact: true }] },
+    {
+      label: "Daily work",
+      items: [
+        { href: `${base}/orders`, label: words.Many, icon: "orders" },
+        ...(org.does_delivery
+          ? [{ href: `${base}/dispatch`, label: "Dispatch", icon: "dispatch", excludes: [`${base}/dispatch/crew`] } as const]
+          : []),
+        ...(tracksReturns
+          ? [{ href: `${base}/returns`, label: org.sells_drinks ? "Empties" : "Returns", icon: "returns" } as const]
+          : []),
+        { href: `${base}/stock`, label: "Stock", icon: "stock", excludes: [`${base}/stock/receipts`] },
+        { href: `${base}/stock/receipts`, label: "Deliveries", icon: "deliveries" }
+      ]
+    },
+    {
+      label: "Catalogue",
+      items: [
+        { href: `${base}/products`, label: "Products", icon: "products" },
+        { href: `${base}/customers`, label: "Customers", icon: "customers" },
+        ...(org.does_delivery
+          ? [{ href: `${base}/dispatch/crew`, label: "Drivers & loaders", icon: "drivers" } as const]
+          : [])
+      ]
+    },
+    {
+      label: "Reports",
+      items: [
+        { href: `${base}/reports/daily`, label: "Daily report", icon: "reports" },
+        ...(manager
+          ? ([
+              { href: `${base}/reports/stock-value`, label: "Stock value", icon: "value" },
+              { href: `${base}/activity`, label: "Activity", icon: "activity" }
+            ] as const)
+          : [])
+      ]
+    },
     ...(manager
-      ? ([
-          { href: `${base}/team`, label: "Team", icon: "team" },
-          { href: `${base}/activity`, label: "Activity", icon: "activity" },
-          { href: `${base}/settings`, label: "Settings", icon: "settings" }
-        ] as const)
+      ? [
+          {
+            label: "Admin",
+            items: [
+              { href: `${base}/team`, label: "Team", icon: "team" },
+              { href: `${base}/settings`, label: "Settings", icon: "settings" }
+            ] as NavItem[]
+          }
+        ]
       : [])
   ];
-  // On a phone the first four are tabs; "Dashboard" is shortened to fit.
-  const tabs = items.slice(0, 4).map((item) => (item.icon === "dashboard" ? { ...item, label: "Home" } : item));
+  const all = groups.flatMap((group) => group.items);
+  // On a phone the busiest pages are tabs; the rest sit under "More".
+  const tabHrefs = [
+    base,
+    `${base}/orders`,
+    `${base}/stock`,
+    tracksReturns ? `${base}/returns` : org.does_delivery ? `${base}/dispatch` : `${base}/customers`
+  ];
+  const tabs = tabHrefs
+    .map((href) => all.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item))
+    .map((item) => (item.icon === "dashboard" ? { ...item, label: "Home" } : item));
+  const moreGroups = groups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !tabHrefs.includes(item.href)) }))
+    .filter((group) => group.items.length > 0);
+  const quick = [
+    { href: `${base}/orders/new`, label: `+ New ${words.one}` },
+    { href: `${base}/stock/receive`, label: "Receive stock" }
+  ];
 
   return (
     <div className="flex flex-1 flex-col md:flex-row">
@@ -65,9 +118,35 @@ async function BusinessShell({
             {org.name}
           </Link>
         </div>
-        <nav aria-label="Business" className="menu-scroll flex-1 space-y-1 overflow-y-auto px-3 py-3">
-          {items.map((item) => (
-            <NavLink key={item.href} item={item} />
+        <div className="grid grid-cols-1 gap-2 px-3 pb-1 pt-3">
+          {quick.map((action, index) => (
+            <Link
+              key={action.href}
+              href={action.href}
+              className={`flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-extrabold uppercase tracking-wide ${
+                index === 0
+                  ? "bg-accent text-accent-ink hover:bg-accent-strong"
+                  : "border-2 border-white/30 text-white hover:bg-white/10"
+              }`}
+            >
+              {action.label}
+            </Link>
+          ))}
+        </div>
+        <nav aria-label="Business" className="menu-scroll flex-1 overflow-y-auto px-3 py-3">
+          {groups.map((group) => (
+            <div key={group.label ?? "home"} className="mb-2">
+              {group.label ? (
+                <p className="px-3.5 pb-0.5 pt-1.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.12em] text-nav/70">
+                  {group.label}
+                </p>
+              ) : null}
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavLink key={item.href} item={item} />
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
         <div className="border-t border-white/10 px-3 py-4">
@@ -93,7 +172,7 @@ async function BusinessShell({
         <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">{children}</main>
       </div>
 
-      <MobileNav primary={tabs} more={items.slice(4)} businessName={org.name} />
+      <MobileNav primary={tabs} more={moreGroups} quick={quick} businessName={org.name} />
     </div>
   );
 }

@@ -150,8 +150,8 @@ let dbg;
   await new Promise((r) => setTimeout(r, 2500));
   assert.equal((await sent()).length, after, "nothing is sent after disconnecting");
   await go("/activity");
-  await a.locator("li", { hasText: "Connected Telegram" }).getByText("Ada Depot Staff").waitFor();
-  await a.locator("li", { hasText: "Disconnected Telegram" }).waitFor();
+  await a.locator("li, tr", { hasText: "Connected Telegram" }).getByText("Ada Depot Staff").waitFor();
+  await a.locator("li, tr", { hasText: "Disconnected Telegram" }).waitFor();
   ok("disconnecting stops messages, and the activity log records both");
 
   await browser.close();

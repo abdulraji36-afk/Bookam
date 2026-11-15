@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { setProductActiveAction } from "@/app/actions/catalog";
-import { ActionButton } from "@/components/team/action-button";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
+import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
-import { Badge, Card, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
+import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
+import { formatMoney, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
 
@@ -18,136 +18,143 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
   const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}/products`;
   const manager = canManage(role);
-
   const search = readListSearch(query, 50);
+  const showOff = query.status === "off";
 
   let listQuery = supabase
     .from("products")
-    .select("id, name, sku, unit, selling_price, is_active, tracks_serials, returnable_items (name)", {
+    .select("id, name, sku, unit, selling_price, low_stock_threshold, is_active, tracks_serials, category, returnable_items (name)", {
       count: "exact"
     })
     .eq("organization_id", org.id)
-    .order("is_active", { ascending: false });
+    .eq("is_active", !showOff);
   // A phone shop sees its serial-numbered products first, then accessories.
   if (org.selling_mode === "serial") listQuery = listQuery.order("tracks_serials", { ascending: false });
   listQuery = listQuery.order("name").range(search.from, search.to);
   if (search.q) listQuery = listQuery.or(matchAny(search.q, ["name", "sku"]));
-  const { data, count } = await listQuery;
-  const products = data ?? [];
-  type ProductRow = (typeof products)[number];
-  const groups: [string | null, ProductRow[]][] =
-    org.selling_mode === "serial"
-      ? (
-          [
-            ["With serial numbers", products.filter((product) => product.tracks_serials)],
-            ["Counted items", products.filter((product) => !product.tracks_serials)]
-          ] as [string, ProductRow[]][]
-        ).filter(([, rows]) => rows.length > 0)
-      : [[null, products]];
+
+  const [listResult, activeCount, offCount, costsResult] = await Promise.all([
+    listQuery,
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true),
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", false),
+    manager ? supabase.from("product_costs").select("product_id, cost_price").eq("organization_id", org.id) : Promise.resolve({ data: [] })
+  ]);
+  const products = listResult.data ?? [];
+  const costs = new Map((costsResult.data ?? []).map((row) => [row.product_id, Number(row.cost_price)]));
+  const money = (value: number | null | undefined) =>
+    value == null ? <span className="text-ink-soft">—</span> : formatMoney(Number(value), org.currency_code);
+  const href = (status: string, page = 1) => {
+    const params = new URLSearchParams();
+    if (status === "off") params.set("status", "off");
+    if (search.q) params.set("q", search.q);
+    if (page > 1) params.set("page", String(page));
+    const text = params.toString();
+    return `${base}${text ? `?${text}` : ""}`;
+  };
+
+  type Product = (typeof products)[number];
+  const kind = (product: Product) =>
+    org.sells_drinks
+      ? product.returnable_items
+        ? "RGB"
+        : (product.category ?? "PET")
+      : product.tracks_serials
+        ? "Serial numbers"
+        : product.returnable_items
+          ? `Return: ${product.returnable_items.name}`
+          : org.selling_mode === "serial"
+            ? "Counted"
+            : null;
+  const showKind = org.sells_drinks || org.tracks_serials || org.tracks_returns;
 
   return (
-    <div className="space-y-6">
-      <div className="page-head">
-        <PageTitle
-          sub={
-            org.selling_mode === "serial"
-              ? "Items sold one by one by serial number, and accessories you simply count."
-              : org.tracks_returns
-                ? "What you sell, and whether customers must bring something back."
-                : "What you sell."
-          }
-        >
-          Products
-        </PageTitle>
-        {manager ? (
-          <div className="flex flex-wrap gap-2">
-            {org.sells_drinks ? (
-              <Link href={`${base}/nbc`} className={buttonClass("secondary")}>
-                Add from the NBC list
+    <div className="space-y-5">
+      <PageHeader
+        title="Products"
+        sub={manager ? "What you sell. Open a product to change it or switch it off." : "What the business sells."}
+        actions={
+          manager ? (
+            <>
+              <Link href={`${base}/new`} className={buttonClass("primary")}>
+                + New product
               </Link>
-            ) : null}
-            <Link href={`${base}/new`} className={buttonClass("primary")}>
-              + New product
-            </Link>
-          </div>
-        ) : null}
-      </div>
+              {org.sells_drinks ? (
+                <Link href={`${base}/nbc`} className={buttonClass("secondary")}>
+                  Add from the NBC list
+                </Link>
+              ) : null}
+            </>
+          ) : null
+        }
+      />
 
       {typeof query.added === "string" && /^\d{1,3}$/.test(query.added) ? (
-        <Alert tone="success">
-          {query.added === "1" ? "1 product added." : `${query.added} products added.`}
-        </Alert>
+        <Alert tone="success">{query.added === "1" ? "1 product added." : `${query.added} products added.`}</Alert>
       ) : null}
 
-      {products.length > 0 || search.q ? (
-        <SearchForm action={base} q={search.q} label="Search products" placeholder="Search by name or SKU" />
-      ) : null}
+      <FilterBar>
+        <SearchForm action={base} q={search.q} label="Search products" placeholder="Search by name or code" />
+        <StatusTabs
+          label="Product status"
+          current={showOff ? "off" : "active"}
+          hrefFor={(value) => href(value)}
+          tabs={[
+            { value: "active", label: "In use", count: activeCount.count ?? 0 },
+            { value: "off", label: "Switched off", count: offCount.count ?? 0 }
+          ]}
+        />
+      </FilterBar>
 
-      {products.length === 0 && search.q ? (
-        <NoMatches q={search.q} base={base} />
-      ) : products.length === 0 ? (
+      {(activeCount.count ?? 0) + (offCount.count ?? 0) === 0 ? (
         <EmptyState title="No products yet">
-          {manager
-            ? "Add the first thing you sell to start tracking stock."
-            : "An owner or admin needs to add products."}
+          {manager ? "Add the first thing you sell to start tracking stock." : "An owner or admin needs to add products."}
         </EmptyState>
+      ) : search.q && products.length === 0 ? (
+        <NoMatches q={search.q} base={base} />
       ) : (
-        <div className="space-y-6">
-          {groups.map(([title, rows]) => {
-            const list = (
-              <ul className="divide-y divide-line">
-                {rows.map((product) => (
-                  <li key={product.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-                    <div className="min-w-0">
-                      <p className={`text-lg font-extrabold ${product.is_active ? "" : "text-ink-soft line-through"}`}>
-                        {product.name}
-                      </p>
-                      <p className="font-medium text-ink-soft">
-                        Per {product.unit} · {formatMoney(product.selling_price, org.currency_code)}
-                        {product.sku ? ` · ${product.sku}` : ""}
-                        {product.returnable_items || !org.tracks_returns || org.sells_drinks ? "" : " · No return"}
-                        {product.tracks_serials && org.selling_mode !== "serial" ? " · Serial numbers" : ""}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {!product.is_active ? <Badge tone="accent">Switched off</Badge> : null}
-                      {org.sells_drinks ? (
-                        <Badge tone={product.returnable_items ? "solid" : "plain"}>
-                          {product.returnable_items ? "RGB · empties back" : "PET"}
-                        </Badge>
-                      ) : product.returnable_items ? (
-                        <Badge tone="solid">Return due: {product.returnable_items.name}</Badge>
-                      ) : null}
-                      {manager ? (
-                        <>
-                          <Link href={`${base}/${product.id}`} className={buttonClass("secondary", "sm")}>
-                            Edit
-                          </Link>
-                          <ActionButton
-                            action={setProductActiveAction.bind(null, org.slug, product.id, !product.is_active)}
-                            label={product.is_active ? "Switch off" : "Switch on"}
-                            variant={product.is_active ? "danger" : "secondary"}
-                          />
-                        </>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            );
-            return title ? (
-              <ListCard key={title} title={title}>
-                {list}
-              </ListCard>
-            ) : (
-              <Card key="all" className="!p-0">
-                {list}
-              </Card>
-            );
-          })}
-        </div>
+        <TableCard>
+          <DataTable
+            label="Products"
+            rows={products}
+            rowKey={(product: Product) => product.id}
+            rowHref={manager ? (product: Product) => `${base}/${product.id}` : undefined}
+            empty={showOff ? "No products are switched off." : "No products in use."}
+            columns={[
+              { header: "Product", wrap: true, cell: (product: Product) => product.name },
+              ...(showKind
+                ? [
+                    {
+                      header: org.sells_drinks ? "Type" : "Kind",
+                      phone: "badge" as const,
+                      cell: (product: Product) =>
+                        kind(product) ? (
+                          <Badge tone={product.returnable_items || product.tracks_serials ? "solid" : "plain"}>{kind(product)}</Badge>
+                        ) : null
+                    }
+                  ]
+                : []),
+              { header: "Code", cell: (product: Product) => product.sku ?? <span className="text-ink-soft">—</span> },
+              { header: "Unit", cell: (product: Product) => product.unit },
+              { header: "Price", align: "right" as const, cell: (product: Product) => money(product.selling_price) },
+              ...(manager
+                ? [{ header: "Cost", align: "right" as const, cell: (product: Product) => money(costs.get(product.id)) }]
+                : []),
+              {
+                header: "Warn at",
+                align: "right" as const,
+                phone: "hide" as const,
+                cell: (product: Product) =>
+                  Number(product.low_stock_threshold) > 0 ? (
+                    formatQuantity(Number(product.low_stock_threshold))
+                  ) : (
+                    <span className="text-ink-soft">—</span>
+                  )
+              }
+            ]}
+          />
+        </TableCard>
       )}
-      <Pager base={base} search={search} total={count ?? 0} />
+      <Pager base={base} search={search} total={listResult.count ?? 0} hrefFor={(page) => href(showOff ? "off" : "active", page)} />
     </div>
   );
 }

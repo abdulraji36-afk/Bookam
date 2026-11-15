@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { WeekChart, type DayCount } from "@/components/dashboard/week-chart";
-import { OrderRow } from "@/components/orders/order-row";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, CardHeader, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { describeOwed, formatDay, formatQuantity, ROLE_LABELS, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -286,110 +286,109 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ListCard
+        <TableCard
           title={waitingTitle}
           action={
-            <Link href={`${base}/orders`} className={SEE_ALL}>
+            <Link href={`${base}/orders?status=waiting`} className={SEE_ALL}>
               See all
             </Link>
           }
         >
-          {(waitingOrders.data ?? []).length === 0 ? (
-            <p className="px-5 py-4 font-medium text-ink-soft">
-              {delivers
-                ? `Nothing is waiting. Every ${words.one} has gone out.`
-                : "Nothing is waiting to be collected."}
-            </p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {(waitingOrders.data ?? []).map((order) => (
-                <OrderRow key={order.id} order={order} base={base} currency={org.currency_code} delivers={delivers} />
-              ))}
-            </ul>
-          )}
-        </ListCard>
+          <DataTable
+            label={waitingTitle}
+            rows={waitingOrders.data ?? []}
+            rowKey={(order) => order.id}
+            rowHref={(order) => `${base}/orders/${order.id}`}
+            empty={delivers ? `Nothing is waiting. Every ${words.one} has gone out.` : "Nothing is waiting to be collected."}
+            columns={[
+              { header: "Customer", wrap: true, cell: (order) => order.customer_name },
+              { header: `${words.One} no.`, cell: (order) => <span className="tabular-nums">{order.order_no}</span> },
+              { header: "Items", align: "right", phone: "badge", cell: (order) => formatQuantity(Number(order.total_quantity)) }
+            ]}
+          />
+        </TableCard>
 
-        <ListCard
+        <TableCard
           title="Running low"
           action={
-            <Link href={`${base}/stock`} className={SEE_ALL}>
+            <Link href={`${base}/stock?show=low`} className={SEE_ALL}>
               See stock
             </Link>
           }
         >
-          {lowRows.length === 0 ? (
-            <p className="px-5 py-4 font-medium text-ink-soft">Nothing is running low.</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {lowRows.slice(0, 5).map((row) => (
-                <li key={row.productId} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <span className="font-extrabold">{row.name}</span>
-                  <span>
-                    <span className="text-xl font-extrabold tabular-nums">{formatQuantity(row.onHand)}</span>{" "}
-                    <span className="font-medium text-ink-soft">{row.unit} left</span>
+          <DataTable
+            label="Running low"
+            rows={lowRows.slice(0, 5)}
+            rowKey={(row) => row.productId}
+            empty="Nothing is running low."
+            columns={[
+              { header: "Product", wrap: true, cell: (row) => <span className="font-extrabold">{row.name}</span> },
+              {
+                header: "Left",
+                align: "right",
+                phone: "badge",
+                cell: (row) => (
+                  <span className="text-lg font-extrabold">
+                    {formatQuantity(row.onHand)} <span className="text-sm font-medium text-ink-soft">{row.unit}</span>
                   </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ListCard>
+                )
+              }
+            ]}
+          />
+        </TableCard>
 
         {tracksReturns ? (
           <>
             {delivers ? (
-              <ListCard
+              <TableCard
                 title="Out now, returns due"
                 action={
-                  <Link href={`${base}/returns`} className={SEE_ALL}>
-                    See returns
+                  <Link href={`${base}/dispatch?status=out`} className={SEE_ALL}>
+                    See trips
                   </Link>
                 }
               >
-                {(tripsOut.data ?? []).length === 0 ? (
-                  <p className="px-5 py-4 font-medium text-ink-soft">No trip is waiting for its returns.</p>
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {(tripsOut.data ?? []).map((trip) => (
-                      <li key={trip.id}>
-                        <Link
-                          href={`${base}/dispatch/${trip.id}`}
-                          className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-paper"
-                        >
-                          <span className="min-w-0">
-                            <span className="block font-extrabold">{trip.driver_name}</span>
-                            <span className="text-sm font-medium text-ink-soft">
-                              {trip.trip_no} · left {formatDay(trip.dispatch_date)}
-                            </span>
-                          </span>
-                          <Badge tone="accent">Record returns</Badge>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </ListCard>
+                <DataTable
+                  label="Out now, returns due"
+                  rows={tripsOut.data ?? []}
+                  rowKey={(trip) => trip.id}
+                  rowHref={(trip) => `${base}/dispatch/${trip.id}`}
+                  empty="No trip is waiting for its returns."
+                  columns={[
+                    { header: "Driver", cell: (trip) => trip.driver_name },
+                    { header: "Action", phone: "badge", cell: () => <Badge tone="accent">Record returns</Badge> },
+                    { header: "Trip no.", cell: (trip) => <span className="tabular-nums">{trip.trip_no}</span> },
+                    { header: "Left", cell: (trip) => formatDay(trip.dispatch_date) }
+                  ]}
+                />
+              </TableCard>
             ) : null}
 
-            <ListCard title="Owes the most">
-              {(balances.data ?? []).length === 0 ? (
-                <p className="px-5 py-4 font-medium text-ink-soft">No customer owes anything right now.</p>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {(balances.data ?? []).map((balance) => (
-                    <li
-                      key={`${balance.customer_id}-${balance.returnable_item_id}`}
-                      className="flex items-center justify-between gap-3 px-5 py-3"
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-extrabold">{balance.customer_name}</span>
-                        <span className="text-sm font-medium text-ink-soft">{balance.returnable_name}</span>
-                      </span>
-                      <Badge tone="solid">{describeOwed(Number(balance.owed))}</Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </ListCard>
+            <TableCard
+              title={org.sells_drinks ? "Empty shortages" : "Owes the most"}
+              action={
+                <Link href={`${base}/returns`} className={SEE_ALL}>
+                  See all
+                </Link>
+              }
+            >
+              <DataTable
+                label={org.sells_drinks ? "Empty shortages" : "Owes the most"}
+                rows={balances.data ?? []}
+                rowKey={(balance) => `${balance.customer_id}-${balance.returnable_item_id}`}
+                empty="No customer owes anything right now."
+                columns={[
+                  { header: "Customer", wrap: true, cell: (balance) => <span className="font-extrabold">{balance.customer_name}</span> },
+                  {
+                    header: "Owes",
+                    align: "right",
+                    phone: "badge",
+                    cell: (balance) => <Badge tone="solid">{describeOwed(Number(balance.owed))}</Badge>
+                  },
+                  { header: "Item", cell: (balance) => balance.returnable_name }
+                ]}
+              />
+            </TableCard>
           </>
         ) : null}
       </div>

@@ -34,7 +34,19 @@ export function SearchForm({ action, q, label, placeholder }: { action: string; 
 }
 
 /** "Showing 51–100 of 230" with Previous and Next links. Hidden when everything fits on one page. */
-export function Pager({ base, search, total }: { base: string; search: ListSearch; total: number }) {
+export function Pager({
+  base,
+  search,
+  total,
+  hrefFor
+}: {
+  base: string;
+  search: ListSearch;
+  total: number;
+  /** Builds a page's link when the list has more filters than the search. */
+  hrefFor?: (page: number) => string;
+}) {
+  const link = (page: number) => (hrefFor ? hrefFor(page) : pageHref(base, search, page));
   if (total <= search.pageSize && search.page === 1) return null;
   const last = Math.max(1, Math.ceil(total / search.pageSize));
   const start = total === 0 ? 0 : search.from + 1;
@@ -47,12 +59,12 @@ export function Pager({ base, search, total }: { base: string; search: ListSearc
       </p>
       <div className="flex gap-2">
         {search.page > 1 ? (
-          <Link href={pageHref(base, search, Math.min(search.page - 1, last))} rel="prev" className={buttonClass("secondary", "sm")}>
+          <Link href={link(Math.min(search.page - 1, last))} rel="prev" className={buttonClass("secondary", "sm")}>
             ← Previous
           </Link>
         ) : null}
         {search.page < last ? (
-          <Link href={pageHref(base, search, search.page + 1)} rel="next" className={buttonClass("secondary", "sm")}>
+          <Link href={link(search.page + 1)} rel="next" className={buttonClass("secondary", "sm")}>
             Next →
           </Link>
         ) : null}

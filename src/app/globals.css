@@ -156,6 +156,57 @@
     background-size: 1.125rem;
   }
 
+  /*
+   * Tables (DataTable). On a phone each row turns into a card: the title cell
+   * and its badge on top, the other cells as "label  value" lines below.
+   */
+  @media (max-width: 767px) {
+    .data-table,
+    .data-table tbody,
+    .data-table tfoot {
+      display: block;
+    }
+    .data-table thead {
+      display: none;
+    }
+    .data-table tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0.75rem;
+      padding: 0.875rem 1.25rem;
+    }
+    .data-table td {
+      padding: 0 !important;
+    }
+    .data-table td[data-phone="title"] {
+      order: -2;
+      flex: 1 1 0%;
+      min-width: 0;
+      font-size: 1.0625rem;
+    }
+    .data-table td[data-phone="badge"] {
+      order: -1;
+    }
+    .data-table td[data-phone="detail"] {
+      display: flex;
+      flex-basis: 100%;
+      justify-content: space-between;
+      gap: 1rem;
+      text-align: right;
+      font-size: 0.9375rem;
+    }
+    .data-table td[data-phone="detail"]::before {
+      content: attr(data-label);
+      color: var(--color-ink-soft);
+      font-weight: 700;
+      text-align: left;
+    }
+    .data-table td[data-phone="hide"] {
+      display: none;
+    }
+  }
+
   /* Thin, dark scrollbar for the side menu. */
   .menu-scroll {
     scrollbar-width: thin;

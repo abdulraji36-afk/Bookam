@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   inviteMemberAction,
-  revokeInvitationAction,
-  setMemberActiveAction,
-  setMemberRoleAction
+  revokeInvitationAction
 } from "@/app/actions/team";
 import { ActionButton } from "@/components/team/action-button";
 import { InviteForm } from "@/components/team/invite-form";
-import { RoleSelect } from "@/components/team/role-select";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { formatDate, ROLE_LABELS } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -69,83 +67,66 @@ async function Team({ params }: Pick<PageProps<"/b/[slug]/team">, "params">) {
       </Card>
 
       {invitations.length > 0 ? (
-        <Card>
-          <CardHeader title="Open invitations" />
-          <ul className="divide-y divide-line">
-            {invitations.map((invitation) => (
-              <li key={invitation.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink">{invitation.email}</p>
-                  <p className="text-sm text-ink-soft">
-                    {ROLE_LABELS[invitation.role]} · expires {formatDate(invitation.expires_at, org.timezone)}
-                  </p>
-                </div>
-                <ActionButton
-                  action={revokeInvitationAction.bind(null, org.slug, invitation.id)}
-                  label="Cancel"
-                  pendingLabel="Cancelling…"
-                  variant="danger"
-                />
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <TableCard title="Open invitations">
+          <DataTable
+            label="Open invitations"
+            rows={invitations}
+            rowKey={(invitation) => invitation.id}
+            columns={[
+              { header: "Email", wrap: true, cell: (invitation) => <span className="font-semibold">{invitation.email}</span> },
+              { header: "Role", phone: "badge", cell: (invitation) => <Badge>{ROLE_LABELS[invitation.role]}</Badge> },
+              { header: "Expires", cell: (invitation) => formatDate(invitation.expires_at, org.timezone) },
+              {
+                header: "Cancel",
+                align: "right",
+                cell: (invitation) => (
+                  <ActionButton
+                    action={revokeInvitationAction.bind(null, org.slug, invitation.id)}
+                    label="Cancel invitation"
+                    pendingLabel="Cancelling…"
+                    variant="danger"
+                  />
+                )
+              }
+            ]}
+          />
+        </TableCard>
       ) : null}
 
-      <Card>
-        <CardHeader title="People" />
-        <ul className="divide-y divide-line">
-          {members.map((member) => {
-            const name = member.profiles?.full_name || member.profiles?.email || "Unknown";
-            const isSelf = member.user_id === user.id;
-            const canChangeAccess =
-              !isSelf && member.role !== "owner" && (isOwner || member.role === "staff");
-
-            return (
-              <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-ink">
-                    {name}
-                    {isSelf ? <span className="font-normal text-ink-soft"> (you)</span> : null}
-                  </p>
-                  <p className="truncate text-sm text-ink-soft">{member.profiles?.email}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!member.is_active ? <Badge tone="accent">Access removed</Badge> : null}
-                  {isOwner && member.role !== "owner" && member.is_active ? (
-                    <RoleSelect
-                      action={setMemberRoleAction.bind(null, org.slug, member.id)}
-                      role={member.role}
-                      memberName={name}
-                    />
-                  ) : (
-                    <Badge tone={member.role === "owner" ? "solid" : "plain"}>
-                      {ROLE_LABELS[member.role]}
-                    </Badge>
-                  )}
-                  {canChangeAccess ? (
-                    member.is_active ? (
-                      <ActionButton
-                        action={setMemberActiveAction.bind(null, org.slug, member.id, false)}
-                        label="Remove access"
-                        pendingLabel="Removing…"
-                        variant="danger"
-                        confirmMessage={`Remove ${name}'s access to ${org.name}? They will be logged out of this business straight away.`}
-                      />
-                    ) : (
-                      <ActionButton
-                        action={setMemberActiveAction.bind(null, org.slug, member.id, true)}
-                        label="Restore access"
-                        pendingLabel="Restoring…"
-                      />
-                    )
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+      <TableCard title="People">
+        <DataTable
+          label="People"
+          rows={members}
+          rowKey={(member) => member.id}
+          rowHref={(member) =>
+            member.user_id !== user.id && member.role !== "owner" && (isOwner || member.role === "staff")
+              ? `/b/${org.slug}/team/${member.id}`
+              : null
+          }
+          columns={[
+            {
+              header: "Name",
+              wrap: true,
+              cell: (member) => (
+                <>
+                  {member.profiles?.full_name || member.profiles?.email || "Unknown"}
+                  {member.user_id === user.id ? <span className="font-normal text-ink-soft"> (you)</span> : null}
+                </>
+              )
+            },
+            {
+              header: "Role",
+              phone: "badge",
+              cell: (member) => <Badge tone={member.role === "owner" ? "solid" : "plain"}>{ROLE_LABELS[member.role]}</Badge>
+            },
+            { header: "Email", cell: (member) => member.profiles?.email ?? "" },
+            {
+              header: "Access",
+              cell: (member) => (member.is_active ? <Badge tone="success">Active</Badge> : <Badge tone="accent">Access removed</Badge>)
+            }
+          ]}
+        />
+      </TableCard>
     </div>
   );
 }

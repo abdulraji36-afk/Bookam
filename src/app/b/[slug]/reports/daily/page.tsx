@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { OrderStatusBadge } from "@/components/orders/status-badge";
 import { buttonClass } from "@/components/ui/button";
 import { ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { formatDay, formatMoney, formatQuantity, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { saleWords } from "@/lib/selling";
@@ -248,37 +249,38 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
             </ListCard>
           ) : null}
 
-          <ListCard title={`Deliveries received (${deliveryRows.length})`}>
-            {deliveryRows.length === 0 ? (
-              <p className="px-5 py-4 font-medium text-ink-soft">No stock was received on this day.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {deliveryRows.map((delivery) => {
-                  const quantity = delivery.stock_receipt_items.reduce((sum, item) => sum + Number(item.quantity), 0);
-                  const given = delivery.supplier_exchanges && !delivery.supplier_exchanges.voided_at ? Number(delivery.supplier_exchanges.quantity_taken) : 0;
-                  return (
-                    <li key={delivery.id}>
-                      <Link
-                        href={`${base}/stock/receipts/${delivery.id}`}
-                        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper"
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-extrabold">{delivery.receipt_no}</span>
-                          <span className="text-sm font-medium text-ink-soft">
-                            {[delivery.supplier_name, delivery.reference].filter(Boolean).join(" · ") || "No supplier given"}
-                          </span>
-                        </span>
-                        <span className="text-right text-sm font-bold tabular-nums">
-                          <span className="block">+{formatQuantity(quantity)} items</span>
-                          {given ? <span className="block text-ink-soft">{formatQuantity(given)} empties given back</span> : null}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </ListCard>
+          <TableCard title={`Deliveries received (${deliveryRows.length})`}>
+            <DataTable
+              label="Deliveries received"
+              rows={deliveryRows}
+              rowKey={(delivery) => delivery.id}
+              rowHref={(delivery) => `${base}/stock/receipts/${delivery.id}`}
+              empty="No stock was received on this day."
+              columns={[
+                { header: "Delivery no.", cell: (delivery) => <span className="tabular-nums">{delivery.receipt_no}</span> },
+                { header: "Supplier", wrap: true, cell: (delivery) => delivery.supplier_name ?? <span className="text-ink-soft">—</span> },
+                { header: "Reference", cell: (delivery) => delivery.reference ?? <span className="text-ink-soft">—</span> },
+                {
+                  header: "Items",
+                  align: "right",
+                  phone: "badge",
+                  cell: (delivery) => `+${formatQuantity(delivery.stock_receipt_items.reduce((sum, item) => sum + Number(item.quantity), 0))}`
+                },
+                ...(org.tracks_returns
+                  ? [
+                      {
+                        header: org.sells_drinks ? "Empties given back" : "Returnables given back",
+                        align: "right" as const,
+                        cell: (delivery: (typeof deliveryRows)[number]) =>
+                          delivery.supplier_exchanges && !delivery.supplier_exchanges.voided_at
+                            ? formatQuantity(Number(delivery.supplier_exchanges.quantity_taken))
+                            : <span className="text-ink-soft">—</span>
+                      }
+                    ]
+                  : [])
+              ]}
+            />
+          </TableCard>
 
           {org.tracks_returns ? (
             <ListCard title={org.sells_drinks ? "Empties in and out" : "Returnables in and out"}>
@@ -300,54 +302,50 @@ async function DailyReport({ params, searchParams }: PageProps<"/b/[slug]/report
             </ListCard>
           ) : null}
 
-          <ListCard title={`${words.Many} recorded (${orderRows.length})`}>
-            {orderRows.length === 0 ? (
-              <p className="px-5 py-4 font-medium text-ink-soft">No {words.many} were recorded on this day.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {orderRows.map((order) => (
-                  <li key={order.id}>
-                    <Link
-                      href={`${base}/orders/${order.id}`}
-                      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper"
-                    >
-                      <span className="min-w-0">
-                        <span className="block font-extrabold">{order.customer_name}</span>
-                        <span className="text-sm font-medium text-ink-soft">
-                          {order.order_no} · {formatQuantity(Number(order.total_quantity))} items
-                          {showMoney ? ` · ${formatMoney(Number(order.total_amount), org.currency_code)}` : ""}
-                        </span>
-                      </span>
-                      <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} delivers={org.does_delivery} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ListCard>
+          <TableCard title={`${words.Many} recorded (${orderRows.length})`}>
+            <DataTable
+              label={`${words.Many} recorded`}
+              rows={orderRows}
+              rowKey={(order) => order.id}
+              rowHref={(order) => `${base}/orders/${order.id}`}
+              empty={`No ${words.many} were recorded on this day.`}
+              columns={[
+                { header: "Customer", wrap: true, cell: (order) => order.customer_name },
+                {
+                  header: "Status",
+                  phone: "badge",
+                  cell: (order) => <OrderStatusBadge status={order.status} voided={Boolean(order.voided_at)} delivers={org.does_delivery} />
+                },
+                { header: `${words.One} no.`, cell: (order) => <span className="tabular-nums">{order.order_no}</span> },
+                { header: "Items", align: "right", cell: (order) => formatQuantity(Number(order.total_quantity)) },
+                ...(showMoney
+                  ? [
+                      {
+                        header: "Value",
+                        align: "right" as const,
+                        cell: (order: (typeof orderRows)[number]) => formatMoney(Number(order.total_amount), org.currency_code)
+                      }
+                    ]
+                  : [])
+              ]}
+            />
+          </TableCard>
 
-          <ListCard title={`Trips sent out (${tripRows.length})`}>
-            {tripRows.length === 0 ? (
-              <p className="px-5 py-4 font-medium text-ink-soft">No trips left on this day.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {tripRows.map((trip) => (
-                  <li key={trip.id}>
-                    <Link
-                      href={`${base}/dispatch/${trip.id}`}
-                      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3 hover:bg-paper"
-                    >
-                      <span className="font-extrabold">{trip.driver_name}</span>
-                      <span className="text-sm font-medium text-ink-soft">
-                        {trip.trip_no} · {trip.order_count} order{trip.order_count === 1 ? "" : "s"} ·{" "}
-                        {formatQuantity(Number(trip.total_quantity))} items
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ListCard>
+          <TableCard title={`Trips sent out (${tripRows.length})`}>
+            <DataTable
+              label="Trips sent out"
+              rows={tripRows}
+              rowKey={(trip) => trip.id}
+              rowHref={(trip) => `${base}/dispatch/${trip.id}`}
+              empty="No trips left on this day."
+              columns={[
+                { header: "Driver", cell: (trip) => trip.driver_name },
+                { header: "Trip no.", cell: (trip) => <span className="tabular-nums">{trip.trip_no}</span> },
+                { header: "Orders", align: "right", cell: (trip) => trip.order_count },
+                { header: "Items", align: "right", phone: "badge", cell: (trip) => formatQuantity(Number(trip.total_quantity)) }
+              ]}
+            />
+          </TableCard>
 
           <ListCard title="Still open right now">
             <ul className="divide-y divide-line">

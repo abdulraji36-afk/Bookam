@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { describeAction, describeDetails, isCorrection } from "@/lib/audit";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 
@@ -41,34 +42,37 @@ async function Activity({ params, searchParams }: PageProps<"/b/[slug]/activity"
       {entries.length === 0 ? (
         <EmptyState title="Nothing here">There is no earlier activity.</EmptyState>
       ) : (
-        <ListCard title={before ? "Earlier activity" : "Latest activity"}>
-          <ul className="divide-y divide-line">
-            {entries.map((entry) => {
-              const details = describeDetails(entry.new_values);
-              return (
-                <li key={entry.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="font-extrabold">
-                      {describeAction(entry.action)}
-                      {isCorrection(entry.action) ? (
-                        <span className="ml-2 align-middle">
-                          <Badge tone="accent">Undo</Badge>
-                        </span>
-                      ) : null}
-                    </p>
-                    {details ? <p className="break-words text-sm font-medium text-ink-soft">{details}</p> : null}
-                  </div>
-                  <p className="shrink-0 text-right text-sm font-medium text-ink-soft">
-                    <span className="block font-bold text-ink">
-                      {entry.profiles?.full_name || entry.profiles?.email || "Someone no longer on the team"}
-                    </span>
-                    {formatWhen(entry.created_at, org.timezone)}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        </ListCard>
+        <TableCard title={before ? "Earlier activity" : "Latest activity"}>
+          <DataTable
+            label="Activity"
+            rows={entries}
+            rowKey={(entry) => entry.id}
+            columns={[
+              {
+                header: "What happened",
+                wrap: true,
+                cell: (entry) => (
+                  <>
+                    <span className="font-extrabold">{describeAction(entry.action)}</span>
+                    {describeDetails(entry.new_values) ? (
+                      <span className="block break-words text-sm font-medium text-ink-soft">{describeDetails(entry.new_values)}</span>
+                    ) : null}
+                  </>
+                )
+              },
+              {
+                header: "Kind",
+                phone: "badge",
+                cell: (entry) => (isCorrection(entry.action) ? <Badge tone="accent">Undo</Badge> : null)
+              },
+              {
+                header: "Who",
+                cell: (entry) => entry.profiles?.full_name || entry.profiles?.email || "Someone no longer on the team"
+              },
+              { header: "When", cell: (entry) => formatWhen(entry.created_at, org.timezone) }
+            ]}
+          />
+        </TableCard>
       )}
 
       <div className="flex flex-wrap gap-3">

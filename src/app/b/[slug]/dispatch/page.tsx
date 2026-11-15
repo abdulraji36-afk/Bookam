@@ -3,8 +3,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { TripStatusBadge } from "@/components/orders/status-badge";
 import { buttonClass } from "@/components/ui/button";
+import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
-import { EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
 import { formatDay, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
@@ -12,7 +14,9 @@ import type { TripStatus } from "@/types/database";
 
 export const metadata: Metadata = { title: "Dispatch" };
 
-type TripRowData = {
+const COLUMNS = "id, trip_no, dispatch_date, driver_name, vehicle, status, order_count, total_quantity, has_returns";
+
+type TripRow = {
   id: string;
   trip_no: string;
   dispatch_date: string;
@@ -21,40 +25,23 @@ type TripRowData = {
   status: TripStatus;
   order_count: number;
   total_quantity: number;
+  has_returns: boolean;
 };
-
-const COLUMNS = "id, trip_no, dispatch_date, driver_name, vehicle, status, order_count, total_quantity";
-
-function TripRow({ trip, base }: { trip: TripRowData; base: string }) {
-  return (
-    <li>
-      <Link
-        href={`${base}/dispatch/${trip.id}`}
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 hover:bg-paper"
-      >
-        <span className="min-w-0">
-          <span className="block text-lg font-extrabold">
-            {trip.driver_name}
-            {trip.vehicle ? ` · ${trip.vehicle}` : ""}
-          </span>
-          <span className="font-medium text-ink-soft">
-            {trip.trip_no} · {formatDay(trip.dispatch_date)} · {trip.order_count} order
-            {trip.order_count === 1 ? "" : "s"} · {formatQuantity(Number(trip.total_quantity))} items
-          </span>
-        </span>
-        <TripStatusBadge status={trip.status} />
-      </Link>
-    </li>
-  );
-}
 
 async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
-
   const search = readListSearch(query, 30);
-  const listOnly = Boolean(search.q) || search.page > 1;
+
+  const tabs: { value: string; label: string; statuses: TripStatus[] | null }[] = [
+    { value: "all", label: "All", statuses: null },
+    { value: "loading", label: "Loading", statuses: ["draft"] },
+    { value: "out", label: "Out, returns due", statuses: ["dispatched"] },
+    { value: "completed", label: "Completed", statuses: ["completed"] },
+    { value: "cancelled", label: "Cancelled", statuses: ["cancelled"] }
+  ];
+  const current = tabs.find((tab) => tab.value === query.status) ?? tabs[0];
 
   let listQuery = supabase
     .from("dispatch_trip_summaries")
@@ -62,76 +49,93 @@ async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch"
     .eq("organization_id", org.id)
     .order("created_at", { ascending: false })
     .range(search.from, search.to);
+  if (current.statuses) listQuery = listQuery.in("status", current.statuses);
   if (search.q) listQuery = listQuery.or(matchAny(search.q, ["trip_no", "driver_name", "vehicle"]));
-  else listQuery = listQuery.neq("status", "draft");
 
-  const [draftResult, recentResult, waitingResult] = await Promise.all([
-    listOnly
-      ? Promise.resolve({ data: [] })
-      : supabase.from("dispatch_trip_summaries").select(COLUMNS).eq("organization_id", org.id).eq("status", "draft").order("created_at"),
+  const count = (statuses: TripStatus[] | null) => {
+    let builder = supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id);
+    if (statuses) builder = builder.in("status", statuses);
+    return builder;
+  };
+  const [listResult, waitingResult, ...counts] = await Promise.all([
     listQuery,
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("organization_id", org.id)
-      .eq("status", "pending")
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("status", "pending"),
+    ...tabs.map((tab) => count(tab.statuses))
   ]);
-  const drafts = draftResult.data ?? [];
-  const recent = recentResult.data ?? [];
+  const rows: TripRow[] = listResult.data ?? [];
   const waiting = waitingResult.count ?? 0;
+  const href = (status: string, page = 1) => {
+    const params = new URLSearchParams();
+    if (status !== "all") params.set("status", status);
+    if (search.q) params.set("q", search.q);
+    if (page > 1) params.set("page", String(page));
+    const text = params.toString();
+    return `${base}/dispatch${text ? `?${text}` : ""}`;
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="page-head">
-        <PageTitle sub={`${waiting} order${waiting === 1 ? "" : "s"} waiting to be put on a trip.`}>
-          Dispatch
-        </PageTitle>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`${base}/dispatch/crew`} className={buttonClass("secondary")}>
-            Drivers and loaders
-          </Link>
-          <Link href={`${base}/dispatch/new`} className={buttonClass("primary")}>
-            + New trip
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Dispatch"
+        sub={`${waiting} order${waiting === 1 ? "" : "s"} waiting to be put on a trip.`}
+        actions={
+          <>
+            <Link href={`${base}/dispatch/new`} className={buttonClass("primary")}>
+              + New trip
+            </Link>
+            <Link href={`${base}/dispatch/crew`} className={buttonClass("secondary")}>
+              Drivers and loaders
+            </Link>
+          </>
+        }
+      />
 
-      {drafts.length > 0 || recent.length > 0 || search.q || search.page > 1 ? (
-        <SearchForm
-          action={`${base}/dispatch`}
-          q={search.q}
-          label="Search trips"
-          placeholder="Search by trip number, driver or vehicle"
+      <FilterBar>
+        <SearchForm action={`${base}/dispatch`} q={search.q} label="Search trips" placeholder="Search by trip number, driver or truck" />
+        <StatusTabs
+          label="Trip status"
+          current={current.value}
+          hrefFor={(value) => href(value)}
+          tabs={tabs.map((tab, index) => ({ value: tab.value, label: tab.label, count: counts[index]?.count ?? 0 }))}
         />
-      ) : null}
-      {search.q && recent.length === 0 ? <NoMatches q={search.q} base={`${base}/dispatch`} /> : null}
+      </FilterBar>
 
-      {!listOnly && drafts.length === 0 && recent.length === 0 ? (
-        <EmptyState title="No trips yet">
-          Record some orders, then group them onto a trip to send them out.
-        </EmptyState>
-      ) : null}
-
-      {drafts.length > 0 ? (
-        <ListCard title="Loading now">
-          <ul className="divide-y divide-line">
-            {drafts.map((trip) => (
-              <TripRow key={trip.id} trip={trip} base={base} />
-            ))}
-          </ul>
-        </ListCard>
-      ) : null}
-
-      {recent.length > 0 ? (
-        <ListCard title={search.q ? `Trips matching “${search.q}”` : listOnly ? "Trips" : "Recent trips"}>
-          <ul className="divide-y divide-line">
-            {recent.map((trip) => (
-              <TripRow key={trip.id} trip={trip} base={base} />
-            ))}
-          </ul>
-        </ListCard>
-      ) : null}
-      <Pager base={`${base}/dispatch`} search={search} total={recentResult.count ?? 0} />
+      {counts[0]?.count === 0 && !search.q ? (
+        <EmptyState title="No trips yet">Record some orders, then group them onto a trip to send them out.</EmptyState>
+      ) : search.q && rows.length === 0 ? (
+        <NoMatches q={search.q} base={`${base}/dispatch`} />
+      ) : (
+        <TableCard>
+          <DataTable
+            label="Trips"
+            rows={rows}
+            rowKey={(trip) => trip.id}
+            rowHref={(trip) => `${base}/dispatch/${trip.id}`}
+            empty="No trips here."
+            columns={[
+              { header: "Trip no.", cell: (trip) => <span className="tabular-nums">{trip.trip_no}</span> },
+              { header: "Status", phone: "badge", cell: (trip) => <TripStatusBadge status={trip.status} /> },
+              { header: "Date", cell: (trip) => formatDay(trip.dispatch_date) },
+              { header: "Driver", cell: (trip) => <span className="font-semibold">{trip.driver_name}</span> },
+              { header: "Truck", cell: (trip) => trip.vehicle ?? <span className="text-ink-soft">—</span> },
+              { header: "Orders", align: "right", cell: (trip) => trip.order_count },
+              { header: "Items", align: "right", cell: (trip) => formatQuantity(Number(trip.total_quantity)) },
+              {
+                header: "Returns",
+                cell: (trip) =>
+                  trip.has_returns ? (
+                    <Badge tone={trip.status === "dispatched" ? "accent" : "plain"}>
+                      {trip.status === "dispatched" ? "Due back" : "Yes"}
+                    </Badge>
+                  ) : (
+                    <span className="text-ink-soft">—</span>
+                  )
+              }
+            ]}
+          />
+        </TableCard>
+      )}
+      <Pager base={`${base}/dispatch`} search={search} total={listResult.count ?? 0} hrefFor={(page) => href(current.value, page)} />
     </div>
   );
 }

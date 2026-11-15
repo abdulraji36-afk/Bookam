@@ -1,10 +1,13 @@
 import {
+  Banknote,
   Boxes,
   ChartColumn,
   ClipboardList,
+  Contact,
   History,
   LayoutDashboard,
   Package,
+  PackageCheck,
   Settings,
   Truck,
   Undo2,
@@ -24,10 +27,23 @@ export type NavIconName =
   | "reports"
   | "team"
   | "activity"
-  | "settings";
+  | "settings"
+  | "deliveries"
+  | "drivers"
+  | "value";
 
 /** A menu entry. Icons are named, not passed, so the list can cross to the browser. */
-export type NavItem = { href: string; label: string; icon: NavIconName; exact?: boolean };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: NavIconName;
+  exact?: boolean;
+  /** Pages under href that belong to another entry, e.g. Deliveries under Stock. */
+  excludes?: readonly string[];
+};
+
+/** A titled block of entries in the side menu. */
+export type NavGroup = { label: string | null; items: NavItem[] };
 
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   dashboard: LayoutDashboard,
@@ -40,9 +56,13 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   reports: ChartColumn,
   team: UserCog,
   activity: History,
-  settings: Settings
+  settings: Settings,
+  deliveries: PackageCheck,
+  drivers: Contact,
+  value: Banknote
 };
 
-export function isActivePath(pathname: string, item: Pick<NavItem, "href" | "exact">) {
+export function isActivePath(pathname: string, item: Pick<NavItem, "href" | "exact" | "excludes">) {
+  if (item.excludes?.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) return false;
   return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
 }

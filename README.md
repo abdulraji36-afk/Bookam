@@ -135,6 +135,15 @@ These are what keep one business's data away from another's.
    It is refused if any product would go below zero, and each changed
    quantity is kept in `stock_receipt_corrections` with the reason.
 
+## How screens are laid out
+
+Every page uses the same pieces from `src/components/ui`: `PageHeader`
+(title, one line, main action first), `FilterBar` with `SearchForm` and
+`StatusTabs`, and `DataTable` inside a `TableCard`. On a phone the table's
+rows become cards (see `.data-table` in `globals.css`), so nothing scrolls
+sideways. Lists only show and link; anything that changes a record (edit,
+switch off, void, correct) is in the `ActionsPanel` on that record's page.
+
 ## Telegram notifications
 
 One bot serves every business; each business links its own group from its
@@ -208,4 +217,5 @@ version of the app, so the database can always go first.
 | 12 | Bilikis rules for drinks: whole crates and empties, one waiting RGB order per customer, 10-character reasons, buying cost kept per delivery with stock valued at the average, truck required on trips | Done |
 | 13 | One simple customer form for everyone; correcting a delivery after the fact (date, supplier, reference, products and numbers), as in Bilikis | Done |
 | 14 | Write-offs removed; stock changes only through deliveries and orders | Done |
+| 15 | Reorganised screens: a grouped side menu (daily work, catalogue, reports, admin) with New order and Receive stock at the top; every list a table with search and status tabs that turns into cards on a phone; changes such as edit, switch off and void on each record's own page | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

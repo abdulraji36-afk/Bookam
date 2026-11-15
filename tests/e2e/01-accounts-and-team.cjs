@@ -81,7 +81,7 @@ async function signUp(page, name, email, expectUrl) {
   await a.getByRole("button", { name: "Add location" }).click();
   await a.getByText("Ikeja warehouse added.").waitFor();
   assert.equal(await a.getByLabel("New location name").inputValue(), "", "field cleared after success");
-  await a.locator("li", { hasText: "Ikeja warehouse" }).waitFor();
+  await a.locator("li, tr", { hasText: "Ikeja warehouse" }).waitFor();
   await a.getByLabel("New location name").fill("ikeja warehouse");
   await a.getByRole("button", { name: "Add location" }).click();
   await a.getByText("A location with this name already exists.").waitFor();
@@ -96,7 +96,7 @@ async function signUp(page, name, email, expectUrl) {
   await a.getByRole("button", { name: "Create invite" }).click();
   const link = await a.getByLabel("Invitation link").inputValue();
   assert.ok(link.startsWith(`${BASE}/invite/`) && /\/invite\/[0-9a-f]{64}$/.test(link), link);
-  await a.locator("li", { hasText: chidi }).waitFor();
+  await a.locator("li, tr", { hasText: chidi }).waitFor();
   await a.screenshot({ path: `${SHOTS}/04-team-invite.png`, fullPage: true });
   ok("owner creates an invite link and it shows under open invitations");
 
@@ -141,20 +141,25 @@ async function signUp(page, name, email, expectUrl) {
 
   // 7. Owner manages the new member
   await a.reload();
-  const row = a.locator("li", { hasText: "Chidi Eze" });
-  await row.waitFor();
-  await row.getByLabel("Role for Chidi Eze").selectOption("admin");
+  // Changing someone's role or access happens on their own page.
+  await a.locator("tr", { hasText: "Chidi Eze" }).getByRole("link").click();
+  await a.waitForURL(/\/team\/[0-9a-f-]{36}$/);
+  const memberPage = a.url();
+  await a.getByLabel("Role for Chidi Eze").selectOption("admin");
   await a.waitForTimeout(800);
   await a.reload();
-  assert.equal(await a.locator("li", { hasText: "Chidi Eze" }).getByLabel("Role for Chidi Eze").inputValue(), "admin");
+  assert.equal(await a.getByLabel("Role for Chidi Eze").inputValue(), "admin");
   await c.goto(BASE + base);
   await c.getByRole("button", { name: "More" }).click();
   await c.getByRole("link", { name: "Team", exact: true }).waitFor();
   ok("owner promotes the member to Admin and they gain the Team page");
 
-  await a.locator("li", { hasText: "Chidi Eze" }).getByRole("button", { name: "Remove access" }).click();
+  await a.goto(memberPage);
+  await a.getByRole("button", { name: "Remove access" }).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
-  await a.locator("li", { hasText: "Chidi Eze" }).getByText("Access removed").waitFor();
+  await a.getByText("Access removed").first().waitFor();
+  await a.goto(BASE + base + "/team");
+  await a.locator("tr", { hasText: "Chidi Eze" }).getByText("Access removed").waitFor();
   await a.screenshot({ path: `${SHOTS}/07-team-removed.png`, fullPage: true });
   await c.goto(BASE + base);
   await c.getByRole("heading", { name: "We could not find that page" }).waitFor();

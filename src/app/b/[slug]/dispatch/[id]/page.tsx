@@ -10,7 +10,9 @@ import { ReasonForm } from "@/components/corrections/reason-form";
 import { TripReturnsForm, type ReturnLine } from "@/components/returns/trip-returns-form";
 import { ActionButton } from "@/components/team/action-button";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, CardHeader, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { ActionsPanel } from "@/components/ui/page-header";
 import { formatDay, formatQuantity, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -90,7 +92,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
 
   const details = [
     ["Driver", trip.driver_name],
-    ["Vehicle", trip.vehicle],
+    [org.sells_drinks ? "Truck" : "Vehicle", trip.vehicle],
     [
       "Loaders",
       trip.dispatch_trip_loaders
@@ -104,6 +106,8 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     ["Created by", trip.profiles?.full_name],
     ["Note", trip.note]
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+  const manyReturnables = new Set(returnLines.map((line) => line.returnable_items?.name)).size > 1;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -124,67 +128,77 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
       </Card>
 
       {load.size > 0 ? (
-        <ListCard title="Loading list">
-          <ul className="divide-y divide-line">
-            {[...load.values()]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((line) => (
-              <li key={line.name} className="flex items-center justify-between gap-3 px-5 py-3">
-                <span className="text-lg font-extrabold">{line.name}</span>
-                <span>
-                  <span className="text-2xl font-extrabold tabular-nums">{formatQuantity(line.quantity)}</span>{" "}
-                  <span className="font-medium text-ink-soft">{line.unit}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-          {returnsDue.size > 0 ? (
-            <p className="border-t-[3px] border-ink px-5 py-3 font-semibold">
-              To bring back:{" "}
-              {[...returnsDue.entries()].map(([name, quantity]) => `${formatQuantity(quantity)} ${name}`).join(", ")}
-            </p>
-          ) : null}
-        </ListCard>
+        <TableCard title="Loading list">
+          <DataTable
+            label="Loading list"
+            rows={[...load.values()].sort((a, b) => a.name.localeCompare(b.name))}
+            rowKey={(line) => line.name}
+            footer={
+              returnsDue.size > 0 ? (
+                <tr>
+                  <td data-phone="title" colSpan={2} className="px-5 py-3 font-extrabold">
+                    To bring back:{" "}
+                    {[...returnsDue.entries()].map(([name, quantity]) => `${formatQuantity(quantity)} ${name}`).join(", ")}
+                  </td>
+                </tr>
+              ) : null
+            }
+            columns={[
+              { header: "Product", wrap: true, cell: (line) => <span className="font-extrabold">{line.name}</span> },
+              {
+                header: "Quantity",
+                align: "right",
+                phone: "badge",
+                cell: (line) => (
+                  <span className="text-xl font-extrabold">
+                    {formatQuantity(line.quantity)} <span className="text-sm font-medium text-ink-soft">{line.unit}</span>
+                  </span>
+                )
+              }
+            ]}
+          />
+        </TableCard>
       ) : null}
 
-      <ListCard title={liveOrders.length === 1 ? "1 order" : `${liveOrders.length} orders`}>
-        {orders.length === 0 ? (
-          <p className="px-5 py-4 font-medium text-ink-soft">
-            The orders were sent back to the waiting list when this trip was cancelled.
-          </p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {orders.map((order) => {
-              const quantity = order.order_items.reduce((sum, item) => sum + Number(item.quantity), 0);
-              const hasReturns = order.order_items.some((item) => item.returnable_items);
-              return (
-                <li key={order.id}>
-                  <Link
-                    href={`${base}/orders/${order.id}`}
-                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-4 hover:bg-paper"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-lg font-extrabold">
-                        {order.customers?.name ?? order.buyer_name ?? "Walk-in buyer"}
-                        {order.customers?.area ? ` (${order.customers.area})` : ""}
-                      </span>
-                      <span className="font-medium text-ink-soft">
-                        {order.order_no} · {formatQuantity(quantity)} items
-                      </span>
-                    </span>
-                    <span className="flex flex-wrap items-center gap-2">
-                      {hasReturns && trip.status === "draft" ? <Badge tone="solid">Return due</Badge> : null}
-                      {trip.status !== "draft" ? (
-                        <OrderStatusBadge status={order.status} voided={order.status === "cancelled"} />
-                      ) : null}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </ListCard>
+      <TableCard title={liveOrders.length === 1 ? "1 order" : `${liveOrders.length} orders`}>
+        <DataTable
+          label="Orders on this trip"
+          rows={orders}
+          rowKey={(order) => order.id}
+          rowHref={(order) => `${base}/orders/${order.id}`}
+          empty="The orders were sent back to the waiting list when this trip was cancelled."
+          columns={[
+            {
+              header: "Customer",
+              wrap: true,
+              cell: (order) => (
+                <>
+                  {order.customers?.name ?? order.buyer_name ?? "Walk-in buyer"}
+                  {order.customers?.area ? <span className="font-medium text-ink-soft"> · {order.customers.area}</span> : null}
+                </>
+              )
+            },
+            {
+              header: "Status",
+              phone: "badge",
+              cell: (order) =>
+                trip.status === "draft" ? (
+                  order.order_items.some((item) => item.returnable_items) ? (
+                    <Badge tone="solid">Return due</Badge>
+                  ) : null
+                ) : (
+                  <OrderStatusBadge status={order.status} voided={order.status === "cancelled"} />
+                )
+            },
+            { header: "Order no.", cell: (order) => <span className="tabular-nums">{order.order_no}</span> },
+            {
+              header: "Items",
+              align: "right",
+              cell: (order) => formatQuantity(order.order_items.reduce((sum, item) => sum + Number(item.quantity), 0))
+            }
+          ]}
+        />
+      </TableCard>
 
       {trip.status === "dispatched" && expectedReturns.length > 0 ? (
         <Card>
@@ -202,76 +216,90 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
       ) : null}
 
       {returnLines.length > 0 ? (
-        <ListCard title="What came back">
-          <ul className="divide-y divide-line">
-            {returnLines.map((line) => {
-              const short = Number(line.expected_quantity) - Number(line.returned_quantity);
-              return (
-                <li key={line.id} className="space-y-2 px-5 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="min-w-0">
-                      <span className="block font-extrabold">{customerByOrder.get(line.order_id)}</span>
-                      <span className="text-sm font-medium text-ink-soft">
-                        Returned {formatQuantity(Number(line.returned_quantity))} of{" "}
-                        {formatQuantity(Number(line.expected_quantity))} {line.returnable_items?.name}
-                        {line.corrected_at ? " · corrected" : ""}
-                      </span>
-                    </span>
-                    {short > 0 ? (
-                      <Badge tone="accent">Short by {formatQuantity(short)}</Badge>
-                    ) : short < 0 ? (
-                      <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
-                    ) : (
-                      <Badge tone="success">All back</Badge>
-                    )}
-                  </div>
-                  {manager ? (
-                    <ReasonForm
-                      compact
-                      action={correctTripReturnAction.bind(null, org.slug, line.id)}
-                      trigger="Correct this figure"
-                      explanation="Enter the number that actually came back. The difference moves between the store count and this customer's balance."
-                      submitLabel="Save correction"
-                      quantity={{
-                        label: `Returned by ${customerByOrder.get(line.order_id)}`,
-                        current: Number(line.returned_quantity)
-                      }}
-                    />
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </ListCard>
+        <TableCard title="What came back">
+          <DataTable
+            label="What came back"
+            rows={returnLines}
+            rowKey={(line) => line.id}
+            columns={[
+              { header: "Customer", wrap: true, cell: (line) => <span className="font-extrabold">{customerByOrder.get(line.order_id)}</span> },
+              {
+                header: "Result",
+                phone: "badge",
+                cell: (line) => {
+                  const short = Number(line.expected_quantity) - Number(line.returned_quantity);
+                  return short > 0 ? (
+                    <Badge tone="accent">Short by {formatQuantity(short)}</Badge>
+                  ) : short < 0 ? (
+                    <Badge tone="solid">{formatQuantity(-short)} extra</Badge>
+                  ) : (
+                    <Badge tone="success">All back</Badge>
+                  );
+                }
+              },
+              ...(manyReturnables ? [{ header: "Item", cell: (line: (typeof returnLines)[number]) => line.returnable_items?.name ?? "" }] : []),
+              { header: "Expected", align: "right", cell: (line) => formatQuantity(Number(line.expected_quantity)) },
+              {
+                header: "Returned",
+                align: "right",
+                cell: (line) => (
+                  <>
+                    {formatQuantity(Number(line.returned_quantity))}
+                    {line.corrected_at ? <span className="block text-xs font-bold text-ink-soft">corrected</span> : null}
+                  </>
+                )
+              }
+            ]}
+          />
+        </TableCard>
       ) : null}
 
-      <div className="flex flex-wrap items-start gap-3">
-        <Link href={`${base}/dispatch`} className={buttonClass("secondary")}>
-          Back to dispatch
-        </Link>
-        {trip.status === "draft" ? (
-          <>
-            <ActionButton
-              action={dispatchTripAction.bind(null, org.slug, trip.id)}
-              label="Dispatch now"
-              pendingLabel="Dispatching…"
-              variant="primary"
-              size="md"
-              confirmMessage={`Send ${trip.trip_no} out now? Its orders can no longer be changed after this.`}
-            />
-            {manager ? (
+      {trip.status === "draft" || (manager && returnLines.length > 0) ? (
+        <ActionsPanel>
+          {trip.status === "draft" ? (
+            <div className="flex flex-wrap items-start gap-3">
               <ActionButton
-                action={cancelTripAction.bind(null, org.slug, trip.id)}
-                label="Cancel trip"
-                pendingLabel="Cancelling…"
-                variant="danger"
+                action={dispatchTripAction.bind(null, org.slug, trip.id)}
+                label="Dispatch now"
+                pendingLabel="Dispatching…"
+                variant="primary"
                 size="md"
-                confirmMessage={`Cancel ${trip.trip_no}? Its orders go back to waiting for dispatch.`}
+                confirmMessage={`Send ${trip.trip_no} out now? Its orders can no longer be changed after this.`}
               />
-            ) : null}
-          </>
-        ) : null}
-      </div>
+              {manager ? (
+                <ActionButton
+                  action={cancelTripAction.bind(null, org.slug, trip.id)}
+                  label="Cancel trip"
+                  pendingLabel="Cancelling…"
+                  variant="danger"
+                  size="md"
+                  confirmMessage={`Cancel ${trip.trip_no}? Its orders go back to waiting for dispatch.`}
+                />
+              ) : null}
+            </div>
+          ) : null}
+          {manager
+            ? returnLines.map((line) => (
+                <ReasonForm
+                  key={line.id}
+                  compact
+                  action={correctTripReturnAction.bind(null, org.slug, line.id)}
+                  trigger={`Correct what ${customerByOrder.get(line.order_id)} returned`}
+                  explanation="Enter the number that actually came back. The difference moves between the store count and this customer's balance."
+                  submitLabel="Save correction"
+                  quantity={{
+                    label: `Returned by ${customerByOrder.get(line.order_id)}`,
+                    current: Number(line.returned_quantity)
+                  }}
+                />
+              ))
+            : null}
+        </ActionsPanel>
+      ) : null}
+
+      <Link href={`${base}/dispatch`} className={buttonClass("secondary")}>
+        Back to dispatch
+      </Link>
     </div>
   );
 }

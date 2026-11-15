@@ -9,7 +9,9 @@ import { OrderStatusBadge } from "@/components/orders/status-badge";
 import { ActionButton } from "@/components/team/action-button";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { ActionsPanel } from "@/components/ui/page-header";
 import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { saleWords } from "@/lib/selling";
@@ -57,6 +59,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
     ["Recorded by", order.profiles?.full_name],
     ["Note", order.note]
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+  const canVoid = canManage(role) && order.status !== "cancelled";
   const unitsByProduct = new Map<string, typeof order.product_units>();
   for (const unit of order.product_units) {
     unitsByProduct.set(unit.product_id, [...(unitsByProduct.get(unit.product_id) ?? []), unit]);
@@ -100,85 +103,111 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         </dl>
       </Card>
 
-      <Card>
-        <CardHeader title="Products" />
-        <ul className="-my-3 divide-y divide-line">
-          {order.order_items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3">
-              <span className="min-w-0">
-                <span className="block font-extrabold">{item.products?.name}</span>
-                <span className="text-sm font-medium text-ink-soft">
-                  {formatQuantity(Number(item.quantity))} {item.products?.unit} ×{" "}
-                  {formatMoney(Number(item.unit_price), org.currency_code)}
-                </span>
-              </span>
-              <span className="flex items-center gap-3">
-                {item.returnable_items ? (
-                  <Badge tone="solid">
-                    {formatQuantity(Number(item.quantity))} {item.returnable_items.name} due back
-                  </Badge>
-                ) : null}
-                <span className="text-lg font-extrabold tabular-nums">
-                  {formatMoney(Number(item.line_total), org.currency_code)}
-                </span>
-              </span>
-              {unitsByProduct.has(item.product_id) ? (
-                <ul className="basis-full space-y-1 text-sm font-medium text-ink-soft">
-                  {unitsByProduct.get(item.product_id)!.map((unit) => (
-                    <li key={unit.id} className="tabular-nums">
-                      {describeUnit(unit)}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-5 flex items-baseline justify-between gap-3 border-t-[3px] border-ink pt-3">
-          <span className="text-lg font-extrabold">Total</span>
-          <span className="text-3xl font-extrabold tabular-nums">
-            {formatMoney(Number(summary?.total_amount ?? 0), org.currency_code)}
-          </span>
-        </p>
-      </Card>
-
-      <div className="flex flex-wrap items-start gap-3">
-        <Link href={`${base}/orders`} className={buttonClass("secondary")}>
-          Back to {words.many}
-        </Link>
-        {order.status === "pending" ? (
-          <>
-            <ActionButton
-              action={handOverOrderAction.bind(null, org.slug, order.id)}
-              label="Handed over now"
-              pendingLabel="Saving…"
-              variant="primary"
-              size="md"
-              confirmMessage={`Mark ${order.order_no} as collected at the counter? It is completed straight away and will not go on a trip.`}
-            />
-            <Link href={`${base}/orders/${order.id}/edit`} className={buttonClass("secondary")}>
-              Edit {words.one}
-            </Link>
-            <ActionButton
-              action={cancelOrderAction.bind(null, org.slug, order.id)}
-              label={`Cancel ${words.one}`}
-              pendingLabel="Cancelling…"
-              variant="danger"
-              size="md"
-              confirmMessage={`Cancel ${words.one} ${order.order_no}? Its stock will be put back.`}
-            />
-          </>
-        ) : null}
-      </div>
-
-      {canManage(role) && order.status !== "cancelled" ? (
-        <ReasonForm
-          action={voidOrderAction.bind(null, org.slug, order.id)}
-          trigger={`Void this ${words.one}`}
-          explanation="Use this when the order should never have been recorded. Its stock goes back, the customer no longer owes anything for it, and any returns recorded against it are taken back out. The order stays on record, marked as voided."
-          submitLabel={`Void ${words.one}`}
+      <TableCard title="Products">
+        <DataTable
+          label="Products"
+          rows={order.order_items}
+          rowKey={(item) => item.id}
+          footer={
+            <tr>
+              <td data-phone="title" className="px-5 py-3 text-lg font-extrabold">
+                Total
+              </td>
+              <td data-phone="hide" colSpan={order.order_items.some((item) => item.returnable_items) ? 3 : 2} />
+              <td data-phone="badge" className="px-5 py-3 text-right text-2xl font-extrabold tabular-nums">
+                {formatMoney(Number(summary?.total_amount ?? 0), org.currency_code)}
+              </td>
+            </tr>
+          }
+          columns={[
+            {
+              header: "Product",
+              wrap: true,
+              cell: (item) => (
+                <>
+                  <span className="font-extrabold">{item.products?.name}</span>
+                  {unitsByProduct.has(item.product_id) ? (
+                    <span className="block space-y-0.5 text-sm font-medium text-ink-soft">
+                      {unitsByProduct.get(item.product_id)!.map((unit) => (
+                        <span key={unit.id} className="block tabular-nums">
+                          {describeUnit(unit)}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                </>
+              )
+            },
+            {
+              header: "Quantity",
+              align: "right",
+              cell: (item) => `${formatQuantity(Number(item.quantity))} ${item.products?.unit ?? ""}`
+            },
+            { header: "Price", align: "right", cell: (item) => formatMoney(Number(item.unit_price), org.currency_code) },
+            ...(order.order_items.some((item) => item.returnable_items)
+              ? [
+                  {
+                    header: "Due back",
+                    cell: (item: (typeof order.order_items)[number]) =>
+                      item.returnable_items ? (
+                        <Badge tone="solid">
+                          {formatQuantity(Number(item.quantity))} {item.returnable_items.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-ink-soft">—</span>
+                      )
+                  }
+                ]
+              : []),
+            {
+              header: "Line total",
+              align: "right",
+              phone: "badge",
+              cell: (item) => <span className="font-extrabold">{formatMoney(Number(item.line_total), org.currency_code)}</span>
+            }
+          ]}
         />
+      </TableCard>
+
+      {order.status === "pending" || canVoid ? (
+        <ActionsPanel>
+          {order.status === "pending" ? (
+            <div className="flex flex-wrap items-start gap-3">
+              <ActionButton
+                action={handOverOrderAction.bind(null, org.slug, order.id)}
+                label="Handed over now"
+                pendingLabel="Saving…"
+                variant="primary"
+                size="md"
+                confirmMessage={`Mark ${order.order_no} as collected at the counter? It is completed straight away and will not go on a trip.`}
+              />
+              <Link href={`${base}/orders/${order.id}/edit`} className={buttonClass("secondary")}>
+                Edit {words.one}
+              </Link>
+              <ActionButton
+                action={cancelOrderAction.bind(null, org.slug, order.id)}
+                label={`Cancel ${words.one}`}
+                pendingLabel="Cancelling…"
+                variant="danger"
+                size="md"
+                confirmMessage={`Cancel ${words.one} ${order.order_no}? Its stock will be put back.`}
+              />
+            </div>
+          ) : null}
+          {canVoid ? (
+            <ReasonForm
+              action={voidOrderAction.bind(null, org.slug, order.id)}
+              trigger={`Void this ${words.one}`}
+              explanation="Use this when the order should never have been recorded. Its stock goes back, the customer no longer owes anything for it, and any returns recorded against it are taken back out. The order stays on record, marked as voided."
+              submitLabel={`Void ${words.one}`}
+            />
+          ) : null}
+        </ActionsPanel>
       ) : null}
+
+      <Link href={`${base}/orders`} className={buttonClass("secondary")}>
+        Back to {words.many}
+      </Link>
     </div>
   );
 }

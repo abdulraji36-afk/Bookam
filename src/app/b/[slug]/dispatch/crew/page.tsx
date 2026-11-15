@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { setWorkerActiveAction, saveWorkerAction } from "@/app/actions/crew";
+import { saveWorkerAction } from "@/app/actions/crew";
 import { WorkerForm } from "@/components/dispatch/worker-form";
-import { ActionButton } from "@/components/team/action-button";
-import { Badge, Card, CardHeader, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, CardHeader, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { PageHeader } from "@/components/ui/page-header";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Drivers and loaders" };
@@ -18,51 +19,49 @@ async function Crew({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew">, "para
     .select("id, name, role, phone, is_active")
     .eq("organization_id", org.id)
     .order("is_active", { ascending: false })
+    .order("role")
     .order("name");
   const workers = data ?? [];
+  type Worker = (typeof workers)[number];
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <PageTitle sub="The people who go out on trips. Choose them when you create a trip.">Drivers and loaders</PageTitle>
+    <div className="max-w-4xl space-y-5">
+      <PageHeader
+        title="Drivers and loaders"
+        sub={manager ? "The people who go out on trips. Open someone to change them or switch them off." : "The people who go out on trips."}
+      />
       {manager ? (
         <Card>
           <CardHeader title="Add someone" />
-          <WorkerForm action={saveWorkerAction.bind(null, org.slug)} />
+          <WorkerForm action={saveWorkerAction.bind(null, org.slug, null)} />
         </Card>
       ) : null}
-      {(["driver", "loader"] as const).map((group) => {
-        const rows = workers.filter((worker) => worker.role === group);
-        return (
-          <ListCard key={group} title={group === "driver" ? `Drivers (${rows.length})` : `Loaders (${rows.length})`}>
-            {rows.length === 0 ? (
-              <p className="px-5 py-4 font-medium text-ink-soft">No {group}s yet.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {rows.map((worker) => (
-                  <li key={worker.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-                    <span className="min-w-0">
-                      <span className={`block font-extrabold ${worker.is_active ? "" : "text-ink-soft line-through"}`}>
-                        {worker.name}
-                      </span>
-                      {worker.phone ? <span className="text-sm font-medium text-ink-soft">{worker.phone}</span> : null}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {!worker.is_active ? <Badge tone="accent">Switched off</Badge> : null}
-                      {manager ? (
-                        <ActionButton
-                          action={setWorkerActiveAction.bind(null, org.slug, worker.id, !worker.is_active)}
-                          label={worker.is_active ? "Switch off" : "Switch on"}
-                          variant={worker.is_active ? "danger" : "secondary"}
-                        />
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ListCard>
-        );
-      })}
+      <TableCard>
+        <DataTable
+          label="Drivers and loaders"
+          rows={workers}
+          rowKey={(worker: Worker) => worker.id}
+          rowHref={manager ? (worker: Worker) => `/b/${org.slug}/dispatch/crew/${worker.id}` : undefined}
+          empty="Nobody on the list yet."
+          columns={[
+            {
+              header: "Name",
+              wrap: true,
+              cell: (worker: Worker) => <span className={worker.is_active ? "" : "text-ink-soft line-through"}>{worker.name}</span>
+            },
+            {
+              header: "Role",
+              phone: "badge",
+              cell: (worker: Worker) => <Badge tone={worker.role === "driver" ? "solid" : "plain"}>{worker.role === "driver" ? "Driver" : "Loader"}</Badge>
+            },
+            { header: "Phone", cell: (worker: Worker) => worker.phone ?? <span className="text-ink-soft">—</span> },
+            {
+              header: "Status",
+              cell: (worker: Worker) => (worker.is_active ? <Badge tone="success">Active</Badge> : <Badge tone="accent">Switched off</Badge>)
+            }
+          ]}
+        />
+      </TableCard>
     </div>
   );
 }

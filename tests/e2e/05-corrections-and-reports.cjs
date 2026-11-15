@@ -110,7 +110,7 @@ let dbg;
   }
   const stockOf = async (name, value) => {
     await go("/stock");
-    await a.locator("li", { hasText: name }).getByText(String(value), { exact: true }).waitFor();
+    await a.locator("li, tr", { hasText: name }).getByText(String(value), { exact: true }).waitFor();
   };
   const crateTotals = async (inStore, owed) => {
     await go("/returns");
@@ -138,19 +138,21 @@ let dbg;
   await vis(a.getByLabel("Returned by Mama Tunde Stores")).fill("30");
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
   await vis(a.getByRole("heading", { name: "What came back", exact: true })).waitFor();
-  await a.locator("section", { hasText: "What came back" }).locator("li", { hasText: "Alhaji Musa Kiosk" }).getByText("All back").waitFor();
+  await a.locator("section", { hasText: "What came back" }).locator("li, tr", { hasText: "Alhaji Musa Kiosk" }).getByText("All back").waitFor();
   await crateTotals(150, 10);
   ok("set-up: a trip went out and came back 10 crates short");
 
   // Correct the returned figure
   await a.goto(tripUrl);
-  const mamaLine = a.locator("section", { hasText: "What came back" }).locator("li", { hasText: "Mama Tunde Stores" });
-  await withReason(mamaLine, "Correct this figure", "Save correction", "ok", 36);
+  // Corrections are in the trip's Actions box.
+  const actions = a.locator("section", { has: a.getByRole("heading", { name: "Actions", exact: true }) });
+  await withReason(actions, "Correct what Mama Tunde Stores returned", "Save correction", "ok", 36);
   await a.getByText("Give a reason of at least 10 characters.").waitFor();
-  await vis(mamaLine.getByLabel("Reason")).fill("Six more crates were found in the truck");
-  await vis(mamaLine.getByRole("button", { name: "Save correction" })).click();
+  await vis(actions.getByLabel("Reason")).fill("Six more crates were found in the truck");
+  await vis(actions.getByRole("button", { name: "Save correction" })).click();
+  await actions.getByText("Figure corrected.").waitFor();
+  const mamaLine = a.locator("section", { hasText: "What came back" }).locator("tr", { hasText: "Mama Tunde Stores" });
   await mamaLine.getByText("Short by 4").waitFor();
-  await mamaLine.getByText("Figure corrected.").waitFor();
   await a.screenshot({ path: `${SHOTS}/40-correct-return.png`, fullPage: true });
   await crateTotals(156, 4);
   ok("an owner corrects a returned figure, with a reason, and the balances follow");
@@ -165,22 +167,23 @@ let dbg;
   await stockOf("Cola 50cl", 180); // only Musa's 20 are out
   await crateTotals(120, 0); // Musa returned 20: 100 opening + 20
   await a.goto(tripUrl);
-  await a.locator("section", { hasText: "1 order" }).locator("li", { hasText: "Mama Tunde Stores" }).getByText("Voided").waitFor();
+  await a.locator("section", { hasText: "1 order" }).locator("li, tr", { hasText: "Mama Tunde Stores" }).getByText("Voided").waitFor();
   ok("voiding a completed order puts stock back and reverses its returns");
 
   // Void a receipt: blocked while its stock is sold, allowed after
   const waterOrder = await order("Mama Tunde Stores", "Water 75cl", 5);
   await a.goto(waterReceipt);
-  await withReason(a.locator("main"), "Void this receipt", "Void receipt", "Delivery was entered twice");
+  await withReason(a.locator("main"), "Void this delivery", "Void delivery", "Delivery was entered twice");
   await a.getByText("This receipt cannot be voided: only 45 of Water 75cl is left in stock, and it brought in 50.").waitFor();
   await a.goto(waterOrder);
   await withReason(a.locator("main"), "Void this order", "Void order", "Customer changed their mind after saving");
   await a.getByText("This order was voided.").waitFor();
   await a.goto(waterReceipt);
-  await withReason(a.locator("main"), "Void this receipt", "Void receipt", "Delivery was entered twice");
+  await withReason(a.locator("main"), "Void this delivery", "Void delivery", "Delivery was entered twice");
   await a.getByText("This receipt was voided and its stock taken back out.").waitFor();
   await stockOf("Water 75cl", 0);
-  await a.locator("section", { hasText: "Stock received" }).getByText("Voided").waitFor();
+  await go("/stock/receipts?status=voided");
+  await a.locator("tr").getByText("Voided", { exact: true }).first().waitFor();
   ok("a stock receipt cannot be voided while its stock is sold, and can once it is back");
 
   // Void an adjustment from the returns page
@@ -190,19 +193,21 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save adjustment" })).click();
   await a.waitForURL(/\/returns\?saved=adjustment/);
   await crateTotals(127, 0);
-  const bought = a.locator("section", { hasText: "Latest activity" }).locator("li", { hasText: "Bought new ones" });
-  await withReason(bought, "Void this adjustment", "Void adjustment", "Entered seven instead of seventy");
-  await bought.waitFor({ state: "detached" }); // the voided adjustment leaves the list
+  // A movement opens on its own page, where it can be voided.
+  await a.locator("section", { hasText: "Latest movements" }).locator("tr", { hasText: "Bought new ones" }).getByRole("link").click();
+  await a.waitForURL(/\/returns\/adjustments\/[0-9a-f-]{36}$/);
+  await withReason(a.locator("main"), "Void this adjustment", "Void adjustment", "Entered seven instead of seventy");
+  await a.getByText("This adjustment was voided", { exact: false }).first().waitFor();
   await crateTotals(120, 0);
   ok("an adjustment is voided from the returns page and the count goes back");
 
   // Activity log
   await go("/activity");
   const log = a.locator("section", { hasText: "Latest activity" });
-  await log.locator("li", { hasText: "Voided an order" }).first().getByText(/Recorded for the wrong customer|Customer changed their mind/).waitFor();
-  await log.locator("li", { hasText: "Corrected a returned figure" }).getByText(/Six more crates were found/).waitFor();
-  await log.locator("li", { hasText: "Voided a stock receipt" }).getByText("Ada Obi").waitFor();
-  await log.locator("li", { hasText: "Received stock" }).first().waitFor();
+  await log.locator("li, tr", { hasText: "Voided an order" }).first().getByText(/Recorded for the wrong customer|Customer changed their mind/).waitFor();
+  await log.locator("li, tr", { hasText: "Corrected a returned figure" }).getByText(/Six more crates were found/).waitFor();
+  await log.locator("li, tr", { hasText: "Voided a stock receipt" }).getByText("Ada Obi").waitFor();
+  await log.locator("li, tr", { hasText: "Received stock" }).first().waitFor();
   await a.screenshot({ path: `${SHOTS}/42-activity.png`, fullPage: true });
   ok("the activity page lists who did what, with the reasons");
 
@@ -235,9 +240,9 @@ let dbg;
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(tripUrl);
   await c.locator("section", { hasText: "What came back" }).waitFor();
-  assert.equal(await c.getByText("Correct this figure", { exact: true }).count(), 0);
+  assert.equal(await c.getByText(/^Correct what/).count(), 0);
   await c.goto(BASE + base + "/returns");
-  await c.locator("section", { hasText: "Latest activity" }).waitFor();
+  await c.locator("section", { hasText: "Latest movements" }).waitFor();
   assert.equal(await c.getByText(/^Void this/).count(), 0);
   await c.goto(BASE + base + "/activity");
   await c.waitForURL(new RegExp(base + "$"));

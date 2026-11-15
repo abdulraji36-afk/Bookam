@@ -2,17 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, CardHeader, EmptyState, ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { categoryOrder, formatDate, formatQuantity } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
-import { getStockRows } from "@/lib/stock";
+import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
+import { categoryOrder, formatQuantity } from "@/lib/format";
+import { canManage, requireOrg } from "@/lib/org";
+import { getStockRows, type StockRow } from "@/lib/stock";
 
 export const metadata: Metadata = { title: "Stock" };
 
+const INPUT =
+  "mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium placeholder:font-normal placeholder:text-ink-soft/70 focus:border-ink focus:outline-2 focus:outline-accent";
+
 async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}/stock`;
+  const manager = canManage(role);
 
   const { data: locationData } = await supabase
     .from("locations")
@@ -22,6 +28,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     .order("created_at");
   const locations = locationData ?? [];
   const selected = locations.find((location) => location.id === query.location) ?? null;
+  const lowOnly = query.show === "low";
 
   let unitQuery = supabase
     .from("product_units")
@@ -31,21 +38,10 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     .limit(10000);
   if (selected) unitQuery = unitQuery.eq("location_id", selected.id);
 
-  const [rows, receiptsResult, unitsResult] = await Promise.all([
-    getStockRows(supabase, org.id, selected?.id ?? null),
-    supabase
-      .from("stock_receipts")
-      .select(
-        "id, receipt_no, received_date, supplier_name, voided_at, locations (name), stock_receipt_items (quantity)"
-      )
-      .eq("organization_id", org.id)
-      .order("received_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(10),
-    unitQuery
-  ]);
-  const receipts = receiptsResult.data ?? [];
+  const [allRows, unitsResult] = await Promise.all([getStockRows(supabase, org.id, selected?.id ?? null), unitQuery]);
   const hasSerials = org.tracks_serials || (unitsResult.data ?? []).length > 0;
+  const lowCount = allRows.filter((row) => row.isLow).length;
+  const rows = lowOnly ? allRows.filter((row) => row.isLow) : allRows;
 
   // For serial-numbered products: how many of each colour.
   const breakdown = new Map<string, Map<string, number>>();
@@ -55,169 +51,157 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     counts.set(label, (counts.get(label) ?? 0) + 1);
     breakdown.set(unit.product_id, counts);
   }
-  const lowCount = rows.filter((row) => row.isLow).length;
-  // A phone shop sees its serial-numbered stock and its counted accessories apart.
-  const stockGroups: [string | null, typeof rows][] = org.sells_drinks
+
+  const groups: [string | null, StockRow[]][] = org.sells_drinks
     ? // A drinks depot sees its stock by category, RGB first, as on the NBC list.
       [...new Set(rows.map((row) => row.category ?? "Other"))]
         .sort((x, y) => categoryOrder(x === "Other" ? null : x) - categoryOrder(y === "Other" ? null : y))
-        .map((name) => [name, rows.filter((row) => (row.category ?? "Other") === name)] as [string, typeof rows])
+        .map((name) => [name, rows.filter((row) => (row.category ?? "Other") === name)] as [string, StockRow[]])
     : org.selling_mode === "serial"
       ? (
           [
             ["With serial numbers", rows.filter((row) => row.tracksSerials)],
             ["Counted items", rows.filter((row) => !row.tracksSerials)]
-          ] as [string, typeof rows][]
+          ] as [string, StockRow[]][]
         ).filter(([, groupRows]) => groupRows.length > 0)
       : [[null, rows]];
 
+  const href = (change: { location?: string | null; show?: string | null }) => {
+    const params = new URLSearchParams();
+    const location = change.location === undefined ? selected?.id : change.location;
+    const show = change.show === undefined ? (lowOnly ? "low" : null) : change.show;
+    if (location) params.set("location", location);
+    if (show) params.set("show", show);
+    const text = params.toString();
+    return `${base}${text ? `?${text}` : ""}`;
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="page-head">
-        <PageTitle
-          sub={
-            lowCount > 0
-              ? `${lowCount} product${lowCount === 1 ? " is" : "s are"} running low.`
-              : "What you have on hand right now."
-          }
-        >
-          Stock
-        </PageTitle>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`${base}/receive`} className={buttonClass("primary")}>
-            + Receive stock
-          </Link>
-        </div>
-      </div>
-
-      {hasSerials ? (
-        <form method="get" action={`${base}/serials`} className="flex flex-wrap items-end gap-2" role="search">
-          <label className="min-w-0 flex-1 text-sm font-bold">
-            Find a serial number
-            <input
-              type="search"
-              name="q"
-              autoComplete="off"
-              placeholder="Type or scan a serial / IMEI"
-              className="mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium placeholder:font-normal placeholder:text-ink-soft/70 focus:border-ink focus:outline-2 focus:outline-accent"
-            />
-          </label>
-          <button type="submit" className={buttonClass("secondary")}>
-            Find
-          </button>
-        </form>
-      ) : null}
-
-      {locations.length > 1 ? (
-        <nav aria-label="Location" className="flex flex-wrap gap-2">
-          <Link
-            href={base}
-            aria-current={selected ? undefined : "page"}
-            className={buttonClass(selected ? "secondary" : "primary", "sm")}
-          >
-            All locations
-          </Link>
-          {locations.map((location) => (
-            <Link
-              key={location.id}
-              href={`${base}?location=${location.id}`}
-              aria-current={selected?.id === location.id ? "page" : undefined}
-              className={buttonClass(selected?.id === location.id ? "primary" : "secondary", "sm")}
-            >
-              {location.name}
+    <div className="space-y-5">
+      <PageHeader
+        title="Stock"
+        sub={
+          lowCount > 0
+            ? `${lowCount} product${lowCount === 1 ? " is" : "s are"} running low.`
+            : "What you have on hand right now."
+        }
+        actions={
+          <>
+            <Link href={`${base}/receive`} className={buttonClass("primary")}>
+              + Receive stock
             </Link>
-          ))}
-        </nav>
-      ) : null}
+            <Link href={`${base}/receipts`} className={buttonClass("secondary")}>
+              Deliveries
+            </Link>
+          </>
+        }
+      />
 
-      {rows.length === 0 ? (
+      <FilterBar>
+        {hasSerials ? (
+          <form method="get" action={`${base}/serials`} className="flex flex-wrap items-end gap-2" role="search">
+            <label className="min-w-0 flex-1 text-sm font-bold">
+              Find a serial number
+              <input type="search" name="q" autoComplete="off" placeholder="Type or scan a serial / IMEI" className={INPUT} />
+            </label>
+            <button type="submit" className={buttonClass("secondary")}>
+              Find
+            </button>
+          </form>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <StatusTabs
+            label="Which products"
+            current={lowOnly ? "low" : "all"}
+            hrefFor={(value) => href({ show: value === "low" ? "low" : null })}
+            tabs={[
+              { value: "all", label: "All products", count: allRows.length },
+              { value: "low", label: "Running low", count: lowCount }
+            ]}
+          />
+          {locations.length > 1 ? (
+            <StatusTabs
+              label="Location"
+              current={selected?.id ?? "all"}
+              hrefFor={(value) => href({ location: value === "all" ? null : value })}
+              tabs={[{ value: "all", label: "All locations" }, ...locations.map((location) => ({ value: location.id, label: location.name }))]}
+            />
+          ) : null}
+        </div>
+      </FilterBar>
+
+      {allRows.length === 0 ? (
         <EmptyState title="No products yet">Add your products first, then record the stock you have.</EmptyState>
+      ) : rows.length === 0 ? (
+        <EmptyState title="Nothing is running low">Every product is above its warning level.</EmptyState>
       ) : (
-        <div className="space-y-6">
-          {stockGroups.map(([title, groupRows]) => {
-            const list = (
-              <ul className="divide-y divide-line">
-                {groupRows.map((row) => (
-                  <li key={row.productId} className="flex items-center justify-between gap-3 px-5 py-4">
-                    <div className="min-w-0">
-                      <p className="text-lg font-extrabold">{row.name}</p>
+        groups.map(([title, groupRows]) => (
+          <TableCard key={title ?? "all"} title={title ?? undefined}>
+            <DataTable
+              label={title ?? "Stock"}
+              rows={groupRows}
+              rowKey={(row) => row.productId}
+              rowHref={manager ? (row) => `/b/${org.slug}/products/${row.productId}` : undefined}
+              footer={
+                groupRows.length > 1 ? (
+                  <tr>
+                    <td data-phone="title" className="px-5 py-3 font-extrabold">
+                      Total
+                    </td>
+                    <td data-phone="hide" />
+                    <td data-phone="badge" className="px-4 py-3 text-right text-lg font-extrabold tabular-nums">
+                      {formatQuantity(groupRows.reduce((sum, row) => sum + row.onHand, 0))}
+                    </td>
+                    <td data-phone="hide" />
+                    <td data-phone="hide" />
+                  </tr>
+                ) : null
+              }
+              columns={[
+                {
+                  header: "Product",
+                  wrap: true,
+                  cell: (row) => (
+                    <>
+                      {row.name}
                       {breakdown.has(row.productId) ? (
-                        <p className="text-sm font-medium text-ink-soft">
+                        <span className="block text-sm font-medium text-ink-soft">
                           {[...breakdown.get(row.productId)!.entries()]
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([label, count]) => `${label} ×${count}`)
                             .join(" · ")}
-                        </p>
+                        </span>
                       ) : null}
-                      {row.isLow ? <Badge tone="accent">Low stock</Badge> : null}
-                    </div>
-                    <p className="shrink-0 text-right">
-                      <span className="text-3xl font-extrabold tabular-nums">{formatQuantity(row.onHand)}</span>{" "}
-                      <span className="font-medium text-ink-soft">{row.unit}</span>
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            );
-            return title ? (
-              <ListCard key={title} title={title}>
-                {list}
-              </ListCard>
-            ) : (
-              <Card key="all" className="!p-0">
-                {list}
-              </Card>
-            );
-          })}
-        </div>
+                    </>
+                  )
+                },
+                { header: "Unit", phone: "hide", cell: (row) => row.unit },
+                {
+                  header: "On hand",
+                  align: "right",
+                  phone: "badge",
+                  cell: (row) => (
+                    <>
+                      <span className="text-xl font-extrabold">{formatQuantity(row.onHand)}</span>
+                      <span className="ml-1 text-sm font-medium text-ink-soft md:hidden">{row.unit}</span>
+                    </>
+                  )
+                },
+                {
+                  header: "Warn at",
+                  align: "right",
+                  phone: "hide",
+                  cell: (row) => (row.lowLevel > 0 ? formatQuantity(row.lowLevel) : <span className="text-ink-soft">—</span>)
+                },
+                {
+                  header: "Status",
+                  cell: (row) => (row.isLow ? <Badge tone="accent">Low stock</Badge> : <Badge tone="success">OK</Badge>)
+                }
+              ]}
+            />
+          </TableCard>
+        ))
       )}
-
-      <Card>
-        <CardHeader
-          title="Stock received"
-          action={
-            receipts.length > 0 ? (
-              <Link
-                href={`${base}/receipts`}
-                className="text-sm font-extrabold uppercase tracking-wide underline decoration-accent decoration-4 underline-offset-4"
-              >
-                See all
-              </Link>
-            ) : undefined
-          }
-        />
-        {receipts.length === 0 ? (
-          <p className="text-ink-soft">Nothing received yet.</p>
-        ) : (
-          <ul className="-my-3 divide-y divide-line">
-            {receipts.map((receipt) => {
-              const total = receipt.stock_receipt_items.reduce((sum, item) => sum + Number(item.quantity), 0);
-              return (
-                <li key={receipt.id}>
-                  <Link
-                    href={`${base}/receipts/${receipt.id}`}
-                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 hover:bg-paper"
-                  >
-                    <span>
-                      <span className="block font-extrabold tabular-nums">{receipt.receipt_no}</span>
-                      <span className="text-sm font-medium text-ink-soft">
-                        {[formatDate(receipt.received_date, "UTC"), receipt.supplier_name, receipt.locations?.name]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </span>
-                    {receipt.voided_at ? (
-                      <Badge tone="accent">Voided</Badge>
-                    ) : (
-                      <span className="font-extrabold tabular-nums">+{formatQuantity(total)}</span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
     </div>
   );
 }

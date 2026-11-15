@@ -25,7 +25,7 @@ export function NavLink({ item }: { item: NavItem }) {
     <Link
       href={item.href}
       aria-current={isActive ? "page" : undefined}
-      className={`flex min-h-12 items-center gap-3 rounded-md px-3.5 ${
+      className={`flex min-h-10 items-center gap-3 rounded-md px-3.5 text-[0.9375rem] ${
         isActive
           ? "bg-accent font-extrabold text-accent-ink"
           : "font-semibold text-nav hover:bg-white/10 hover:text-white"
