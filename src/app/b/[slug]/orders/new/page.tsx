@@ -5,6 +5,7 @@ import { saveOrderAction, saveOrderBatchAction } from "@/app/actions/orders";
 import { BatchOrderForm } from "@/components/orders/batch-order-form";
 import { OrderForm } from "@/components/orders/order-form";
 import { buttonClass } from "@/components/ui/button";
+import { StatusTabs } from "@/components/ui/page-header";
 import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { categoryOrder, todayIn } from "@/lib/format";
 import { getOrderFormData } from "@/lib/order-form-data";
@@ -22,6 +23,24 @@ async function NewOrder({ params, searchParams }: PageProps<"/b/[slug]/orders/ne
   const data = await getOrderFormData(supabase, org.id);
   const base = `/b/${org.slug}`;
   const today = todayIn(org.timezone, await requestNow());
+  // Drinks: an order is either RGB or PET, chosen with the tabs at the top.
+  const kind = query.kind === "pet" ? "pet" : "rgb";
+  const kindHref = (value: string, single = query.single === "1") =>
+    `${base}/orders/new?${new URLSearchParams({ ...(single ? { single: "1" } : {}), kind: value }).toString()}`;
+  const kindTabs = org.sells_drinks ? (
+    <StatusTabs
+      label="Kind of order"
+      current={kind}
+      hrefFor={(value) => kindHref(value)}
+      tabs={[
+        { value: "rgb", label: "RGB orders (empties come back)" },
+        { value: "pet", label: "PET orders" }
+      ]}
+    />
+  ) : null;
+  const products = org.sells_drinks
+    ? data.products.filter((product) => product.returnable === (kind === "rgb"))
+    : data.products;
 
   // Drinks: several customers on one screen, like the Bilikis RGB sales page.
   // A single order (for a walk-in or the counter) is still one tap away.
@@ -38,16 +57,18 @@ async function NewOrder({ params, searchParams }: PageProps<"/b/[slug]/orders/ne
       <div className="max-w-7xl space-y-6">
         <div className="page-head">
           <PageTitle sub="Add each customer and what they are taking. Stock left on each product counts down as you type.">
-            New orders
+            {kind === "rgb" ? "New RGB orders" : "New PET orders"}
           </PageTitle>
-          <Link href={`${base}/orders/new?single=1`} className={buttonClass("secondary")}>
+          <Link href={kindHref(kind, true)} className={buttonClass("secondary")}>
             One order or a walk-in instead
           </Link>
         </div>
+        {kindTabs}
         <BatchOrderForm
+          key={kind}
           action={saveOrderBatchAction.bind(null, org.slug)}
           customers={data.customers}
-          products={data.products
+          products={products
             .filter((product) => !product.tracksSerials)
             .map((product) => ({
               id: product.id,
@@ -68,10 +89,22 @@ async function NewOrder({ params, searchParams }: PageProps<"/b/[slug]/orders/ne
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageTitle sub="Stock is set aside for the customer as soon as you save.">
-        New {saleWords(org.selling_mode).one}
-      </PageTitle>
-      {data.products.length === 0 ? (
+      <div className="page-head">
+        <PageTitle sub="Stock is set aside for the customer as soon as you save.">
+          {org.sells_drinks
+            ? kind === "rgb"
+              ? "New RGB order"
+              : "New PET order"
+            : `New ${saleWords(org.selling_mode).one}`}
+        </PageTitle>
+        {org.sells_drinks ? (
+          <Link href={kindHref(kind, false)} className={buttonClass("secondary")}>
+            Several customers instead
+          </Link>
+        ) : null}
+      </div>
+      {kindTabs}
+      {products.length === 0 ? (
         <EmptyState title="Add a product first">
           <Link href={`${base}/products`} className={LINK}>
             Go to products
@@ -86,6 +119,7 @@ async function NewOrder({ params, searchParams }: PageProps<"/b/[slug]/orders/ne
             delivers={org.does_delivery}
             today={today}
             {...data}
+            products={products}
           />
         </Card>
       )}

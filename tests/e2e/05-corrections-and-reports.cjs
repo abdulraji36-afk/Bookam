@@ -86,7 +86,7 @@ let dbg;
     return a.url().split("?")[0];
   }
   async function order(customer, product, quantity) {
-    await go("/orders/new?single=1");
+    await go(/Water/.test(product) ? "/orders/new?single=1&kind=pet" : "/orders/new?single=1");
     await pick(a, "Customer", customer);
     await pick(a, "Product", product);
     await vis(a.getByLabel("Quantity")).fill(String(quantity));

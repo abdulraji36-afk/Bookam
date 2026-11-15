@@ -199,11 +199,13 @@ let dbg;
     await vis(a.getByRole("button", { name: "Save customer" })).click();
     await a.waitForURL(new RegExp(base + "/customers$"));
   }
+  // RGB orders first: the RGB tab offers only RGB drinks.
   await go("/orders/new");
-  await a.getByRole("heading", { name: "New orders" }).waitFor();
+  await a.getByRole("heading", { name: "New RGB orders" }).waitFor();
   const stockLeft = async (product) =>
     (await a.getByLabel(`Stock left for ${product}`).first().innerText()).replace("Stock left: ", "");
   assert.equal(await stockLeft("Coca-Cola 50cl RGB"), "488");
+  assert.equal(await a.getByLabel("Stock left for Coca-Cola 50cl PET").count(), 0, "no PET on the RGB tab");
   // Saving with nothing chosen points at the customer still missing.
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.getByText("Choose customer 1 before saving.").waitFor();
@@ -211,9 +213,20 @@ let dbg;
   await pick(first, "Customer", "Mama Tunde Stores");
   await first.getByRole("button", { name: "Add Coca-Cola 50cl RGB for customer 1" }).click();
   await first.getByLabel("Coca-Cola 50cl RGB for customer 1").fill("50");
-  await first.getByRole("button", { name: "Add Coca-Cola 50cl PET for customer 1" }).click();
-  await first.getByLabel("Coca-Cola 50cl PET for customer 1").fill("5");
   assert.equal(await stockLeft("Coca-Cola 50cl RGB"), "438", "the counter drops as the quantity is typed");
+  await vis(a.getByRole("button", { name: "Save order" })).click();
+  await a.waitForURL(/\/orders\?saved=batch/);
+  await a.getByText("1 order saved.").waitFor();
+
+  // Then PET, on its own tab: two customers, and Stock left counts down across both.
+  await go("/orders/new");
+  await a.getByRole("link", { name: "PET orders" }).click();
+  await a.getByRole("heading", { name: "New PET orders" }).waitFor();
+  assert.equal(await a.getByLabel("Stock left for Coca-Cola 50cl RGB").count(), 0, "no RGB on the PET tab");
+  const petFirst = a.getByRole("region", { name: "Customer 1" });
+  await pick(petFirst, "Customer", "Mama Tunde Stores");
+  await petFirst.getByRole("button", { name: "Add Coca-Cola 50cl PET for customer 1" }).click();
+  await petFirst.getByLabel("Coca-Cola 50cl PET for customer 1").fill("5");
   await vis(a.getByRole("button", { name: "Add customer" })).click();
   const second = a.getByRole("region", { name: "Customer 2" });
   await pick(second, "Customer", "Alhaji Musa Kiosk");
@@ -230,6 +243,10 @@ let dbg;
   await a.waitForURL(/\/orders\?saved=batch/);
   await a.getByText("2 orders saved.").waitFor();
   const batchUrl = a.url();
+  // RGB orders on top with their empties, PET orders below.
+  await a.locator("section", { hasText: "RGB orders" }).locator("tr", { hasText: "Mama Tunde Stores" }).getByText("50", { exact: true }).waitFor();
+  await a.locator("section", { hasText: "PET orders" }).locator("tr", { hasText: "Alhaji Musa Kiosk" }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/90-orders-two-sections.png`, fullPage: true });
   ok("several customers are ordered on one screen, and Stock left counts down across all of them");
 
   // Like Bilikis: one waiting RGB order per customer; edit that one instead.
@@ -254,8 +271,11 @@ let dbg;
   await a.goto(batchUrl);
   await a.getByRole("link", { name: "Put them on a trip" }).click();
   await a.waitForURL(/\/dispatch\/new\?order=/);
-  assert.equal(await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).isChecked(), true);
+  // The two PET orders come ticked; Mama's RGB order goes on the same trip.
   assert.equal(await vis(a.getByRole("checkbox", { name: /Alhaji Musa Kiosk/ })).isChecked(), true);
+  const mamaBoxes = vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ }));
+  assert.equal(await mamaBoxes.count(), 2);
+  for (let i = 0; i < 2; i++) await mamaBoxes.nth(i).check();
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
   await vis(a.getByLabel("Sule")).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
@@ -313,6 +333,12 @@ let dbg;
   await a.getByText("Outstanding empties").waitFor();
   await a.waitForTimeout(500); // let the page finish fading in
   await a.screenshot({ path: `${SHOTS}/94-empty-shortages.png`, fullPage: true });
+  // On the orders page the RGB order shows 50 out, 50 back, done.
+  await go("/orders");
+  const rgbRow = a.locator("section", { hasText: "RGB orders" }).locator("tr", { hasText: "Mama Tunde Stores" });
+  await rgbRow.getByText("Done", { exact: true }).waitFor();
+  await a.waitForTimeout(500);
+  await a.screenshot({ path: `${SHOTS}/94-orders-after-returns.png`, fullPage: true });
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("300", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/95-empties-page.png`, fullPage: true });

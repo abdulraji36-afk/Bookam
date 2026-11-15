@@ -109,9 +109,14 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // A drinks business opens on the several-customer screen; one order is a tap away.
   await a.getByRole("link", { name: "One order or a walk-in instead" }).click();
   await a.waitForURL(/\/orders\/new\?single=1/);
-  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40], ["Water 75cl", 10]]);
+  // A drinks order is RGB or PET; the RGB tab only offers RGB drinks.
+  await pick(a, "Customer", "Mama Tunde Stores (Ikeja)");
+  await vis(a.getByRole("combobox", { name: "Product", exact: true })).click();
+  assert.equal(await a.getByRole("option", { name: /Water 75cl/ }).count(), 0, "no PET on an RGB order");
+  await a.keyboard.press("Escape");
+  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Cola 50cl", 40]]);
   await a.getByText("100 crate in stock").waitFor();
-  await a.getByText("₦186,000").waitFor();
+  await a.getByText("₦168,000").waitFor();
   await a.screenshot({ path: `${SHOTS}/20-new-order.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
@@ -119,12 +124,23 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.locator("tr", { hasText: "Cola 50cl" }).getByText("40 Empties", { exact: true }).waitFor();
   await a.getByText("Waiting for dispatch").first().waitFor();
   await a.screenshot({ path: `${SHOTS}/21-order.png`, fullPage: true });
+  // Her PET drinks are an order of their own.
+  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
+  await a.getByRole("heading", { name: "New PET order" }).waitFor();
+  await fillOrder(a, "Mama Tunde Stores (Ikeja)", [["Water 75cl", 10]]);
+  await vis(a.getByRole("button", { name: "Save order" })).click();
+  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.goto(BASE + base + "/stock");
   await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
-  ok("an order sets its stock aside and shows what is due back");
+  // The orders page shows RGB orders on top and PET orders below.
+  await a.goto(BASE + base + "/orders");
+  await a.locator("section", { hasText: "RGB orders" }).locator("tr", { hasText: "Mama Tunde Stores" }).getByText("40", { exact: true }).waitFor();
+  await a.locator("section", { hasText: "PET orders" }).locator("tr", { hasText: "Mama Tunde Stores" }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/21-orders-two-sections.png`, fullPage: true });
+  ok("an order sets its stock aside and shows what is due back; RGB and PET are separate orders");
 
   // --- a missed field takes you back to it with a message
-  await a.goto(BASE + base + "/orders/new?single=1");
+  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
   const save = () => vis(a.getByRole("button", { name: "Save order" })).click();
   await save();
   await a.getByText("Choose the customer before saving the order.").waitFor();
@@ -139,11 +155,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
     true,
     "the quantity box is focused"
   );
-  assert.match(a.url(), /\/orders\/new(\?single=1)?$/, "nothing was saved");
+  assert.match(a.url(), /\/orders\/new(\?.*)?$/, "nothing was saved");
   ok("a missed customer, product or quantity is pointed out at the field itself");
 
   // --- cannot oversell; typed values survive the error
-  await a.goto(BASE + base + "/orders/new?single=1");
+  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
   await fillOrder(a, "Grace Canteen", [["Water 75cl", 99]]);
   await a.getByText("40 pack in stock. That is more than you have.").waitFor();
   await vis(a.getByRole("button", { name: "Save order" })).click();
@@ -152,7 +168,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByLabel("Quantity")).fill("15");
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-  await a.getByRole("heading", { name: /^ORD-\d{8}-0002$/ }).waitFor();
+  await a.getByRole("heading", { name: /^ORD-\d{8}-0003$/ }).waitFor();
   ok("an order for more than is in stock is refused with a clear message");
 
   // --- edit while waiting
@@ -170,7 +186,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // --- trip: drivers and workers come from the list
   await addCrew(a, BASE + base, ["Musa", "Tunde"]);
   await nav(a, "Dispatch");
-  await a.getByText("2 orders waiting to be put on a trip.").waitFor();
+  await a.getByText("3 orders waiting to be put on a trip.").waitFor();
   await a.locator("main").getByRole("link", { name: "+ New trip" }).click();
   await a.waitForURL(/\/dispatch\/new/);
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
@@ -178,7 +194,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.getByText("Choose at least one order to put on the trip.").waitFor();
   await vis(a.getByRole("button", { name: "Choose all" })).click();
-  await a.getByText("Orders to load (2 chosen)").waitFor();
+  await a.getByText("Orders to load (3 chosen)").waitFor();
   await a.screenshot({ path: `${SHOTS}/22-new-trip.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
@@ -211,7 +227,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("dispatching completes the no-return order and leaves the return order open");
 
   // --- cancel puts stock back
-  await a.goto(BASE + base + "/orders/new?single=1");
+  await a.goto(BASE + base + "/orders/new?single=1&kind=pet");
   await fillOrder(a, "Grace Canteen", [["Water 75cl", 5]]);
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
@@ -233,7 +249,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await signUp(c, "Chidi Eze", chidi, /\/invite\//);
   await c.getByRole("button", { name: "Accept invitation" }).click();
   await c.waitForURL(new RegExp(base + "$"));
-  await c.goto(BASE + base + "/orders/new?single=1");
+  await c.goto(BASE + base + "/orders/new?single=1&kind=pet");
   await fillOrder(c, "Grace Canteen", [["Water 75cl", 4]]);
   await c.screenshot({ path: `${SHOTS}/25-new-order-mobile.png`, fullPage: true });
   await vis(c.getByRole("button", { name: "Save order" })).click();

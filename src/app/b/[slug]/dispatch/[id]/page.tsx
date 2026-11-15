@@ -72,7 +72,7 @@ async function Trip({
   // The loading list: how much of each product goes on the vehicle in total.
   const load = new Map<
     string,
-    { name: string; unit: string; quantity: number }
+    { name: string; unit: string; quantity: number; rgb: boolean }
   >();
   const returnsDue = new Map<string, number>();
   for (const order of liveOrders) {
@@ -83,6 +83,7 @@ async function Trip({
         name: item.products.name,
         unit: item.products.unit,
         quantity: 0,
+        rgb: Boolean(item.returnable_items),
       };
       line.quantity += quantity;
       load.set(item.products.id, line);
@@ -176,8 +177,9 @@ async function Trip({
         <TableCard title="Loading list">
           <DataTable
             label="Loading list"
-            rows={[...load.values()].sort((a, b) =>
-              a.name.localeCompare(b.name),
+            // Drinks: RGB first, then PET.
+            rows={[...load.values()].sort(
+              (a, b) => Number(b.rgb) - Number(a.rgb) || a.name.localeCompare(b.name),
             )}
             rowKey={(line) => line.name}
             footer={
@@ -204,7 +206,14 @@ async function Trip({
                 header: "Product",
                 wrap: true,
                 cell: (line) => (
-                  <span className="font-extrabold">{line.name}</span>
+                  <span className="font-extrabold">
+                    {line.name}
+                    {org.sells_drinks ? (
+                      <span className="ml-2 rounded-full bg-chip px-2 py-0.5 text-xs font-bold text-ink-soft">
+                        {line.rgb ? "RGB" : "PET"}
+                      </span>
+                    ) : null}
+                  </span>
                 ),
               },
               {

@@ -144,6 +144,17 @@ describe("drinks shortage lines", () => {
     expect(await shortage(b.line)).toMatchObject({ outstanding: "4", completed: false });
     expect(await owedBy(db, grace)).toBe(4);
 
+    // Each order shows what went out, what came back and what is left.
+    const summary = await db.query<{ id: string; sent: string; back: string; left: string }>(
+      `select id, trim_scale(returnable_quantity)::text as sent, trim_scale(empties_returned)::text as back,
+              trim_scale(empties_outstanding)::text as left
+       from public.order_summaries where id = any($1::uuid[])`,
+      [[a.order.id, b.order.id]]
+    );
+    const byId = new Map(summary.rows.map((row) => [row.id, [row.sent, row.back, row.left]]));
+    expect(byId.get(a.order.id)).toEqual(["10", "10", "0"]);
+    expect(byId.get(b.order.id)).toEqual(["10", "6", "4"]);
+
     // Another business cannot record against it.
     const outsider = await createUser(db, "outsider@example.com");
     await expect(followUp(b.line, 1, outsider)).rejects.toThrow();
@@ -243,7 +254,7 @@ describe("drinks shortage lines", () => {
     ).rejects.toThrow(/Not enough Coke 50cl PET in stock for everyone on this list/);
 
     const saved = (await batch([
-      { customer_id: one, items: [{ product_id: rgb, quantity: 5 }, { product_id: pet, quantity: 10 }] },
+      { customer_id: one, items: [{ product_id: rgb, quantity: 5 }] },
       { customer_id: two, items: [{ product_id: pet, quantity: 20 }] }
     ])) as { id: string; order_no: string }[];
     expect(saved).toHaveLength(2);

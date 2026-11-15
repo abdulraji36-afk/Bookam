@@ -149,7 +149,9 @@ These are what keep one business's data away from another's.
    drinks. Empties in store = opening + trip returns + follow-ups +
    adjustments − taken by the supplier. Orders for several customers are
    saved together (`create_order_batch`), with stock checked for the whole
-   list.
+   list. A drinks order is either RGB or PET (trigger
+   `drinks_order_one_kind`); `order_summaries` carries each order's empties
+   sent out, brought back and left to complete.
 
 ## How screens are laid out
 
@@ -238,4 +240,5 @@ version of the app, so the database can always go first.
 | 17 | Order form: walk-in buyer at the bottom, and a missed customer, product or quantity is pointed out at the field itself; a waiting order is cancelled (void is only for one that has gone out); "Put on a trip" from the order page; returned-empties boxes start blank and every one must be filled, 0 included | Done |
 | 18 | Drinks the Bilikis way: an order screen for several customers with a live "Stock left" on every product; empty shortages kept per order with follow-up returns, a shortages page (open and completed, with when each was completed), no credit | Done |
 | 19 | Empty exchanges on their own page (list, new exchange, one record each) instead of on the stock-in form; drink products no longer ask "sold by", and the RGB/PET choice and PET category start empty | Done |
+| 20 | Drinks orders are RGB or PET, never both: New order has RGB and PET tabs, and the orders page shows RGB orders (sent out, brought back, left to complete) above PET orders; one trip still carries both | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

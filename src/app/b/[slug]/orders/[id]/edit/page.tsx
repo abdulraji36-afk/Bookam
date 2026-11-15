@@ -30,6 +30,12 @@ async function EditOrder({ params }: Pick<PageProps<"/b/[slug]/orders/[id]/edit"
   if (!order) notFound();
   // Only an order still waiting for dispatch can be changed.
   if (order.status !== "pending") redirect(`/b/${org.slug}/orders/${order.id}`);
+  // Drinks: an RGB order stays RGB and a PET order stays PET.
+  const returnableIds = new Set(data.products.filter((product) => product.returnable).map((product) => product.id));
+  const isRgb = order.order_items.some((item) => returnableIds.has(item.product_id));
+  const products = org.sells_drinks
+    ? data.products.filter((product) => product.returnable === isRgb)
+    : data.products;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -56,6 +62,7 @@ async function EditOrder({ params }: Pick<PageProps<"/b/[slug]/orders/[id]/edit"
             }))
           }}
           {...data}
+          products={products}
         />
       </Card>
     </div>

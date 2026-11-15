@@ -900,6 +900,9 @@ export type Database = {
           voided_at: string | null;
           customer_phone: string | null;
           handed_over_at: string | null;
+          returnable_quantity: number;
+          empties_returned: number | null;
+          empties_outstanding: number | null;
         };
         Relationships: [];
       };

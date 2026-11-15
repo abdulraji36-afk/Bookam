@@ -157,11 +157,17 @@ describe("drinks, the Bilikis way", () => {
 
   it("customers owe the empties a trip did not bring back, and an owner records them later", async () => {
     const mama = await saveCustomer(db, owner, depot.id, { name: "Mama Tunde" });
-    const order = await createOrder(db, staff, depot.id, mama, [
-      { product_id: rgb, quantity: 50 },
-      { product_id: pet, quantity: 5 }
-    ]);
-    const trip = await createTrip(db, staff, depot.id, [order.id]);
+    // An order is either RGB or PET; a customer taking both gets two orders.
+    await expect(
+      createOrder(db, staff, depot.id, mama, [
+        { product_id: rgb, quantity: 50 },
+        { product_id: pet, quantity: 5 }
+      ])
+    ).rejects.toThrow(/An order is either RGB or PET/);
+    const order = await createOrder(db, staff, depot.id, mama, [{ product_id: rgb, quantity: 50 }]);
+    const petOrder = await createOrder(db, staff, depot.id, mama, [{ product_id: pet, quantity: 5 }]);
+    // Both go out on the same trip.
+    const trip = await createTrip(db, staff, depot.id, [order.id, petOrder.id]);
     await call(db, staff, `select public.dispatch_trip($1)`, [trip.id]);
     // Only the RGB crates are owed back; PET packs are not.
     expect(await owedBy(db, mama)).toBe(50);

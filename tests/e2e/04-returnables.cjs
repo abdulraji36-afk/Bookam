@@ -76,7 +76,9 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
     await a.waitForURL(new RegExp(base + "/customers$"));
   }
   async function order(page, customer, lines) {
-    await page.goto(BASE + base + "/orders/new?single=1");
+    // A drinks order is RGB or PET: Water is PET.
+    const kind = lines.every(([name]) => /Water/.test(name)) ? "&kind=pet" : "";
+    await page.goto(BASE + base + "/orders/new?single=1" + kind);
     await pick(page, "Customer", customer);
     for (let i = 0; i < lines.length; i++) {
       if (i > 0) await vis(page.getByRole("button", { name: "Add another product" })).click();
@@ -146,7 +148,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
   // Orders -> trip -> dispatch: customers now owe
   await order(a, "Mama Tunde Stores", [["Cola 50cl", 40]]);
-  await order(a, "Alhaji Musa Kiosk", [["Cola 50cl", 20], ["Water 75cl", 5]]);
+  await order(a, "Alhaji Musa Kiosk", [["Cola 50cl", 20]]);
+  await order(a, "Alhaji Musa Kiosk", [["Water 75cl", 5]]);
   await addCrew(a, BASE + base, ["Musa Driver", "Tunde"]);
   await go("/dispatch/new");
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa Driver" });
