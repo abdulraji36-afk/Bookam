@@ -25,14 +25,12 @@ type Props = {
   orders: WaitingOrder[];
   locations: { id: string; name: string }[];
   today: string;
-  /** From the drivers and loaders list. */
-  drivers?: string[];
-  loaders?: { id: string; name: string }[];
-  /** A drinks trip must record its truck, as in Bilikis. */
-  truckRequired?: boolean;
+  /** From the drivers and workers list: the driver is chosen, workers ticked. */
+  drivers: { id: string; name: string }[];
+  workers: { id: string; name: string }[];
 };
 
-export function TripForm({ action, orders, locations, today, drivers = [], loaders = [], truckRequired }: Props) {
+export function TripForm({ action, orders, locations, today, drivers, workers }: Props) {
   const { state, pending, form } = useFormAction(action);
   const [locationId, setLocationId] = useState(
     // Start on the first location that actually has orders waiting.
@@ -56,29 +54,16 @@ export function TripForm({ action, orders, locations, today, drivers = [], loade
   return (
     <form {...form} className="space-y-6">
       <div className="grid gap-5 sm:grid-cols-2">
-        <TextField
-          label="Driver's name"
-          name="driverName"
-          autoComplete="off"
-          maxLength={80}
-          list={drivers.length ? "trip-drivers" : undefined}
-          hint={drivers.length ? "Pick from your drivers, or type a name." : undefined}
-          required
-        />
-        {drivers.length ? (
-          <datalist id="trip-drivers">
-            {drivers.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        ) : null}
-        <TextField
-          label={truckRequired ? "Truck" : "Vehicle (optional)"}
-          name="vehicle"
-          placeholder="e.g. plate number"
-          maxLength={80}
-          required={truckRequired}
-        />
+        <SelectField label="Driver" name="driverId" defaultValue="" required>
+          <option value="" disabled>
+            Choose the driver
+          </option>
+          {drivers.map((driver) => (
+            <option key={driver.id} value={driver.id}>
+              {driver.name}
+            </option>
+          ))}
+        </SelectField>
         <TextField label="Dispatch date" name="dispatchDate" type="date" defaultValue={today} max={today} required />
         {locations.length > 1 ? (
           <SelectField
@@ -101,22 +86,20 @@ export function TripForm({ action, orders, locations, today, drivers = [], loade
         )}
       </div>
 
-      {loaders.length ? (
-        <fieldset>
-          <legend className="mb-1.5 text-sm font-bold">Loaders going on this trip (optional)</legend>
-          <div className="flex flex-wrap gap-2">
-            {loaders.map((loader) => (
-              <label
-                key={loader.id}
-                className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-2 border-line bg-white px-3 font-bold has-[:checked]:border-ink has-[:checked]:bg-paper"
-              >
-                <input type="checkbox" name="loaderId" value={loader.id} className="size-5 accent-ink" />
-                {loader.name}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-bold">Workers who went with the load (choose at least one)</legend>
+        <div className="flex flex-wrap gap-2">
+          {workers.map((worker) => (
+            <label
+              key={worker.id}
+              className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-2 border-line bg-white px-3 font-bold has-[:checked]:border-ink has-[:checked]:bg-paper"
+            >
+              <input type="checkbox" name="workerId" value={worker.id} className="size-5 accent-ink" />
+              {worker.name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

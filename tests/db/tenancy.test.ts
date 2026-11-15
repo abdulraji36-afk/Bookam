@@ -93,10 +93,7 @@ describe("tenant isolation", () => {
       );
       const order = await createOrder(db, owner, org.id, customer, [{ product_id: product, quantity: 2 }]);
       const trip = await createTrip(db, owner, org.id, [order.id]);
-      const loader = (
-        await call(db, owner, `select public.save_dispatch_worker($1, null, 'Sule', 'loader', null) as id`, [org.id])
-      )[0] as { id: string };
-      await call(db, owner, `select public.set_trip_loaders($1, $2::uuid[])`, [trip.id, [loader.id]]);
+      // createTrip puts a driver and a worker from the list on the trip.
       await call(db, owner, `select public.start_telegram_link($1)`, [org.id]);
       const phone = await saveProduct(db, owner, org.id, { name: "Phone", sellingPrice: 1, tracksSerials: true });
       await receiveStock(db, owner, org.id, [{ product_id: phone, units: [{ serial: "SHARED-SERIAL-1" }] }]);

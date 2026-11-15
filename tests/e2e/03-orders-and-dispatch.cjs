@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick } = require("./helpers.cjs");
+const { pick, addCrew } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -141,13 +141,14 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
   ok("editing a waiting order adjusts the stock it holds");
 
-  // --- trip
+  // --- trip: drivers and workers come from the list
+  await addCrew(a, BASE + base, ["Musa", "Tunde"]);
   await nav(a, "Dispatch");
   await a.getByText("2 orders waiting to be put on a trip.").waitFor();
   await a.locator("main").getByRole("link", { name: "+ New trip" }).click();
   await a.waitForURL(/\/dispatch\/new/);
-  await vis(a.getByLabel("Driver's name")).fill("Musa");
-  await vis(a.getByLabel("Truck")).fill("LAG-123-XY");
+  await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
+  await vis(a.getByLabel("Sule")).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.getByText("Choose at least one order to put on the trip.").waitFor();
   await vis(a.getByRole("button", { name: "Choose all" })).click();
@@ -212,9 +213,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(c.getByRole("button", { name: "Save order" })).click();
   await c.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await c.goto(BASE + base + "/dispatch/new");
-  await vis(c.getByLabel("Driver's name")).fill("Tunde");
-  await vis(c.getByLabel("Truck")).fill("LAG-100-AA");
-  await vis(c.getByRole("checkbox")).check();
+  await vis(c.getByLabel("Driver", { exact: true })).selectOption({ label: "Tunde" });
+  await vis(c.getByLabel("Sule")).check();
+  await vis(c.getByRole("checkbox", { name: /Grace Canteen/ })).check();
   await vis(c.getByRole("button", { name: "Create trip" })).click();
   await c.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
   assert.equal(await vis(c.getByRole("button", { name: "Cancel trip" })).count(), 0, "staff cannot cancel a trip");
@@ -230,9 +231,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Save order" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.goto(BASE + base + "/dispatch/new");
-  await vis(a.getByLabel("Driver's name")).fill("Musa");
-  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
-  await vis(a.getByRole("checkbox")).check();
+  await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
+  await vis(a.getByLabel("Sule")).check();
+  await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
   await vis(a.getByRole("button", { name: "Cancel trip" })).click();

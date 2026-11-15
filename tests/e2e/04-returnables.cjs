@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick } = require("./helpers.cjs");
+const { pick, addCrew } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -143,9 +143,10 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   // Orders -> trip -> dispatch: customers now owe
   await order(a, "Mama Tunde Stores", [["Cola 50cl", 40]]);
   await order(a, "Alhaji Musa Kiosk", [["Cola 50cl", 20], ["Water 75cl", 5]]);
+  await addCrew(a, BASE + base, ["Musa Driver", "Tunde"]);
   await go("/dispatch/new");
-  await vis(a.getByLabel("Driver's name")).fill("Musa Driver");
-  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
+  await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa Driver" });
+  await vis(a.getByLabel("Sule")).check();
   await vis(a.getByRole("button", { name: "Choose all" })).click();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
@@ -238,9 +239,9 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   // Credit counts against the next order: Mama (2 in credit) takes 12 -> owes 10
   await order(a, "Mama Tunde Stores", [["Cola 50cl", 12]]);
   await go("/dispatch/new");
-  await vis(a.getByLabel("Driver's name")).fill("Tunde");
-  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
-  await vis(a.getByRole("checkbox")).check();
+  await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Tunde" });
+  await vis(a.getByLabel("Sule")).check();
+  await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
   await vis(a.getByRole("button", { name: "Dispatch now" })).click();

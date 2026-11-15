@@ -54,7 +54,7 @@ describe("running a drinks depot", () => {
     // The same name can be both a driver and a loader.
     await expect(worker(owner, "Musa", "loader")).resolves.toBeTruthy();
     await expect(worker(staff, "Bayo", "loader")).rejects.toThrow(/do not have permission/);
-    await expect(worker(owner, "Bayo", "manager")).rejects.toThrow(/driver or a loader/);
+    await expect(worker(owner, "Bayo", "manager")).rejects.toThrow(/driver or a worker/);
     await worker(owner, "Musa Ade", "driver", musa);
     const names = await db.query<{ name: string }>(
       `select name from public.dispatch_workers where organization_id = $1 and role = 'driver'`,
@@ -63,64 +63,80 @@ describe("running a drinks depot", () => {
     expect(names.rows.map((row) => row.name)).toEqual(["Musa Ade"]);
   });
 
-  it("a trip is created with its loaders, who can be changed until it leaves", async () => {
-    const product = await saveProduct(db, owner, depot.id, { name: "Fanta 50cl PET", unit: "pack", sellingPrice: 3000, costPrice: 2700 });
-    await receiveStock(db, owner, depot.id, [{ product_id: product, quantity: 20 }]);
-    const customer = await saveCustomer(db, owner, depot.id, { name: "Mama Tunde" });
-    const order = await createOrder(db, staff, depot.id, customer, [{ product_id: product, quantity: 2 }]);
-    const loaders = (
-      await db.query<{ id: string }>(
-        `select id from public.dispatch_workers where organization_id = $1 and role = 'loader' order by name`,
-        [depot.id]
-      )
-    ).rows.map((row) => row.id);
-
-    const trip = (
+  const crewTrip = async (user: string, driverId: string, orderIds: string[], workerIds: string[]) =>
+    (
       (await call(
         db,
-        staff,
-        `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), 'Musa Ade', 'LAG-1', null, $3::uuid[], $4::uuid[])`,
-        [depot.id, await mainLocation(db, depot.id), [order.id], loaders]
+        user,
+        `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), $3, null, $4::uuid[], $5::uuid[])`,
+        [depot.id, await mainLocation(db, depot.id), driverId, orderIds, workerIds]
       )) as { id: string; trip_no: string }[]
     )[0];
+  const people = async (role: "driver" | "loader") =>
+    (
+      await db.query<{ id: string }>(
+        `select id from public.dispatch_workers where organization_id = $1 and role = $2 and is_active order by name`,
+        [depot.id, role]
+      )
+    ).rows.map((row) => row.id);
+  const waitingOrder = async (name: string) => {
+    const product = await saveProduct(db, owner, depot.id, { name: `${name} PET`, unit: "pack", sellingPrice: 3000, costPrice: 2700 });
+    await receiveStock(db, owner, depot.id, [{ product_id: product, quantity: 20 }]);
+    const customer = await saveCustomer(db, owner, depot.id, { name });
+    return createOrder(db, staff, depot.id, customer, [{ product_id: product, quantity: 2 }]);
+  };
+
+  it("a trip takes its driver and one or more workers from the list, and no truck", async () => {
+    const order = await waitingOrder("Mama Tunde");
+    const [driver] = await people("driver");
+    const workers = await people("loader");
+    const trip = await crewTrip(staff, driver, [order.id], workers);
     expect(trip.trip_no).toMatch(/^TRP-/);
+    const saved = await db.query<{ driver_name: string; driver_id: string; vehicle: string | null }>(
+      `select driver_name, driver_id, vehicle from public.dispatch_trips where id = $1`,
+      [trip.id]
+    );
+    expect(saved.rows[0]).toEqual({ driver_name: "Musa Ade", driver_id: driver, vehicle: null });
     const crew = async () =>
       (await db.query(`select worker_id from public.dispatch_trip_loaders where trip_id = $1`, [trip.id])).rows.length;
-    expect(await crew()).toBe(2);
+    expect(await crew()).toBe(workers.length);
 
-    // A driver cannot be put down as a loader, nor someone from another business.
-    const driver = (
-      await db.query<{ id: string }>(`select id from public.dispatch_workers where role = 'driver' limit 1`)
-    ).rows[0].id;
+    // Workers can be changed until it leaves, but never down to nobody.
     await expect(call(db, staff, `select public.set_trip_loaders($1, $2::uuid[])`, [trip.id, [driver]])).rejects.toThrow(
-      /Choose loaders from your list/
+      /Choose workers from your list/
     );
-
-    await call(db, staff, `select public.set_trip_loaders($1, $2::uuid[])`, [trip.id, [loaders[0]]]);
+    await expect(call(db, staff, `select public.set_trip_loaders($1, '{}'::uuid[])`, [trip.id])).rejects.toThrow(
+      /at least one worker/
+    );
+    await call(db, staff, `select public.set_trip_loaders($1, $2::uuid[])`, [trip.id, [workers[0]]]);
     expect(await crew()).toBe(1);
     await call(db, staff, `select public.dispatch_trip($1)`, [trip.id]);
-    await expect(call(db, staff, `select public.set_trip_loaders($1, '{}'::uuid[])`, [trip.id])).rejects.toThrow(
+    await expect(call(db, staff, `select public.set_trip_loaders($1, $2::uuid[])`, [trip.id, [workers[0]]])).rejects.toThrow(
       /before the trip is dispatched/
     );
   });
 
-  it("a switched-off loader cannot be chosen", async () => {
-    const id = await worker(owner, "Old Loader", "loader");
-    await call(db, owner, `select public.set_dispatch_worker_active($1, false)`, [id]);
-    const product = await saveProduct(db, owner, depot.id, { name: "Sprite 50cl PET", unit: "pack", sellingPrice: 3000, costPrice: 2700 });
-    await receiveStock(db, owner, depot.id, [{ product_id: product, quantity: 5 }]);
-    const customer = await saveCustomer(db, owner, depot.id, { name: "Grace Canteen" });
-    const order = await createOrder(db, owner, depot.id, customer, [{ product_id: product, quantity: 1 }]);
-    await expect(
-      call(
-        db,
-        owner,
-        `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), 'Musa Ade', 'LAG-2', null, $3::uuid[], $4::uuid[])`,
-        [depot.id, await mainLocation(db, depot.id), [order.id], [id]]
-      )
-    ).rejects.toThrow(/Choose loaders from your list/);
-    // Nothing was saved: the order is still waiting.
+  it("refuses a trip without a listed driver or without workers; nothing is saved", async () => {
+    const order = await waitingOrder("Grace Canteen");
+    const [driver] = await people("driver");
+    const workers = await people("loader");
+    await expect(crewTrip(owner, workers[0], [order.id], workers)).rejects.toThrow(/Choose the driver from your list/);
+    await expect(crewTrip(owner, driver, [order.id], [])).rejects.toThrow(/at least one worker/);
+
+    const old = await worker(owner, "Old Worker", "loader");
+    await call(db, owner, `select public.set_dispatch_worker_active($1, false)`, [old]);
+    await expect(crewTrip(owner, driver, [order.id], [old])).rejects.toThrow(/Choose workers from your list/);
+
     const status = await db.query<{ status: string }>(`select status from public.orders where id = $1`, [order.id]);
     expect(status.rows[0].status).toBe("pending");
+
+    // Trips cannot be made the old way, with a typed driver name.
+    await expect(
+      call(db, owner, `select * from public.create_dispatch_trip($1, $2, public_today(), 'Anyone', null, null, $3::uuid[])`, [
+        depot.id,
+        await mainLocation(db, depot.id),
+        [order.id]
+      ])
+    ).rejects.toThrow(/permission denied/);
   });
 });

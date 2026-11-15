@@ -218,4 +218,5 @@ version of the app, so the database can always go first.
 | 13 | One simple customer form for everyone; correcting a delivery after the fact (date, supplier, reference, products and numbers), as in Bilikis | Done |
 | 14 | Write-offs removed; stock changes only through deliveries and orders | Done |
 | 15 | Reorganised screens: a grouped side menu (daily work, catalogue, reports, admin) with New order and Receive stock at the top; every list a table with search and status tabs that turns into cards on a phone; changes such as edit, switch off and void on each record's own page | Done |
+| 16 | Trips take their driver from the list and at least one worker (any number); trucks and plate numbers are no longer recorded | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

@@ -5,14 +5,16 @@ import { createTripAction } from "@/app/actions/orders";
 import { TripForm } from "@/components/orders/trip-form";
 import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { todayIn } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 
 export const metadata: Metadata = { title: "New trip" };
 
+const LINK = "font-extrabold text-ink underline decoration-accent decoration-4 underline-offset-4";
+
 async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "params">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
 
   const [ordersResult, locationsResult, workersResult] = await Promise.all([
     supabase
@@ -35,6 +37,8 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
       .order("name")
   ]);
   const workers = workersResult.data ?? [];
+  const drivers = workers.filter((worker) => worker.role === "driver").map(({ id, name }) => ({ id, name }));
+  const crew = workers.filter((worker) => worker.role === "loader").map(({ id, name }) => ({ id, name }));
   const orders = (ordersResult.data ?? []).map((order) => ({
     id: order.id,
     orderNo: order.order_no,
@@ -47,15 +51,24 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageTitle sub="Choose the orders going out together on one vehicle.">New trip</PageTitle>
+      <PageTitle sub="Choose the orders going out together, the driver who takes them, and the workers who go along.">
+        New trip
+      </PageTitle>
       {orders.length === 0 ? (
         <EmptyState title="Nothing is waiting">
-          <Link
-            href={`/b/${org.slug}/orders/new`}
-            className="font-extrabold text-ink underline decoration-accent decoration-4 underline-offset-4"
-          >
+          <Link href={`/b/${org.slug}/orders/new`} className={LINK}>
             Record an order first
           </Link>
+        </EmptyState>
+      ) : drivers.length === 0 || crew.length === 0 ? (
+        <EmptyState title={drivers.length === 0 ? "Add your drivers first" : "Add your workers first"}>
+          {canManage(role) ? (
+            <Link href={`/b/${org.slug}/dispatch/crew`} className={LINK}>
+              Add drivers and workers
+            </Link>
+          ) : (
+            "Ask an owner or admin to add the drivers and workers who go out on trips."
+          )}
         </EmptyState>
       ) : (
         <Card>
@@ -63,9 +76,8 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
             action={createTripAction.bind(null, org.slug)}
             orders={orders}
             locations={locationsResult.data ?? []}
-            drivers={workers.filter((worker) => worker.role === "driver").map((worker) => worker.name)}
-            truckRequired={org.sells_drinks}
-            loaders={workers.filter((worker) => worker.role === "loader").map(({ id, name }) => ({ id, name }))}
+            drivers={drivers}
+            workers={crew}
             today={todayIn(org.timezone, await requestNow())}
           />
         </Card>

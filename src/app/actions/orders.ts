@@ -169,26 +169,21 @@ export async function createTripAction(
   const parsed = tripSchema.safeParse({
     locationId: formData.get("locationId") ?? "",
     dispatchDate: formData.get("dispatchDate") ?? "",
-    driverName: formData.get("driverName") ?? "",
-    vehicle: formData.get("vehicle") ?? "",
+    driverId: formData.get("driverId") ?? "",
+    workerIds: formData.getAll("workerId").map(String),
     note: formData.get("note") ?? "",
     orderIds: formData.getAll("orderId").map(String)
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
 
-  const loaderIds = formData
-    .getAll("loaderId")
-    .map(String)
-    .filter((id) => idSchema.safeParse(id).success);
   const { data, error } = await supabase.rpc("create_dispatch_trip_with_crew", {
     p_organization_id: org.id,
     p_location_id: parsed.data.locationId,
     p_dispatch_date: parsed.data.dispatchDate,
-    p_driver_name: parsed.data.driverName,
-    p_vehicle: parsed.data.vehicle || null,
+    p_driver_id: parsed.data.driverId,
     p_note: parsed.data.note || null,
     p_order_ids: parsed.data.orderIds,
-    p_loader_ids: loaderIds
+    p_worker_ids: parsed.data.workerIds
   });
   const trip = data?.[0];
   if (error || !trip) return { ok: false, message: describeDbError(error) };

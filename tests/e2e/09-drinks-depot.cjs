@@ -197,17 +197,16 @@ let dbg;
   ok("Bilikis rules: a delivery corrected after offloading, and one waiting RGB order per customer");
 
   await go("/dispatch");
-  await a.getByRole("link", { name: "Drivers and loaders" }).click();
-  for (const [name, role] of [["Musa", "Driver"], ["Sule", "Loader"]]) {
+  await a.getByRole("link", { name: "Drivers and workers" }).click();
+  for (const [name, role] of [["Musa", "Driver"], ["Sule", "Worker"]]) {
     await vis(a.getByLabel("Name", { exact: true })).fill(name);
-    await vis(a.getByLabel("Driver or loader?")).selectOption({ label: role });
+    await vis(a.getByLabel("Driver or worker?")).selectOption({ label: role });
     await vis(a.getByRole("button", { name: "Add to the list" })).click();
     await a.getByText(`${name} added.`).waitFor();
   }
   await a.locator("tr", { hasText: "Musa" }).getByText("Driver", { exact: true }).waitFor();
   await go("/dispatch/new");
-  await vis(a.getByLabel("Driver's name")).fill("Musa");
-  await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
+  await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Musa" });
   await vis(a.getByLabel("Sule")).check();
   await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();

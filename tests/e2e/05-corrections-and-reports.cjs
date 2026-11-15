@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick } = require("./helpers.cjs");
+const { pick, addCrew } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -92,8 +92,8 @@ let dbg;
   }
   async function tripWithAll(driver) {
     await go("/dispatch/new");
-    await vis(a.getByLabel("Driver's name")).fill(driver);
-    await vis(a.getByLabel("Truck")).fill("LAG-100-AA");
+    await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: driver });
+    await vis(a.getByLabel("Sule")).check();
     const boxes = vis(a.getByRole("checkbox"));
     for (let i = 0; i < (await boxes.count()); i++) await boxes.nth(i).check();
     await vis(a.getByRole("button", { name: "Create trip" })).click();
@@ -134,6 +134,7 @@ let dbg;
   // A full cycle: two orders out, returns recorded with one short
   const mamaOrder = await order("Mama Tunde Stores", "Cola 50cl", 40);
   await order("Alhaji Musa Kiosk", "Cola 50cl", 20);
+  await addCrew(a, BASE + base, ["Musa Driver"]);
   const tripUrl = await tripWithAll("Musa Driver");
   await vis(a.getByLabel("Returned by Mama Tunde Stores")).fill("30");
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();

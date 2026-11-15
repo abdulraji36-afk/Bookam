@@ -169,8 +169,8 @@ export function readQuantity(value: string | undefined) {
 export const tripSchema = z.object({
   locationId: z.uuid("Choose a location."),
   dispatchDate: z.iso.date("Enter the dispatch date."),
-  driverName: z.string().trim().min(2, "Enter the driver's name.").max(80, "Use at most 80 characters."),
-  vehicle: z.string().trim().max(80, "Use at most 80 characters for the vehicle."),
+  driverId: z.uuid("Choose the driver."),
+  workerIds: z.array(z.uuid()).min(1, "Choose at least one worker who went with the load.").max(50),
   note: z.string().trim().max(500, "Use at most 500 characters for the note."),
   orderIds: z.array(z.uuid()).min(1, "Choose at least one order to put on the trip.").max(500)
 });

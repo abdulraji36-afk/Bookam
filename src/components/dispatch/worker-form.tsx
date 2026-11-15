@@ -19,9 +19,9 @@ export function WorkerForm({
     <form {...form} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <TextField label="Name" name="name" autoComplete="off" maxLength={80} defaultValue={defaults?.name} required />
-        <SelectField label="Driver or loader?" name="role" defaultValue={defaults?.role ?? "driver"}>
+        <SelectField label="Driver or worker?" name="role" defaultValue={defaults?.role ?? "driver"}>
           <option value="driver">Driver</option>
-          <option value="loader">Loader</option>
+          <option value="loader">Worker</option>
         </SelectField>
         <TextField
           label="Phone (optional)"

@@ -10,4 +10,19 @@ async function pick(scope, label, text) {
   await scope.getByRole("option", { name: new RegExp(escape(wanted)) }).first().click();
 }
 
-module.exports = { pick };
+/**
+ * Adds drivers and workers on the business's Drivers & workers page. A trip
+ * can only take its driver and workers from that list.
+ */
+async function addCrew(page, businessUrl, drivers, workers = ["Sule"]) {
+  const vis = (locator) => locator.filter({ visible: true });
+  await page.goto(businessUrl + "/dispatch/crew");
+  for (const [name, role] of [...drivers.map((n) => [n, "Driver"]), ...workers.map((n) => [n, "Worker"])]) {
+    await vis(page.getByLabel("Name", { exact: true })).fill(name);
+    await vis(page.getByLabel("Driver or worker?")).selectOption({ label: role });
+    await vis(page.getByRole("button", { name: "Add to the list" })).click();
+    await page.getByText(`${name} added.`).waitFor();
+  }
+}
+
+module.exports = { pick, addCrew };

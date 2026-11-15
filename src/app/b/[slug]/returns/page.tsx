@@ -165,7 +165,6 @@ async function Returns({ params, searchParams }: PageProps<"/b/[slug]/returns">)
               { header: "Action", phone: "badge", cell: () => <Badge tone="accent">Record returns</Badge> },
               { header: "Left", cell: (trip) => formatDay(trip.dispatch_date) },
               { header: "Driver", cell: (trip) => trip.driver_name },
-              { header: "Truck", cell: (trip) => trip.vehicle ?? <span className="text-ink-soft">—</span> },
               { header: "Orders", align: "right", cell: (trip) => trip.order_count }
             ]}
           />

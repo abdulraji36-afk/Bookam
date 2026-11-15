@@ -7,7 +7,7 @@ import { DataTable, TableCard } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { canManage, requireOrg } from "@/lib/org";
 
-export const metadata: Metadata = { title: "Drivers and loaders" };
+export const metadata: Metadata = { title: "Drivers and workers" };
 
 async function Crew({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew">, "params">) {
   const { slug } = await params;
@@ -27,7 +27,7 @@ async function Crew({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew">, "para
   return (
     <div className="max-w-4xl space-y-5">
       <PageHeader
-        title="Drivers and loaders"
+        title="Drivers and workers"
         sub={manager ? "The people who go out on trips. Open someone to change them or switch them off." : "The people who go out on trips."}
       />
       {manager ? (
@@ -38,7 +38,7 @@ async function Crew({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew">, "para
       ) : null}
       <TableCard>
         <DataTable
-          label="Drivers and loaders"
+          label="Drivers and workers"
           rows={workers}
           rowKey={(worker: Worker) => worker.id}
           rowHref={manager ? (worker: Worker) => `/b/${org.slug}/dispatch/crew/${worker.id}` : undefined}
@@ -52,7 +52,7 @@ async function Crew({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew">, "para
             {
               header: "Role",
               phone: "badge",
-              cell: (worker: Worker) => <Badge tone={worker.role === "driver" ? "solid" : "plain"}>{worker.role === "driver" ? "Driver" : "Loader"}</Badge>
+              cell: (worker: Worker) => <Badge tone={worker.role === "driver" ? "solid" : "plain"}>{worker.role === "driver" ? "Driver" : "Worker"}</Badge>
             },
             { header: "Phone", cell: (worker: Worker) => worker.phone ?? <span className="text-ink-soft">—</span> },
             {

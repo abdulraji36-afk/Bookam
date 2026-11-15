@@ -94,7 +94,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
     ["Driver", trip.driver_name],
     [org.sells_drinks ? "Truck" : "Vehicle", trip.vehicle],
     [
-      "Loaders",
+      "Workers",
       trip.dispatch_trip_loaders
         .map((loader) => loader.dispatch_workers?.name)
         .filter(Boolean)

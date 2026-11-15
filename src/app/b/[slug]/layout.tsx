@@ -56,7 +56,7 @@ async function BusinessShell({
         { href: `${base}/products`, label: "Products", icon: "products" },
         { href: `${base}/customers`, label: "Customers", icon: "customers" },
         ...(org.does_delivery
-          ? [{ href: `${base}/dispatch/crew`, label: "Drivers & loaders", icon: "drivers" } as const]
+          ? [{ href: `${base}/dispatch/crew`, label: "Drivers & workers", icon: "drivers" } as const]
           : [])
       ]
     },

@@ -50,7 +50,7 @@ async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch"
     .order("created_at", { ascending: false })
     .range(search.from, search.to);
   if (current.statuses) listQuery = listQuery.in("status", current.statuses);
-  if (search.q) listQuery = listQuery.or(matchAny(search.q, ["trip_no", "driver_name", "vehicle"]));
+  if (search.q) listQuery = listQuery.or(matchAny(search.q, ["trip_no", "driver_name"]));
 
   const count = (statuses: TripStatus[] | null) => {
     let builder = supabase.from("dispatch_trips").select("id", { count: "exact", head: true }).eq("organization_id", org.id);
@@ -84,14 +84,14 @@ async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch"
               + New trip
             </Link>
             <Link href={`${base}/dispatch/crew`} className={buttonClass("secondary")}>
-              Drivers and loaders
+              Drivers and workers
             </Link>
           </>
         }
       />
 
       <FilterBar>
-        <SearchForm action={`${base}/dispatch`} q={search.q} label="Search trips" placeholder="Search by trip number, driver or truck" />
+        <SearchForm action={`${base}/dispatch`} q={search.q} label="Search trips" placeholder="Search by trip number or driver" />
         <StatusTabs
           label="Trip status"
           current={current.value}
@@ -117,7 +117,6 @@ async function Dispatch({ params, searchParams }: PageProps<"/b/[slug]/dispatch"
               { header: "Status", phone: "badge", cell: (trip) => <TripStatusBadge status={trip.status} /> },
               { header: "Date", cell: (trip) => formatDay(trip.dispatch_date) },
               { header: "Driver", cell: (trip) => <span className="font-semibold">{trip.driver_name}</span> },
-              { header: "Truck", cell: (trip) => trip.vehicle ?? <span className="text-ink-soft">—</span> },
               { header: "Orders", align: "right", cell: (trip) => trip.order_count },
               { header: "Items", align: "right", cell: (trip) => formatQuantity(Number(trip.total_quantity)) },
               {

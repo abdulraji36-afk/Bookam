@@ -10,7 +10,7 @@ import { Badge, Card, PageSkeleton } from "@/components/ui/card";
 import { ActionsPanel, PageHeader } from "@/components/ui/page-header";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 
-export const metadata: Metadata = { title: "Driver or loader" };
+export const metadata: Metadata = { title: "Driver or worker" };
 
 async function Worker({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew/[id]">, "params">) {
   const { slug, id } = await params;
@@ -27,7 +27,7 @@ async function Worker({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew/[id]">
     <div className="max-w-3xl space-y-6">
       <PageHeader
         title={worker.name}
-        sub={worker.role === "driver" ? "Driver" : "Loader"}
+        sub={worker.role === "driver" ? "Driver" : "Worker"}
         actions={worker.is_active ? null : <Badge tone="accent">Switched off</Badge>}
       />
       <Card>
@@ -50,7 +50,7 @@ async function Worker({ params }: Pick<PageProps<"/b/[slug]/dispatch/crew/[id]">
         />
       </ActionsPanel>
       <Link href={`/b/${org.slug}/dispatch/crew`} className={buttonClass("secondary")}>
-        Back to drivers and loaders
+        Back to drivers and workers
       </Link>
     </div>
   );

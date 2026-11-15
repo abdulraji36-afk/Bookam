@@ -514,6 +514,7 @@ export type Database = {
           trip_no: string;
           dispatch_date: string;
           driver_name: string;
+          driver_id: string | null;
           vehicle: string | null;
           status: TripStatus;
           note: string | null;
@@ -1092,11 +1093,10 @@ export type Database = {
           p_organization_id: string;
           p_location_id: string;
           p_dispatch_date: string;
-          p_driver_name: string;
-          p_vehicle: string | null;
+          p_driver_id: string;
           p_note: string | null;
           p_order_ids: string[];
-          p_loader_ids?: string[];
+          p_worker_ids: string[];
         };
         Returns: { id: string; trip_no: string }[];
       };

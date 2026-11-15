@@ -109,17 +109,6 @@ describe("the Bilikis rules for drinks", () => {
     expect(seen).toHaveLength(0);
   });
 
-  it("a drinks trip needs its truck", async () => {
-    const shop = await customer("Truck Test Shop");
-    const order = await createOrder(db, owner, depot.id, shop, [{ product_id: pet, quantity: 1 }]);
-    await expect(
-      call(db, owner, `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), 'Musa', ' ', null, $3::uuid[])`, [
-        depot.id,
-        await mainLocation(db, depot.id),
-        [order.id]
-      ])
-    ).rejects.toThrow(/Enter the truck for this trip/);
-  });
 });
 
 describe("correcting a delivery, as in Bilikis", () => {

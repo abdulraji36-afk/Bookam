@@ -286,13 +286,34 @@ export async function createTrip(
   options: { locationId?: string; driver?: string } = {}
 ) {
   const locationId = options.locationId ?? (await mainLocation(db, organizationId));
+  const crew = await tripCrew(db, organizationId, options.driver ?? "Musa");
   const rows = await as(db, userId, (s) =>
     s.query<{ id: string; trip_no: string }>(
-      `select * from public.create_dispatch_trip($1, $2, public_today(), $3, 'LAG-123', null, $4::uuid[])`,
-      [organizationId, locationId, options.driver ?? "Musa", orderIds]
+      `select * from public.create_dispatch_trip_with_crew($1, $2, public_today(), $3, null, $4::uuid[], $5::uuid[])`,
+      [organizationId, locationId, crew.driverId, orderIds, [crew.workerId]]
     )
   );
   return rows[0];
+}
+
+/**
+ * A driver (by name) and a worker on the business's list, added if missing.
+ * Trips can only be created with people from the list.
+ */
+export async function tripCrew(db: Db, organizationId: string, driver = "Musa") {
+  const find = async (name: string, role: "driver" | "loader") => {
+    const found = await db.query<{ id: string }>(
+      `select id from public.dispatch_workers where organization_id = $1 and role = $2 and name = $3`,
+      [organizationId, role, name]
+    );
+    if (found.rows[0]) return found.rows[0].id;
+    const made = await db.query<{ id: string }>(
+      `insert into public.dispatch_workers (organization_id, name, role) values ($1, $2, $3) returning id`,
+      [organizationId, name, role]
+    );
+    return made.rows[0].id;
+  };
+  return { driverId: await find(driver, "driver"), workerId: await find("Sule", "loader") };
 }
 
 export async function call(db: Db, userId: string, sql: string, params: unknown[] = []) {
