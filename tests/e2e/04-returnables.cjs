@@ -272,6 +272,11 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await c.goto(BASE + base + "/returns");
   await c.getByRole("link", { name: "Supplier took empties only" }).waitFor();
   assert.equal(await c.getByRole("link", { name: "Add or subtract" }).count(), 0);
+  // Follow-up returns are for owners and admins, as in Bilikis.
+  assert.equal(await c.getByRole("link", { name: "Customer brought back empties" }).count(), 0);
+  await c.goto(BASE + base + "/returns/customer-return");
+  await c.waitForURL(new RegExp(base + "$"));
+  await c.goto(BASE + base + "/returns");
   await c.goto(BASE + base + "/returns/adjust");
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(BASE + base + "/returns");
@@ -281,7 +286,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await c.screenshot({ path: `${SHOTS}/36-record-returns-mobile.png`, fullPage: true });
   await vis(c.getByRole("button", { name: "Record returns and complete trip" })).click();
   await c.locator("section", { hasText: "What came back" }).getByText("All back").waitFor();
-  ok("staff records returns on a phone but cannot open the adjustment screen");
+  ok("staff records trip returns on a phone but cannot adjust or record follow-ups");
 
   await go("");
   await a.getByRole("link", { name: /Owed back by customers/ }).getByText("0", { exact: true }).waitFor();

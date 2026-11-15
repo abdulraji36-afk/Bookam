@@ -7,7 +7,7 @@ import { CustomerFollowupForm } from "@/components/returns/followup-form";
 import { buttonClass } from "@/components/ui/button";
 import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { todayIn } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { getShortageLines } from "@/lib/shortages";
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Customer brought back empties" };
 
 async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/customer-return">, "params">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
   const base = `/b/${org.slug}`;
   if (!org.sells_drinks) redirect(`${base}/returns`);
 

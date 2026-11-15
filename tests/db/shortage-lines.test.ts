@@ -44,7 +44,7 @@ describe("drinks shortage lines", () => {
     ).rows[0].id;
     return { order, trip, line };
   }
-  const followUp = (line: string, quantity: number, user = staff, date = "public_today()") =>
+  const followUp = (line: string, quantity: number, user = owner, date = "public_today()") =>
     call(db, user, `select public.record_empties_followup($1, $2, ${date}, null)`, [line, quantity]);
   const shortage = async (line: string) =>
     (
@@ -134,9 +134,11 @@ describe("drinks shortage lines", () => {
     await expect(followUp(a.line, 4)).rejects.toThrow(/Only 3 empties are still owed on ORD-.+, so 4 cannot be recorded/);
     await expect(followUp(a.line, 0)).rejects.toThrow(/more than 0/);
     await expect(followUp(a.line, 1.5)).rejects.toThrow(/whole numbers/);
-    await expect(followUp(a.line, 1, staff, "public_today() + 1")).rejects.toThrow(/cannot be in the future/);
-    await expect(followUp(a.line, 1, staff, "public_today() - 1")).rejects.toThrow(/cannot be before the trip came back/);
+    await expect(followUp(a.line, 1, owner, "public_today() + 1")).rejects.toThrow(/cannot be in the future/);
+    await expect(followUp(a.line, 1, owner, "public_today() - 1")).rejects.toThrow(/cannot be before the trip came back/);
 
+    // As in Bilikis, only owners and admins record follow-ups.
+    await expect(followUp(a.line, 1, staff)).rejects.toThrow();
     await followUp(a.line, 3);
     expect(await shortage(a.line)).toMatchObject({ outstanding: "0", completed: true });
     expect(await shortage(b.line)).toMatchObject({ outstanding: "4", completed: false });

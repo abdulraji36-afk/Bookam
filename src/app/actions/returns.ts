@@ -204,13 +204,13 @@ const followupSchema = z.object({
   returnTo: z.enum(["order", "returns", "shortages"]).catch("returns")
 });
 
-/** Any team member: empties brought back later, against one order that came back short. */
+/** Owners and admins (as in Bilikis): empties brought back later, against one order that came back short. */
 export async function recordEmptiesFollowupAction(
   slug: string,
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = followupSchema.safeParse({
     lineId: text(formData, "lineId"),

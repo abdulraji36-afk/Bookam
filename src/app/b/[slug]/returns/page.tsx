@@ -183,12 +183,14 @@ async function Returns({
         actions={
           <>
             {org.sells_drinks ? (
-              <Link
-                href={`${base}/returns/customer-return`}
-                className={buttonClass("primary")}
-              >
-                Customer brought back empties
-              </Link>
+              manager ? (
+                <Link
+                  href={`${base}/returns/customer-return`}
+                  className={buttonClass("primary")}
+                >
+                  Customer brought back empties
+                </Link>
+              ) : null
             ) : (
               <Link
                 href={`${base}/returns/exchange`}

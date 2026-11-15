@@ -140,7 +140,8 @@ These are what keep one business's data away from another's.
    Outstanding = expected − (returned with the trip + follow-ups), never
    below 0; open while above 0, completed at 0, and it stays listed with
    the time it was completed. Follow-ups (`record_empties_followup`) pay off
-   one line only and never more than it still owes. Extra empties at the
+   one line only and never more than it still owes, and only owners and
+   admins record them. Extra empties at the
    trip go into the store but are not credit, so a customer never has a
    balance below zero; old debts and customer adjustments are refused for
    drinks. Empties in store = opening + trip returns + follow-ups +

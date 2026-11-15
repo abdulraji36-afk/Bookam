@@ -267,7 +267,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
               </TableCard>
             ) : null}
 
-            {outstanding > 0 && !order.voided_at ? (
+            {manager && outstanding > 0 && !order.voided_at ? (
               <Card>
                 <h3 className="mb-1 text-lg font-extrabold">Record follow-up return</h3>
                 <p className="mb-4 text-sm font-medium text-ink-soft">

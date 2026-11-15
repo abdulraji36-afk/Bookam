@@ -9,37 +9,67 @@ import { DataTable, TableCard } from "@/components/ui/data-table";
 import { Pager } from "@/components/ui/list-search";
 import { FilterBar, PageHeader } from "@/components/ui/page-header";
 import { formatQuantity } from "@/lib/format";
-import { requireOrg } from "@/lib/org";
+import { canManage, requireOrg } from "@/lib/org";
 import { readListSearch } from "@/lib/search";
-import { formatDateTime, getShortageLines, shortageSummary } from "@/lib/shortages";
+import {
+  formatDateTime,
+  getShortageLines,
+  shortageSummary,
+} from "@/lib/shortages";
 
 export const metadata: Metadata = { title: "Empty shortages" };
 
 const PAGE_SIZE = 20;
-const isDay = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const isDay = (value: unknown): value is string =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-function Figure({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Figure({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
   return (
-    <div className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}>
-      <p className="text-3xl font-extrabold leading-none tabular-nums sm:text-4xl">{value}</p>
-      <p className={`mt-2 text-sm font-bold uppercase tracking-wide ${strong ? "text-nav" : "text-ink-soft"}`}>{label}</p>
+    <div
+      className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
+    >
+      <p className="text-3xl font-extrabold leading-none tabular-nums sm:text-4xl">
+        {value}
+      </p>
+      <p
+        className={`mt-2 text-sm font-bold uppercase tracking-wide ${strong ? "text-nav" : "text-ink-soft"}`}
+      >
+        {label}
+      </p>
     </div>
   );
 }
 
-async function Shortages({ params, searchParams }: PageProps<"/b/[slug]/returns/shortages">) {
+async function Shortages({
+  params,
+  searchParams,
+}: PageProps<"/b/[slug]/returns/shortages">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, role } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   if (!org.sells_drinks) redirect(`${base}/returns`);
 
   const from = isDay(query.from) ? query.from : "";
   const to = isDay(query.to) ? query.to : "";
   const search = readListSearch(query, PAGE_SIZE);
-  const { rows, error } = await getShortageLines(supabase, org.id, { from, to });
+  const { rows, error } = await getShortageLines(supabase, org.id, {
+    from,
+    to,
+  });
   const summary = shortageSummary(rows);
   const page = rows.slice(search.from, search.to + 1);
-  const when = (value: string | null) => formatDateTime(value, org.timezone) ?? <span className="text-ink-soft">—</span>;
+  const when = (value: string | null) =>
+    formatDateTime(value, org.timezone) ?? (
+      <span className="text-ink-soft">—</span>
+    );
   const pageHref = (number: number) => {
     const params = new URLSearchParams();
     if (from) params.set("from", from);
@@ -51,25 +81,46 @@ async function Shortages({ params, searchParams }: PageProps<"/b/[slug]/returns/
 
   return (
     <div className="space-y-5">
-      {query.saved === "followup" ? <Alert tone="success">Follow-up return saved.</Alert> : null}
+      {query.saved === "followup" ? (
+        <Alert tone="success">Follow-up return saved.</Alert>
+      ) : null}
       <PageHeader
         title="Empty shortages"
         sub="Every order that came back with fewer empties than it took. A line stays here after the customer has brought them all back, marked completed."
         actions={
-          <Link href={`${base}/returns/customer-return`} className={buttonClass("primary")}>
-            Customer brought back empties
-          </Link>
+          canManage(role) ? (
+            <Link
+              href={`${base}/returns/customer-return`}
+              className={buttonClass("primary")}
+            >
+              Customer brought back empties
+            </Link>
+          ) : null
         }
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Figure label="Shortage records" value={formatQuantity(summary.records)} />
-        <Figure label="Open customers" value={formatQuantity(summary.openCustomers)} />
-        <Figure label="Outstanding empties" value={formatQuantity(summary.outstanding)} strong />
+        <Figure
+          label="Shortage records"
+          value={formatQuantity(summary.records)}
+        />
+        <Figure
+          label="Open customers"
+          value={formatQuantity(summary.openCustomers)}
+        />
+        <Figure
+          label="Outstanding empties"
+          value={formatQuantity(summary.outstanding)}
+          strong
+        />
       </div>
 
       <FilterBar>
-        <form method="get" action={`${base}/returns/shortages`} className="flex flex-wrap items-end gap-3">
+        <form
+          method="get"
+          action={`${base}/returns/shortages`}
+          className="flex flex-wrap items-end gap-3"
+        >
           <label className="text-sm font-bold">
             From
             <input
@@ -92,14 +143,21 @@ async function Shortages({ params, searchParams }: PageProps<"/b/[slug]/returns/
             Apply
           </button>
           {from || to ? (
-            <Link href={`${base}/returns/shortages`} className={buttonClass("ghost")}>
+            <Link
+              href={`${base}/returns/shortages`}
+              className={buttonClass("ghost")}
+            >
               Clear dates
             </Link>
           ) : null}
         </form>
       </FilterBar>
 
-      {error ? <Alert tone="error">Empty shortages could not load. Please try again.</Alert> : null}
+      {error ? (
+        <Alert tone="error">
+          Empty shortages could not load. Please try again.
+        </Alert>
+      ) : null}
 
       <TableCard title="Customer empty shortage history">
         <DataTable
@@ -107,17 +165,25 @@ async function Shortages({ params, searchParams }: PageProps<"/b/[slug]/returns/
           rows={page}
           rowKey={(line) => line.id}
           rowHref={(line) => `${base}/orders/${line.order_id}`}
-          empty={from || to ? "No shortages in those dates." : "No order has come back short yet."}
+          empty={
+            from || to
+              ? "No shortages in those dates."
+              : "No order has come back short yet."
+          }
           columns={[
             {
               header: "Customer",
               wrap: true,
               cell: (line) => (
                 <>
-                  <span className="block font-extrabold">{line.customer_name}</span>
-                  <span className="block whitespace-nowrap text-sm font-medium text-ink-soft tabular-nums">{line.order_no}</span>
+                  <span className="block font-extrabold">
+                    {line.customer_name}
+                  </span>
+                  <span className="block whitespace-nowrap text-sm font-medium text-ink-soft tabular-nums">
+                    {line.order_no}
+                  </span>
                 </>
-              )
+              ),
             },
             {
               header: "Status",
@@ -127,27 +193,58 @@ async function Shortages({ params, searchParams }: PageProps<"/b/[slug]/returns/
                   <Badge tone="solid">Open</Badge>
                 ) : (
                   <Badge tone="plain">Completed</Badge>
-                )
+                ),
             },
-            { header: "Recorded", wrap: true, cell: (line) => when(line.returned_at) },
-            { header: "Expected", align: "right", cell: (line) => formatQuantity(Number(line.expected)) },
-            { header: "With trip", align: "right", cell: (line) => formatQuantity(Number(line.initial_returned)) },
-            { header: "Follow-up", align: "right", cell: (line) => formatQuantity(Number(line.followup_returned)) },
+            {
+              header: "Recorded",
+              wrap: true,
+              cell: (line) => when(line.returned_at),
+            },
+            {
+              header: "Expected",
+              align: "right",
+              cell: (line) => formatQuantity(Number(line.expected)),
+            },
+            {
+              header: "With trip",
+              align: "right",
+              cell: (line) => formatQuantity(Number(line.initial_returned)),
+            },
+            {
+              header: "Follow-up",
+              align: "right",
+              cell: (line) => formatQuantity(Number(line.followup_returned)),
+            },
             {
               header: "Outstanding",
               align: "right",
-              cell: (line) => <span className="font-extrabold">{formatQuantity(Number(line.outstanding))}</span>
+              cell: (line) => (
+                <span className="font-extrabold">
+                  {formatQuantity(Number(line.outstanding))}
+                </span>
+              ),
             },
-            { header: "Completed on", wrap: true, cell: (line) => when(line.completed_at) }
+            {
+              header: "Completed on",
+              wrap: true,
+              cell: (line) => when(line.completed_at),
+            },
           ]}
         />
       </TableCard>
-      <Pager base={`${base}/returns/shortages`} search={search} total={rows.length} hrefFor={pageHref} />
+      <Pager
+        base={`${base}/returns/shortages`}
+        search={search}
+        total={rows.length}
+        hrefFor={pageHref}
+      />
     </div>
   );
 }
 
-export default function ShortagesPage(props: PageProps<"/b/[slug]/returns/shortages">) {
+export default function ShortagesPage(
+  props: PageProps<"/b/[slug]/returns/shortages">,
+) {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <Shortages {...props} />

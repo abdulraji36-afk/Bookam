@@ -155,7 +155,7 @@ describe("drinks, the Bilikis way", () => {
     expect(exchange.rows[0].void_reason).toBe("Wrong delivery entered");
   });
 
-  it("customers owe the empties a trip did not bring back, and staff record them later", async () => {
+  it("customers owe the empties a trip did not bring back, and an owner records them later", async () => {
     const mama = await saveCustomer(db, owner, depot.id, { name: "Mama Tunde" });
     const order = await createOrder(db, staff, depot.id, mama, [
       { product_id: rgb, quantity: 50 },
@@ -188,11 +188,13 @@ describe("drinks, the Bilikis way", () => {
     const line = (
       await db.query<{ id: string }>(`select id from public.trip_return_lines where order_id = $1`, [order.id])
     ).rows[0].id;
-    const followUp = (quantity: number, user = staff) =>
+    const followUp = (quantity: number, user = owner) =>
       call(db, user, `select public.record_empties_followup($1, $2, public_today(), 'Brought to the depot')`, [
         line,
         quantity
       ]);
+    // Staff record trip returns; follow-ups are for owners and admins.
+    await expect(followUp(15, staff)).rejects.toThrow();
     await followUp(15);
     expect(await owedBy(db, mama)).toBe(5);
     expect(await totals()).toEqual({ holding: 295, owed: 5 });
