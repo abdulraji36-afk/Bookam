@@ -219,4 +219,5 @@ version of the app, so the database can always go first.
 | 14 | Write-offs removed; stock changes only through deliveries and orders | Done |
 | 15 | Reorganised screens: a grouped side menu (daily work, catalogue, reports, admin) with New order and Receive stock at the top; every list a table with search and status tabs that turns into cards on a phone; changes such as edit, switch off and void on each record's own page | Done |
 | 16 | Trips take their driver from the list and at least one worker (any number); trucks and plate numbers are no longer recorded | Done |
+| 17 | Order form: walk-in buyer at the bottom, and a missed customer, product or quantity is pointed out at the field itself; a waiting order is cancelled (void is only for one that has gone out); "Put on a trip" from the order page; returned-empties boxes start blank and every one must be filled, 0 included | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

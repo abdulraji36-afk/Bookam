@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -25,11 +25,28 @@ type Props = {
 
 export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
   const { state, pending, form } = useFormAction(action);
-  // Start from "everything came back"; staff only change the ones that did not.
-  const [returned, setReturned] = useState(() => lines.map((line) => String(line.expected)));
+  // Every box starts empty, so nothing is saved by a careless click: staff
+  // must count each one, 0 included.
+  const [returned, setReturned] = useState(() => lines.map(() => ""));
+  const [missing, setMissing] = useState<number | null>(null);
+  const boxes = useRef<(HTMLInputElement | null)[]>([]);
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const blank = returned.findIndex((value) => value.trim() === "");
+    if (blank !== -1) {
+      event.preventDefault();
+      setMissing(blank);
+      const box = boxes.current[blank];
+      box?.scrollIntoView({ block: "center", behavior: "smooth" });
+      box?.focus({ preventScroll: true });
+      return;
+    }
+    setMissing(null);
+    form.onSubmit(event);
+  }
 
   return (
-    <form {...form} className="space-y-5">
+    <form {...form} onSubmit={onSubmit} className="space-y-5">
       <TextField
         label="Date the trip came back"
         name="returnedDate"
@@ -72,13 +89,27 @@ export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
                   name="returned"
                   inputMode="decimal"
                   autoComplete="off"
+                  placeholder="0 or more"
+                  ref={(element) => {
+                    boxes.current[index] = element;
+                  }}
+                  aria-invalid={missing === index || undefined}
                   value={returned[index]}
                   onChange={(event) => {
                     const next = event.currentTarget.value;
                     setReturned((current) => current.map((item, position) => (position === index ? next : item)));
+                    if (missing === index) setMissing(null);
                   }}
                 />
               </div>
+              {missing === index ? (
+                <p
+                  role="alert"
+                  className="w-full rounded-md border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-bold text-danger"
+                >
+                  Enter how many {line.returnableName} {line.customerName} brought back, 0 if none.
+                </p>
+              ) : null}
             </li>
           );
         })}

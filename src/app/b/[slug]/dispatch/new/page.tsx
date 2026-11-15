@@ -12,8 +12,8 @@ export const metadata: Metadata = { title: "New trip" };
 
 const LINK = "font-extrabold text-ink underline decoration-accent decoration-4 underline-offset-4";
 
-async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "params">) {
-  const { slug } = await params;
+async function NewTrip({ params, searchParams }: PageProps<"/b/[slug]/dispatch/new">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org, role } = await requireOrg(slug);
 
   const [ordersResult, locationsResult, workersResult] = await Promise.all([
@@ -78,6 +78,7 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
             locations={locationsResult.data ?? []}
             drivers={drivers}
             workers={crew}
+            preselected={typeof query.order === "string" ? [query.order] : []}
             today={todayIn(org.timezone, await requestNow())}
           />
         </Card>
@@ -86,10 +87,10 @@ async function NewTrip({ params }: Pick<PageProps<"/b/[slug]/dispatch/new">, "pa
   );
 }
 
-export default function NewTripPage({ params }: PageProps<"/b/[slug]/dispatch/new">) {
+export default function NewTripPage(props: PageProps<"/b/[slug]/dispatch/new">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <NewTrip params={params} />
+      <NewTrip {...props} />
     </Suspense>
   );
 }

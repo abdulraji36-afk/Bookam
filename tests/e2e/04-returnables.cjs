@@ -168,8 +168,18 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.locator("section", { hasText: "Trips to record returns for" }).getByRole("link").click();
   await a.waitForURL(tripUrl);
   const mamaBox = vis(a.getByLabel("Returned by Mama Tunde Stores"));
-  assert.equal(await mamaBox.inputValue(), "40", "boxes start at the full amount");
+  assert.equal(await mamaBox.inputValue(), "", "boxes start empty");
+  await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
+  await a.getByText(/^Enter how many Empties .+ brought back, 0 if none\.$/).waitFor();
+  assert.equal(
+    await a.evaluate(() => document.activeElement?.getAttribute("aria-label")?.startsWith("Returned by")),
+    true,
+    "the first blank box is focused"
+  );
   await mamaBox.fill("32");
+  await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
+  await a.getByText("Enter how many Empties Alhaji Musa Kiosk brought back, 0 if none.").waitFor();
+  await vis(a.getByLabel("Returned by Alhaji Musa Kiosk")).fill("20");
   await a.getByText("Short by 8. It stays on their balance.").waitFor();
   await a.screenshot({ path: `${SHOTS}/32-record-returns.png`, fullPage: true });
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
@@ -238,10 +248,13 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
   // Credit counts against the next order: Mama (2 in credit) takes 12 -> owes 10
   await order(a, "Mama Tunde Stores", [["Cola 50cl", 12]]);
-  await go("/dispatch/new");
+  // Straight from the order to a trip: the order comes already ticked.
+  assert.equal(await vis(a.getByText("Void this order", { exact: true })).count(), 0, "a waiting order is cancelled, not voided");
+  await a.locator("main").getByRole("link", { name: "Put on a trip" }).click();
+  await a.waitForURL(/\/dispatch\/new\?order=/);
+  assert.equal(await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).isChecked(), true, "order is preselected");
   await vis(a.getByLabel("Driver", { exact: true })).selectOption({ label: "Tunde" });
   await vis(a.getByLabel("Sule")).check();
-  await vis(a.getByRole("checkbox", { name: /Mama Tunde Stores/ })).check();
   await vis(a.getByRole("button", { name: "Create trip" })).click();
   await a.waitForURL(/\/dispatch\/[0-9a-f-]{36}$/);
   await vis(a.getByRole("button", { name: "Dispatch now" })).click();

@@ -204,7 +204,7 @@ async function Trip({ params }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "para
         <Card>
           <CardHeader
             title="Record what came back"
-            description="Each box starts at the full amount. Change only the ones that came back short or over."
+            description="Count what each customer brought back and enter it, 0 if none. Every box must be filled."
           />
           <TripReturnsForm
             action={recordTripReturnsAction.bind(null, org.slug, trip.id)}

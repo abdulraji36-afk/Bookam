@@ -116,6 +116,25 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
   ok("an order sets its stock aside and shows what is due back");
 
+  // --- a missed field takes you back to it with a message
+  await a.goto(BASE + base + "/orders/new");
+  const save = () => vis(a.getByRole("button", { name: "Save order" })).click();
+  await save();
+  await a.getByText("Choose the customer before saving the order.").waitFor();
+  await pick(a, "Customer", "Grace Canteen");
+  await save();
+  await a.getByText("Choose the product, or remove this line.").waitFor();
+  await pick(a, "Product", "Water 75cl");
+  await save();
+  await a.getByText("Enter how many pack of Water 75cl.").waitFor();
+  assert.equal(
+    await vis(a.getByLabel("Quantity")).evaluate((el) => el === document.activeElement),
+    true,
+    "the quantity box is focused"
+  );
+  assert.match(a.url(), /\/orders\/new$/, "nothing was saved");
+  ok("a missed customer, product or quantity is pointed out at the field itself");
+
   // --- cannot oversell; typed values survive the error
   await a.goto(BASE + base + "/orders/new");
   await fillOrder(a, "Grace Canteen", [["Water 75cl", 99]]);

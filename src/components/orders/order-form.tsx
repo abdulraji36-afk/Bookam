@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { UnitPicker, type PickableUnit } from "@/components/orders/unit-picker";
@@ -96,8 +96,49 @@ export function OrderForm({
   const available = (productId: string) =>
     (stock[locationId]?.[productId] ?? 0) + (heldByOrder.get(productId) ?? 0);
 
-  const setLine = (key: number, change: Partial<Line>) =>
+  const setLine = (key: number, change: Partial<Line>) => {
+    setMissing(null);
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...change } : line)));
+  };
+
+  // Something still to fill in: shown beside that field, which takes the cursor.
+  const [missing, setMissing] = useState<{ key: string; message: string } | null>(null);
+  const note = (key: string) =>
+    missing?.key === key ? (
+      <p role="alert" className="mt-1.5 rounded-md border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-bold text-danger">
+        {missing.message}
+      </p>
+    ) : null;
+
+  function firstMissing(): { key: string; message: string } | null {
+    if (!walkIn && !customerId) return { key: "customer", message: `Choose the customer before saving the ${words.one}.` };
+    for (const line of lines) {
+      const product = productById.get(line.productId);
+      if (!product) return { key: `product-${line.key}`, message: "Choose the product, or remove this line." };
+      if (product.tracksSerials) {
+        if (line.unitIds.size === 0) {
+          return { key: `units-${line.key}`, message: `Choose the serial number of each ${product.unit} going out.` };
+        }
+      } else if (!(Number(line.quantity) > 0)) {
+        return { key: `quantity-${line.key}`, message: `Enter how many ${product.unit} of ${product.name}.` };
+      }
+    }
+    return null;
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const problem = firstMissing();
+    if (problem) {
+      event.preventDefault();
+      setMissing(problem);
+      const box = form.ref.current?.querySelector(`[data-field="${problem.key}"]`);
+      box?.scrollIntoView({ block: "center", behavior: "smooth" });
+      box?.querySelector<HTMLElement>("input:not([type=hidden]), select")?.focus({ preventScroll: true });
+      return;
+    }
+    setMissing(null);
+    form.onSubmit(event);
+  }
 
   const quantityOf = (line: Line) =>
     productById.get(line.productId)?.tracksSerials ? line.unitIds.size : Number(line.quantity);
@@ -121,42 +162,27 @@ export function OrderForm({
   }
 
   return (
-    <form {...form} className="space-y-6">
+    <form {...form} onSubmit={onSubmit} className="space-y-6">
       <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-3 sm:col-span-2">
-          <CheckboxField
-            label="Walk-in buyer"
-            name="walkIn"
-            checked={walkIn}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked;
-              setWalkIn(checked);
-              // A walk-in buyer almost always takes the goods there and then.
-              if (!editing) setLeaving(checked ? "now" : "trip");
-            }}
-            hint="Someone who is not a saved customer. Their name and phone are kept on the order for warranty."
-          />
+        <div className="sm:col-span-2" data-field="customer">
           {walkIn ? (
-            <div className="grid gap-5 sm:grid-cols-2">
-              <TextField label="Buyer's name (optional)" name="buyerName" defaultValue={editing?.buyerName} maxLength={80} autoComplete="off" />
-              <TextField
-                label="Buyer's phone (optional)"
-                name="buyerPhone"
-                type="tel"
-                inputMode="tel"
-                defaultValue={editing?.buyerPhone}
-                maxLength={30}
-                autoComplete="off"
-              />
+            <>
+              <p className="mb-1.5 text-sm font-bold">Customer</p>
+              <p className="flex min-h-12 items-center rounded-md bg-chip px-3 font-semibold">
+                Walk-in buyer (their details are at the bottom)
+              </p>
               <input type="hidden" name="customerId" value="" />
-            </div>
+            </>
           ) : (
             <SearchSelect
               label="Customer"
               name="customerId"
               placeholder="Type a name to search"
               value={customerId}
-              onChange={setCustomerId}
+              onChange={(next) => {
+                setCustomerId(next);
+                setMissing(null);
+              }}
               options={customers.map((customer) => ({
                 value: customer.id,
                 label: customer.name,
@@ -164,6 +190,7 @@ export function OrderForm({
               }))}
             />
           )}
+          {note("customer")}
         </div>
         <TextField
           label="Order date"
@@ -212,7 +239,7 @@ export function OrderForm({
               <input type="hidden" name="lineKey" value={line.key} />
               <input type="hidden" name="tracked" value={tracked ? "1" : "0"} />
               <div className="grid grid-cols-[1fr_auto] items-end gap-2 sm:grid-cols-[1fr_7rem_auto] sm:gap-3">
-                <div className="col-span-2 sm:col-span-1">
+                <div className="col-span-2 sm:col-span-1" data-field={`product-${line.key}`}>
                 <SearchSelect
                   label={index === 0 ? "Product" : `Product ${index + 1}`}
                   name="productId"
@@ -230,6 +257,7 @@ export function OrderForm({
                     disabled: option.price === null || (walkIn && option.returnable)
                   }))}
                 />
+                {note(`product-${line.key}`)}
                 </div>
                 {tracked ? (
                   <div>
@@ -240,14 +268,16 @@ export function OrderForm({
                     <input type="hidden" name="quantity" value="" />
                   </div>
                 ) : (
-                  <TextField
-                    label="Quantity"
-                    name="quantity"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={line.quantity}
-                    onChange={(event) => setLine(line.key, { quantity: event.currentTarget.value })}
-                  />
+                  <div data-field={`quantity-${line.key}`}>
+                    <TextField
+                      label="Quantity"
+                      name="quantity"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={line.quantity}
+                      onChange={(event) => setLine(line.key, { quantity: event.currentTarget.value })}
+                    />
+                  </div>
                 )}
                 <Button
                   type="button"
@@ -261,7 +291,9 @@ export function OrderForm({
                   Remove
                 </Button>
               </div>
+              {note(`quantity-${line.key}`)}
               {tracked && product ? (
+                <div data-field={`units-${line.key}`}>
                 <UnitPicker
                   lineKey={line.key}
                   units={lineUnits}
@@ -269,6 +301,8 @@ export function OrderForm({
                   onToggle={(unitId) => toggleUnit(line.key, unitId)}
                   unitWord={product.unit}
                 />
+                {note(`units-${line.key}`)}
+                </div>
               ) : null}
               {!tracked && product && inStock !== null ? (
                 <p className={`text-sm font-semibold ${tooMany ? "text-danger" : "text-ink-soft"}`}>
@@ -290,6 +324,36 @@ export function OrderForm({
           Add another product
         </Button>
       </fieldset>
+
+      <div className="space-y-3 rounded-md border-2 border-line p-4">
+        <CheckboxField
+          label="Walk-in buyer"
+          name="walkIn"
+          checked={walkIn}
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            setWalkIn(checked);
+            setMissing(null);
+            // A walk-in buyer almost always takes the goods there and then.
+            if (!editing) setLeaving(checked ? "now" : "trip");
+          }}
+          hint="Someone who is not a saved customer. Their name and phone are kept on the order for warranty."
+        />
+        {walkIn ? (
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField label="Buyer's name (optional)" name="buyerName" defaultValue={editing?.buyerName} maxLength={80} autoComplete="off" />
+            <TextField
+              label="Buyer's phone (optional)"
+              name="buyerPhone"
+              type="tel"
+              inputMode="tel"
+              defaultValue={editing?.buyerPhone}
+              maxLength={30}
+              autoComplete="off"
+            />
+          </div>
+        ) : null}
+      </div>
 
       {walkIn && returnableChosen ? (
         <Alert tone="error">

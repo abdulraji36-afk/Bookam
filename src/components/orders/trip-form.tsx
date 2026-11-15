@@ -28,17 +28,22 @@ type Props = {
   /** From the drivers and workers list: the driver is chosen, workers ticked. */
   drivers: { id: string; name: string }[];
   workers: { id: string; name: string }[];
+  /** Orders already ticked, e.g. when coming from an order's "Put on a trip". */
+  preselected?: string[];
 };
 
-export function TripForm({ action, orders, locations, today, drivers, workers }: Props) {
+export function TripForm({ action, orders, locations, today, drivers, workers, preselected = [] }: Props) {
   const { state, pending, form } = useFormAction(action);
   const [locationId, setLocationId] = useState(
     // Start on the first location that actually has orders waiting.
-    locations.find((location) => orders.some((order) => order.locationId === location.id))?.id ??
+    orders.find((order) => preselected.includes(order.id))?.locationId ??
+      locations.find((location) => orders.some((order) => order.locationId === location.id))?.id ??
       locations[0]?.id ??
       ""
   );
-  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [chosen, setChosen] = useState<Set<string>>(
+    () => new Set(orders.filter((order) => preselected.includes(order.id)).map((order) => order.id))
+  );
 
   const here = orders.filter((order) => order.locationId === locationId);
   const allChosen = here.length > 0 && here.every((order) => chosen.has(order.id));

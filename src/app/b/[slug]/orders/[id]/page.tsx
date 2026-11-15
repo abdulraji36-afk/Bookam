@@ -59,7 +59,8 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
     ["Recorded by", order.profiles?.full_name],
     ["Note", order.note]
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
-  const canVoid = canManage(role) && order.status !== "cancelled";
+  // A waiting order is simply cancelled; voiding is for one that has already gone out.
+  const canVoid = canManage(role) && order.status !== "cancelled" && order.status !== "pending";
   const unitsByProduct = new Map<string, typeof order.product_units>();
   for (const unit of order.product_units) {
     unitsByProduct.set(unit.product_id, [...(unitsByProduct.get(unit.product_id) ?? []), unit]);
@@ -173,11 +174,16 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         <ActionsPanel>
           {order.status === "pending" ? (
             <div className="flex flex-wrap items-start gap-3">
+              {org.does_delivery ? (
+                <Link href={`${base}/dispatch/new?order=${order.id}`} className={buttonClass("primary")}>
+                  Put on a trip
+                </Link>
+              ) : null}
               <ActionButton
                 action={handOverOrderAction.bind(null, org.slug, order.id)}
                 label="Handed over now"
                 pendingLabel="Saving…"
-                variant="primary"
+                variant={org.does_delivery ? "secondary" : "primary"}
                 size="md"
                 confirmMessage={`Mark ${order.order_no} as collected at the counter? It is completed straight away and will not go on a trip.`}
               />
