@@ -3,7 +3,7 @@
 // the customer settling it later at the depot.
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
-const { pick } = require("./helpers.cjs");
+const { pick, newOrders } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
@@ -379,6 +379,56 @@ let dbg;
   assert.match(await dayCard("Shortage follow-ups").innerText(), /0$/);
   await a.screenshot({ path: `${SHOTS}/97-daily-report.png`, fullPage: true });
   ok("stock value at cost, and a daily report with deliveries, empties in and out, and empty shortages");
+
+  // 12. Transaction records, as in Bilikis
+  const summary = (label) => a.locator("[data-summary-card]", { hasText: label });
+  await menu(a).getByRole("link", { name: "Records" }).click();
+  await a.getByRole("heading", { name: "Transaction records" }).waitFor();
+  await a.getByRole("link", { name: /^Sell RGB RGB sales/ }).click();
+  await a.getByRole("heading", { name: "RGB transaction history" }).waitFor();
+  assert.match(await summary("Customer deliveries").innerText(), /1$/);
+  assert.match(await summary("Crates delivered").innerText(), /50$/);
+  // The 20 short were brought back later, so the order's empties now balance.
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Balanced").waitFor();
+  await go("/records/pet");
+  assert.match(await summary("Transactions").innerText(), /2$/);
+  assert.match(await summary("PET sold").innerText(), /15$/);
+  // Filtered to one customer.
+  await vis(a.getByLabel("Customer")).selectOption({ label: "Alhaji Musa Kiosk" });
+  await vis(a.getByRole("button", { name: "Apply" })).click();
+  await a.waitForURL(/customer=/);
+  assert.match(await summary("PET sold").innerText(), /10$/);
+  await a.screenshot({ path: `${SHOTS}/98-pet-history.png`, fullPage: true });
+  ok("RGB and PET transaction history, with Bilikis's cards, empty result and customer filter");
+
+  // Incomplete work: a PET order not yet sent out.
+  await newOrders(a, BASE + base, "pet", [{ customer: "Mama Tunde Stores", lines: [["Coca-Cola 50cl PET", 5]] }]);
+  await go("/records/open-work");
+  assert.match(await summary("PET open sales").innerText(), /1$/);
+  assert.match(await summary("RGB open trips").innerText(), /0$/);
+  await a.locator("section", { hasText: "PET open sales" }).locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Waiting for dispatch").waitFor();
+  await a.getByText("No incomplete RGB trips.").waitFor();
+  ok("incomplete work lists the PET order still waiting for dispatch");
+
+  // Voided sales: Alhaji's delivered PET order is voided by the owner.
+  await go("/records/pet");
+  await a.locator("tr", { hasText: "Alhaji Musa Kiosk" }).getByRole("link").first().click();
+  await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
+  await vis(a.locator("main").getByText("Void this order", { exact: true })).click();
+  await vis(a.getByLabel("Reason")).fill("Customer refused the delivery");
+  await vis(a.getByRole("button", { name: "Void order" })).click();
+  await vis(a.getByText("Voided", { exact: true })).first().waitFor();
+  await go("/records/voided");
+  assert.match(await summary("Voided sales").innerText(), /1$/);
+  assert.match(await summary("PET voids").innerText(), /1$/);
+  const voidRow = a.locator("tr", { hasText: "Alhaji Musa Kiosk" });
+  await voidRow.getByText("Customer refused the delivery").waitFor();
+  await voidRow.getByText("PET", { exact: true }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/99-voided-sales.png`, fullPage: true });
+  // Voided sales leave the history.
+  await go("/records/pet");
+  assert.match(await summary("PET sold").innerText(), /5$/);
+  ok("a voided sale shows on Voided sales with its reason, and leaves the history");
 
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));

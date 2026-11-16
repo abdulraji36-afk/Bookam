@@ -127,6 +127,15 @@ async function BusinessShell({
           label: "Daily report",
           icon: "reports",
         },
+        ...(org.sells_drinks
+          ? ([
+              {
+                href: `${base}/records`,
+                label: "Records",
+                icon: "records",
+              },
+            ] as const)
+          : []),
         ...(manager
           ? ([
               {

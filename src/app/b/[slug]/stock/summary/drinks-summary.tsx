@@ -1,6 +1,7 @@
 import { Badge, Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { SummaryCard } from "@/components/ui/summary-card";
 import { buttonClass } from "@/components/ui/button";
 import { formatDay, formatQuantity } from "@/lib/format";
 import { sortByProductMasterOrder } from "@/lib/product-order";
@@ -13,31 +14,6 @@ type EmptiesRow =
 
 const INPUT =
   "mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium focus:border-ink focus:outline-2 focus:outline-accent";
-
-function SummaryCard({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
-    >
-      <p
-        className={`text-sm font-bold uppercase tracking-wide ${strong ? "text-nav" : "text-ink-soft"}`}
-      >
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-extrabold leading-none tabular-nums sm:text-4xl">
-        {value}
-      </p>
-    </div>
-  );
-}
 
 /** As in Bilikis: Low Stock at 10 or fewer, unless the product has its own warning level. */
 function stockStatus(row: StockRow) {
