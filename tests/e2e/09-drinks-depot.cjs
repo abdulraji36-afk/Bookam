@@ -356,15 +356,27 @@ let dbg;
 
   // Daily report, the Bilikis way
   await go("/reports/daily");
-  await a.locator("section", { hasText: "Stock in (1)" }).locator("tr", { hasText: "NBC-7781" }).waitFor();
-  await a.locator("section", { hasText: "Empty exchanges (1)" }).locator("tr", { hasText: "NBC-7781" }).getByText("−250").waitFor();
-  const emptiesDay = a.locator("section", { hasText: "Empties in and out" });
-  const line = async (label) => (await emptiesDay.locator("li, tr", { hasText: label }).innerText()).split("\n").pop().trim();
-  assert.equal(await line("Came back with trips"), "+30");
-  assert.equal(await line("Brought back later (follow-ups)"), "+20");
-  assert.equal(await line("Opening count, purchases and corrections"), "+500");
-  assert.equal(await line("Taken by the supplier"), "−250");
-  await a.locator("section", { hasText: "Still open right now" }).getByText("Empty shortages: 0 customers").waitFor();
+  await a.locator("section", { hasText: "Stock received on" }).locator("tr", { hasText: "NBC-7781" }).waitFor();
+  // Daily activity, as in Bilikis.
+  const activity = a.locator("section", { hasText: "Daily activity on" });
+  const activityRow = async (label) =>
+    (await activity.locator("tr", { hasText: label }).locator("td").allInnerTexts()).map((text) => text.trim());
+  assert.deepEqual((await activityRow("Initial RGB returns")).slice(1, 4), ["1", "30 empties received", "50 empties expected at closure"]);
+  assert.deepEqual((await activityRow("Empty return follow-ups")).slice(1, 3), ["2", "20 empties received"]);
+  assert.deepEqual((await activityRow("NBC empty exchange")).slice(1, 4), ["1", "250 empties out", "500 RGB cases delivered by NBC"]);
+  assert.deepEqual((await activityRow("RGB sales recorded")).slice(1, 3), ["1", "50 crates"]);
+  assert.deepEqual((await activityRow("PET sales recorded")).slice(1, 3), ["2", "15 packs"]);
+  // Empty movements: in with the trip and later, out to NBC.
+  const empties = a.locator("section", { hasText: "Empty movements on" });
+  await empties.locator("tr", { hasText: "RGB trip return" }).getByText("+30").waitFor();
+  await empties.locator("tr", { hasText: "NBC empty exchange" }).getByText("−250").waitFor();
+  await empties.locator("tr", { hasText: "Empty adjustment" }).getByText("+500").waitFor();
+  assert.equal(await empties.locator("tr", { hasText: "Return follow-up" }).count(), 2);
+  // One trip carried both.
+  await a.locator("section", { hasText: "Dispatches made on" }).getByText("RGB + PET").waitFor();
+  const dayCard = (label) => a.locator("div", { hasText: label }).filter({ has: a.getByText(label, { exact: true }) }).last();
+  assert.match(await dayCard("Empty balance at close").innerText(), /300$/);
+  assert.match(await dayCard("Shortage follow-ups").innerText(), /0$/);
   await a.screenshot({ path: `${SHOTS}/97-daily-report.png`, fullPage: true });
   ok("stock value at cost, and a daily report with deliveries, empties in and out, and empty shortages");
 

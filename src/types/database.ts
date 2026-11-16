@@ -627,6 +627,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "dispatch_trips";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_return_lines_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
           }
         ];
       };

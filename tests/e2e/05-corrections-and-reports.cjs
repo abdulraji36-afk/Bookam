@@ -218,19 +218,25 @@ let dbg;
 
   // Daily report
   await go("/reports/daily");
-  await a.getByText("Today so far.").waitFor();
-  const stockTable = a.locator("section", { hasText: "Stock" }).first();
-  const colaRow = stockTable.locator("tr", { hasText: "Cola 50cl" });
-  assert.deepEqual((await colaRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "200", "20", "180"]);
-  const crateRow = a.locator("section", { hasText: "Empties count" }).locator("tr", { hasText: "Empties" });
-  assert.deepEqual((await crateRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "156", "36", "120", "0"]);
-  await a.getByText("₦84,000").first().waitFor(); // only Musa's order counts
-  await a.locator("section", { hasText: "Orders recorded (3)" }).getByText("Voided").first().waitFor();
+  // As in Bilikis: report date, closing cards, then each part of the day.
+  await a.getByRole("heading", { name: "Daily view" }).waitFor();
+  const movement = a.locator("section", { hasText: "Product movement on" });
+  const colaRow = movement.locator("tr", { hasText: "Cola 50cl" });
+  // Opening, stock in, stock out, closing: the voided order's 40 are back in stock.
+  assert.deepEqual((await colaRow.locator("td").allInnerTexts()).map((t) => t.trim()).slice(4), ["0", "200", "20", "180"]);
+  const card = (label) => a.locator("div", { hasText: label }).filter({ has: a.getByText(label, { exact: true }) }).last();
+  assert.match(await card("Empty balance at close").innerText(), /120$/);
+  assert.match(await card("RGB closing stock").innerText(), /180$/);
+  const rgbSales = a.locator("section", { hasText: "RGB sales recorded on" });
+  await rgbSales.locator("tr", { hasText: "Alhaji Musa Kiosk" }).getByText("₦84,000").waitFor();
+  await rgbSales.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Voided").waitFor();
+  // The void shows under exceptions, with its reason.
+  await a.locator("section", { hasText: "Exceptions on" }).locator("tr", { hasText: "RGB sale voided" }).getByText("Recorded for the wrong customer").waitFor();
   await a.screenshot({ path: `${SHOTS}/43-daily-report.png`, fullPage: true });
-  await a.getByRole("link", { name: "Previous day" }).click();
-  await a.getByText("What happened on this day.").waitFor();
-  await a.getByText("No orders were recorded on this day.").waitFor();
-  ok("the daily report adds up and leaves voided orders out of the totals");
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  await go("/reports/daily?date=" + yesterday);
+  await a.getByText("No RGB sales recorded.").waitFor();
+  ok("the daily report shows the day as in Bilikis, with voided orders as exceptions");
 
   // Staff: no void controls, no activity page, report without money
   await go("/team");
@@ -252,9 +258,9 @@ let dbg;
   await c.goto(BASE + base + "/activity");
   await c.waitForURL(new RegExp(base + "$"));
   await c.goto(BASE + base + "/reports/daily");
-  await c.getByText("Today so far.").waitFor();
+  await c.getByText("PET closing stock").waitFor();
   assert.equal(await c.getByText(/₦/).count(), 0, "staff see no money on the report");
-  await c.getByText("Trips sent out").first().waitFor();
+  assert.equal(await c.getByText("Exceptions on", { exact: false }).count(), 0, "no exceptions for staff");
   await c.screenshot({ path: `${SHOTS}/44-daily-report-mobile.png`, fullPage: true });
   ok("staff cannot void, correct or open Activity, and their report shows no money");
 

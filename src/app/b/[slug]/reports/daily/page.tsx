@@ -9,6 +9,8 @@ import { formatDay, formatMoney, formatQuantity, todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { saleWords } from "@/lib/selling";
 import { requestNow } from "@/lib/request-time";
+import { getDrinksDaily } from "@/lib/reports/drinks-daily";
+import { DrinksDailyReport } from "./drinks-daily";
 
 export const metadata: Metadata = { title: "Daily report" };
 
@@ -61,6 +63,29 @@ async function DailyReport({
   const asked =
     typeof query.date === "string" && DAY.test(query.date) ? query.date : today;
   const day = asked > today ? today : asked;
+
+  // A drinks depot gets the Bilikis Daily Operations report.
+  if (org.sells_drinks) {
+    const manager = canManage(role);
+    const { data, error } = await getDrinksDaily(
+      supabase,
+      org.id,
+      day,
+      org.timezone,
+      manager,
+    );
+    return (
+      <DrinksDailyReport
+        base={`/b/${org.slug}`}
+        day={day}
+        today={today}
+        manager={manager}
+        currency={org.currency_code}
+        data={data}
+        error={error}
+      />
+    );
+  }
   // Staff see quantities only; money is for owners and admins.
   const showMoney = canManage(role);
 
@@ -339,10 +364,7 @@ async function DailyReport({
             ) : (
               <Figure label="Trips sent out" value={String(tripRows.length)} />
             )}
-            <Figure
-              label="Stock in"
-              value={String(receipts.count ?? 0)}
-            />
+            <Figure label="Stock in" value={String(receipts.count ?? 0)} />
           </div>
 
           <ListCard title="Stock">
