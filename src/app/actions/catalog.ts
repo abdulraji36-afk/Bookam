@@ -197,3 +197,25 @@ export async function addNbcProductsAction(slug: string, _previous: ActionState,
   }
   redirect(`/b/${slug}/products?added=${picked.length}`);
 }
+
+/** Bilikis's saved product display order. */
+export async function saveProductOrderAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const ids = String(formData.get("ids") ?? "")
+    .split(",")
+    .filter(Boolean);
+  if (ids.length === 0 || ids.some((id) => !z.uuid().safeParse(id).success)) {
+    return { ok: false, message: "The product list changed. Refresh the page and try again." };
+  }
+  const { error } = await supabase.rpc("save_product_order", {
+    p_organization_id: org.id,
+    p_product_ids: ids
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Product order saved. The order screen and reports now follow it." };
+}

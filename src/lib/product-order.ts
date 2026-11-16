@@ -1,4 +1,5 @@
 import { categoryOrder } from "@/lib/format";
+import type { ServerClient } from "@/lib/supabase/server";
 
 /**
  * The order Bilikis lists NBC products in (its product master order): RGB
@@ -41,10 +42,26 @@ const position = new Map<string, number>(
   PRODUCT_MASTER_ORDER.map((code, index) => [code, index]),
 );
 
+/**
+ * Products in the order the business saved (Bilikis's saved display order),
+ * then the NBC product order, then by category and name. Rows are matched to
+ * the saved order by `product_id` or `id`.
+ */
 export function sortByProductMasterOrder<
   T extends { sku: string | null; name: string; category: string | null },
->(rows: T[]) {
+>(rows: T[], saved: readonly string[] = []) {
+  const savedPosition = new Map(saved.map((id, index) => [id, index]));
+  const savedIndex = (row: T) => {
+    const key = row as { product_id?: string; id?: string };
+    return (
+      savedPosition.get(key.product_id ?? key.id ?? "") ??
+      Number.MAX_SAFE_INTEGER
+    );
+  };
   return [...rows].sort((a, b) => {
+    const aSaved = savedIndex(a);
+    const bSaved = savedIndex(b);
+    if (aSaved !== bSaved) return aSaved - bSaved;
     const aIndex = position.get(a.sku ?? "") ?? Number.MAX_SAFE_INTEGER;
     const bIndex = position.get(b.sku ?? "") ?? Number.MAX_SAFE_INTEGER;
     if (aIndex !== bIndex) return aIndex - bIndex;
@@ -53,4 +70,18 @@ export function sortByProductMasterOrder<
       a.name.localeCompare(b.name)
     );
   });
+}
+
+/** The business's saved product order; empty when none is saved (or before the update). */
+export async function getSavedProductOrder(
+  supabase: ServerClient,
+  organizationId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("product_order")
+    .eq("id", organizationId)
+    .maybeSingle();
+  if (error) return [];
+  return data?.product_order ?? [];
 }

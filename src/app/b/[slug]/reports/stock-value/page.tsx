@@ -1,33 +1,70 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ListCard, PageSkeleton, PageTitle } from "@/components/ui/card";
-import { categoryOrder, formatMoney, formatQuantity } from "@/lib/format";
+import { buttonClass } from "@/components/ui/button";
+import { Badge, Card, CardHeader, PageSkeleton } from "@/components/ui/card";
+import { DataTable, TableCard } from "@/components/ui/data-table";
+import { Alert } from "@/components/ui/alert";
+import { PageHeader } from "@/components/ui/page-header";
+import { SummaryCard, SummaryCards } from "@/components/ui/summary-card";
+import {
+  categoryOrder,
+  formatDay,
+  formatMoney,
+  formatQuantity,
+  todayIn,
+} from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
-import { getStockRows } from "@/lib/stock";
+import {
+  getSavedProductOrder,
+  sortByProductMasterOrder,
+} from "@/lib/product-order";
+import { requestNow } from "@/lib/request-time";
 
-export const metadata: Metadata = { title: "Stock value" };
+export const metadata: Metadata = { title: "Inventory value" };
 
-const HEAD = "px-4 py-2.5 text-left text-xs font-extrabold uppercase tracking-wide text-ink-soft";
-const CELL = "px-4 py-3 text-right tabular-nums";
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const INPUT =
+  "mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium focus:border-ink focus:outline-2 focus:outline-accent";
 
-/** What the stock on hand cost, by product and in total. Owners and admins only. */
-async function StockValue({ params }: Pick<PageProps<"/b/[slug]/reports/stock-value">, "params">) {
-  const { slug } = await params;
+/**
+ * Bilikis's Inventory Value: what the stock on hand cost, as at the close of
+ * any day, by category and by product. Each product is valued at the average
+ * buying cost of what was received up to that day, weighted by quantity; one
+ * with no costed delivery uses its current cost. Owners and admins only.
+ */
+async function StockValue({
+  params,
+  searchParams,
+}: PageProps<"/b/[slug]/reports/stock-value">) {
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const today = todayIn(org.timezone, await requestNow());
+  const asked = typeof query.asAt === "string" ? query.asAt : "";
+  const asAt = DAY.test(asked) && asked <= today ? asked : today;
+  const historical = asAt !== today;
+  const drinks = org.sells_drinks;
 
-  const [rows, costsResult, deliveredResult] = await Promise.all([
-    getStockRows(supabase, org.id, null),
-    supabase.from("product_costs").select("product_id, cost_price").eq("organization_id", org.id),
-    // Every costed delivery line still standing, for the average cost of what came in.
+  const [stockResult, costsResult, deliveredResult, saved] = await Promise.all([
+    supabase.rpc("stock_summary", { p_organization_id: org.id, p_date: asAt }),
+    supabase
+      .from("product_costs")
+      .select("product_id, cost_price")
+      .eq("organization_id", org.id),
+    // Every costed delivery line still standing up to that day.
     supabase
       .from("stock_receipt_item_costs")
-      .select("unit_cost, stock_receipt_items!inner (product_id, quantity, stock_receipts!inner (voided_at))")
+      .select(
+        "unit_cost, stock_receipt_items!inner (product_id, quantity, stock_receipts!inner (voided_at, received_date))",
+      )
       .eq("organization_id", org.id)
       .is("stock_receipt_items.stock_receipts.voided_at", null)
-      .limit(20000)
+      .lte("stock_receipt_items.stock_receipts.received_date", asAt)
+      .limit(20000),
+    drinks ? getSavedProductOrder(supabase, org.id) : Promise.resolve([] as string[]),
   ]);
-  // As in Bilikis: the average buying cost over everything received, weighted
-  // by quantity. A product with no costed delivery uses its current cost.
+  const error = stockResult.error ?? costsResult.error ?? deliveredResult.error;
+  if (error) console.error("Inventory value could not load:", error);
+
   const inbound = new Map<string, { quantity: number; cost: number }>();
   for (const row of deliveredResult.data ?? []) {
     const item = row.stock_receipt_items;
@@ -37,84 +74,219 @@ async function StockValue({ params }: Pick<PageProps<"/b/[slug]/reports/stock-va
     current.cost += Number(item.quantity) * Number(row.unit_cost);
     inbound.set(item.product_id, current);
   }
-  const productCosts = new Map((costsResult.data ?? []).map((row) => [row.product_id, Number(row.cost_price)]));
-  const costs = new Map(
-    rows.map((row) => {
-      const received = inbound.get(row.productId);
-      const average = received && received.quantity > 0 ? received.cost / received.quantity : null;
-      return [row.productId, average ?? productCosts.get(row.productId) ?? null] as const;
-    })
+  const productCosts = new Map(
+    (costsResult.data ?? []).map((row) => [row.product_id, Number(row.cost_price)]),
   );
-  const valued = rows.map((row) => {
-    const cost = costs.get(row.productId) ?? null;
-    return { ...row, cost, value: cost === null ? null : cost * row.onHand };
+  const stock = stockResult.data ?? [];
+  const rows = (drinks ? sortByProductMasterOrder(stock, saved) : stock).map((row) => {
+    const received = inbound.get(row.product_id);
+    const average =
+      received && received.quantity > 0 ? received.cost / received.quantity : null;
+    const cost = average ?? productCosts.get(row.product_id) ?? null;
+    const onHand = Number(row.in_stock);
+    const category = drinks
+      ? row.returnable
+        ? "RGB"
+        : (row.category ?? "PET")
+      : (row.category ?? "Other");
+    return {
+      id: row.product_id,
+      code: row.sku,
+      name: row.name,
+      unit: row.unit,
+      category,
+      onHand,
+      cost,
+      value: onHand > 0 && cost !== null ? onHand * cost : null,
+      status:
+        onHand < 0
+          ? "Negative stock"
+          : onHand === 0
+            ? "No stock"
+            : cost === null
+              ? "Cost missing"
+              : "Valued",
+    };
   });
-  const total = valued.reduce((sum, row) => sum + (row.value ?? 0), 0);
-  const missingCost = valued.filter((row) => row.cost === null && row.onHand > 0).length;
-
-  const groups: [string, typeof valued][] = org.sells_drinks
-    ? [...new Set(valued.map((row) => row.category ?? "Other"))]
-        .sort((x, y) => categoryOrder(x === "Other" ? null : x) - categoryOrder(y === "Other" ? null : y))
-        .map((name) => [name, valued.filter((row) => (row.category ?? "Other") === name)])
-    : [["All products", valued]];
+  const total = rows.reduce((sum, row) => sum + (row.value ?? 0), 0);
+  const valuedCount = rows.filter((row) => row.value !== null).length;
+  const missingCost = rows.filter((row) => row.status === "Cost missing").length;
+  const categories = [...new Set(rows.map((row) => row.category))]
+    .sort(
+      (x, y) =>
+        categoryOrder(x === "Other" ? null : x) -
+          categoryOrder(y === "Other" ? null : y) || x.localeCompare(y),
+    )
+    .map((category) => ({
+      category,
+      total: rows
+        .filter((row) => row.category === category)
+        .reduce((sum, row) => sum + (row.value ?? 0), 0),
+    }));
   const money = (value: number) => formatMoney(value, org.currency_code);
+  const date = formatDay(asAt);
 
   return (
-    <div className="space-y-6">
-      <PageTitle sub="What the stock you have now cost you, at the average buying cost of what you received.">
-        Stock value
-      </PageTitle>
+    <div className="space-y-5">
+      <PageHeader
+        title={drinks ? "Inventory value" : "Stock value"}
+        sub="Review the cost value of the stock in the depot, by category and product."
+      />
+      <SummaryCards columns={3}>
+        <SummaryCard
+          label="Total inventory value"
+          value={error ? "Unavailable" : money(total)}
+          strong
+        />
+        <SummaryCard
+          label="Valued products"
+          value={error ? "Unavailable" : formatQuantity(valuedCount)}
+        />
+        <SummaryCard
+          label="Products missing cost"
+          value={error ? "Unavailable" : formatQuantity(missingCost)}
+        />
+      </SummaryCards>
 
-      <div className="rounded-md bg-ink px-5 py-4 text-white">
-        <p className="text-4xl font-extrabold leading-none tabular-nums">{money(total)}</p>
-        <p className="mt-2 text-sm font-bold uppercase tracking-wide text-nav">Total stock value</p>
-      </div>
-      {missingCost > 0 ? (
-        <p className="rounded-md border-2 border-accent bg-white px-4 py-3 font-semibold">
-          {missingCost} product{missingCost === 1 ? " has" : "s have"} stock but no buying cost, so{" "}
-          {missingCost === 1 ? "it is" : "they are"} not counted. Add the cost on the product.
-        </p>
-      ) : null}
+      <Card>
+        <CardHeader
+          title="Value as at"
+          description="Choose a date to value the stock held at the close of that day."
+        />
+        <form
+          method="get"
+          action={`/b/${org.slug}/reports/stock-value`}
+          className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end"
+        >
+          <label className="block text-sm font-bold">
+            Closing date
+            <input
+              className={INPUT}
+              type="date"
+              name="asAt"
+              defaultValue={asAt}
+              max={today}
+            />
+          </label>
+          <button type="submit" className={buttonClass("primary")}>
+            Apply
+          </button>
+        </form>
+      </Card>
 
-      {groups.map(([title, groupRows]) => {
-        const subtotal = groupRows.reduce((sum, row) => sum + (row.value ?? 0), 0);
-        return (
-          <ListCard key={title} title={`${title} · ${money(subtotal)}`}>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[34rem]">
-                <thead>
-                  <tr className="border-b border-line">
-                    <th scope="col" className={HEAD}>Product</th>
-                    <th scope="col" className={`${HEAD} text-right`}>On hand</th>
-                    <th scope="col" className={`${HEAD} text-right`}>Average cost</th>
-                    <th scope="col" className={`${HEAD} text-right`}>Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {groupRows.map((row) => (
-                    <tr key={row.productId}>
-                      <th scope="row" className="px-4 py-3 text-left font-extrabold">
-                        {row.name} <span className="font-medium text-ink-soft">({row.unit})</span>
-                      </th>
-                      <td className={CELL}>{formatQuantity(row.onHand)}</td>
-                      <td className={CELL}>{row.cost === null ? "—" : money(row.cost)}</td>
-                      <td className={`${CELL} font-extrabold`}>{row.value === null ? "—" : money(row.value)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {error ? (
+        <Alert tone="error">
+          The inventory value could not be loaded. Please refresh the page. If
+          this keeps happening, the database may be missing its latest update.
+        </Alert>
+      ) : (
+        <>
+          {missingCost > 0 ? (
+            <p className="rounded-md border-2 border-accent bg-white px-4 py-3 font-semibold">
+              {missingCost} product{missingCost === 1 ? " has" : "s have"} stock
+              but no buying cost, so {missingCost === 1 ? "it is" : "they are"}{" "}
+              not counted. Add the cost on the product.
+            </p>
+          ) : null}
+          <TableCard
+            title={
+              historical
+                ? `Stock value by category as at ${date}`
+                : "Current stock value by category"
+            }
+          >
+            <p className="px-5 pt-3 text-sm text-ink-soft">
+              Each figure uses the weighted-average cost of the stock received.
+            </p>
+            <div className="grid grid-cols-2 gap-3 p-5 xl:grid-cols-4">
+              {categories.map(({ category, total: value }) => (
+                <div
+                  key={category}
+                  data-summary-card
+                  className="rounded-md border-2 border-line px-4 py-3"
+                >
+                  <p className="text-sm font-bold uppercase tracking-wide text-ink-soft">
+                    {category} stock value
+                  </p>
+                  <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
+                    {money(value)}
+                  </p>
+                </div>
+              ))}
             </div>
-          </ListCard>
-        );
-      })}
+          </TableCard>
+          <TableCard
+            title={
+              historical
+                ? `Product value as at ${date}`
+                : "Current stock value by product"
+            }
+          >
+            <p className="px-5 pt-3 text-sm text-ink-soft">
+              Products with stock but no buying cost stay listed and are marked
+              for follow-up.
+            </p>
+            <DataTable
+              label="Product value"
+              rows={rows}
+              rowKey={(row) => row.id}
+              empty="No stock yet. Receive stock with its buying cost to start valuing it."
+              columns={[
+                { header: "Product code", cell: (row) => row.code ?? "—" },
+                { header: "Product name", wrap: true, cell: (row) => row.name },
+                { header: "Category", cell: (row) => row.category },
+                { header: "Unit", cell: (row) => row.unit },
+                {
+                  header: "Current stock",
+                  align: "right",
+                  cell: (row) => formatQuantity(row.onHand),
+                },
+                {
+                  header: "Weighted avg cost",
+                  align: "right",
+                  cell: (row) => (row.cost === null ? "—" : money(row.cost)),
+                },
+                {
+                  header: "Stock value",
+                  align: "right",
+                  cell: (row) => (
+                    <span className="font-extrabold">
+                      {row.value === null ? "—" : money(row.value)}
+                    </span>
+                  ),
+                },
+                {
+                  header: "Status",
+                  phone: "badge",
+                  cell: (row) => (
+                    <Badge
+                      tone={
+                        row.status === "Valued"
+                          ? "success"
+                          : row.status === "No stock"
+                            ? "plain"
+                            : "danger"
+                      }
+                    >
+                      {row.status}
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
+          </TableCard>
+        </>
+      )}
     </div>
   );
 }
 
-export default function StockValuePage({ params }: PageProps<"/b/[slug]/reports/stock-value">) {
+export default function StockValuePage(
+  props: PageProps<"/b/[slug]/reports/stock-value">,
+) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <StockValue params={params} />
+      <StockValue {...props} />
     </Suspense>
   );
 }

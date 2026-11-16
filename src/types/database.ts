@@ -63,6 +63,7 @@ export type Database = {
           selling_mode: SellingMode;
           does_delivery: boolean;
           sells_drinks: boolean;
+          product_order: string[];
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -1311,6 +1312,10 @@ export type Database = {
       };
       correct_trip_return: {
         Args: { p_line_id: string; p_returned_quantity: number; p_reason: string };
+        Returns: undefined;
+      };
+      save_product_order: {
+        Args: { p_organization_id: string; p_product_ids: string[] };
         Returns: undefined;
       };
       correct_returnable_adjustment: {

@@ -105,6 +105,34 @@ let dbg;
   await a.locator("tr", { hasText: "FANTA ULTRA 50CL X24 RGB" }).getByText("Already added").waitFor();
   ok("drinks can be added from the NBC list, each with its own price and cost");
 
+  // Products as in Bilikis: pictures, cards and a saved display order.
+  await go("/products");
+  const productCard = (label) => a.locator("[data-summary-card]", { hasText: label });
+  assert.match(await productCard("Total products").innerText(), /4$/);
+  assert.match(await productCard("PET vs RGB").innerText(), /2 \/ 2$/);
+  assert.match(await productCard("Costed / priced").innerText(), /4 \/ 4$/);
+  assert.match(
+    await a.locator("tr", { hasText: "FANTA ULTRA 50CL X24 RGB" }).locator("img").getAttribute("src"),
+    /\/images\/products\/F_RGB\.webp$/
+  );
+  // NBC order first: Fanta (F_RGB) leads. Move our own Coca-Cola RGB above it and save.
+  // The name, not the letters shown in place of a missing picture.
+  const firstProduct = async () =>
+    (await a.locator("main tbody tr").first().locator("td").first().innerText()).split("\n").map((line) => line.trim()).filter((line) => line.length > 3)[0];
+  assert.equal(await firstProduct(), "FANTA ULTRA 50CL X24 RGB");
+  await a.getByText("Reorder products", { exact: true }).click();
+  const editor = a.locator("details", { hasText: "Reorder products" });
+  const names = await editor.locator("[role=listitem] .truncate").allInnerTexts();
+  for (let i = names.indexOf("Coca-Cola 50cl RGB"); i > 0; i--) {
+    await editor.getByRole("button", { name: "Move Coca-Cola 50cl RGB up" }).click();
+  }
+  await editor.getByRole("button", { name: "Save order" }).click();
+  await a.getByText("Product order saved.", { exact: false }).waitFor();
+  await a.reload();
+  assert.equal(await firstProduct(), "Coca-Cola 50cl RGB");
+  await a.screenshot({ path: `${SHOTS}/95-products.png`, fullPage: true });
+  ok("products show their pictures and Bilikis's cards, and can be put in a saved order");
+
   // 3. Opening empties: an ordinary adjustment, started from the checklist
   await go("");
   await a.getByRole("link", { name: "Count your opening empties" }).click();
@@ -208,6 +236,11 @@ let dbg;
   const stockLeft = async (product) =>
     (await a.getByLabel(`Stock left for ${product}`).first().innerText()).replace("Stock left: ", "");
   assert.equal(await stockLeft("Coca-Cola 50cl RGB"), "488");
+  // The saved product order: our Coca-Cola RGB first, ahead of the NBC order.
+  const offered = await a.locator("[aria-label^='Stock left for ']").evaluateAll((items) =>
+    items.map((item) => item.getAttribute("aria-label"))
+  );
+  assert.equal(offered[0], "Stock left for Coca-Cola 50cl RGB");
   assert.equal(await a.getByLabel("Stock left for Coca-Cola 50cl PET").count(), 0, "no PET on the RGB tab");
   // Saving with nothing chosen points at the customer still missing.
   await vis(a.getByRole("button", { name: "Save order" })).click();
@@ -351,7 +384,16 @@ let dbg;
 
   // Stock value at cost: 438 RGB at 3,900 and 25 PET at 2,700.
   await go("/reports/stock-value");
-  await a.getByText("₦1,775,700").first().waitFor();
+  await a.getByRole("heading", { name: "Inventory value" }).waitFor();
+  const valueCard = (label) => a.locator("[data-summary-card]", { hasText: label }).first();
+  assert.match(await valueCard("Total inventory value").innerText(), /₦1,775,700(\.00)?$/);
+  assert.match(await valueCard("Products missing cost").innerText(), /0$/);
+  // By category, then by product with its weighted-average cost and status.
+  assert.match(await valueCard("RGB stock value").innerText(), /₦1,708,200(\.00)?$/);
+  await a.locator("tr", { hasText: "Coca-Cola 50cl PET" }).getByText("Valued").waitFor();
+  // As at an earlier day: nothing had come in yet.
+  await go("/reports/stock-value?asAt=2020-01-01");
+  assert.match(await valueCard("Total inventory value").innerText(), /₦0(\.00)?$/);
   await a.screenshot({ path: `${SHOTS}/96-stock-value.png`, fullPage: true });
 
   // Daily report, the Bilikis way

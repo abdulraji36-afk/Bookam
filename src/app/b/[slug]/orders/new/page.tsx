@@ -12,7 +12,11 @@ import {
   PageTitle,
 } from "@/components/ui/card";
 import { StatusTabs } from "@/components/ui/page-header";
-import { categoryOrder, todayIn } from "@/lib/format";
+import { todayIn } from "@/lib/format";
+import {
+  getSavedProductOrder,
+  sortByProductMasterOrder,
+} from "@/lib/product-order";
 import { getOrderFormData } from "@/lib/order-form-data";
 import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
@@ -47,16 +51,26 @@ async function NewOrder({
   if (org.sells_drinks) {
     const { data: categories } = await supabase
       .from("products")
-      .select("id, category, returnable_item_id")
+      .select("id, sku, category, returnable_item_id")
       .eq("organization_id", org.id)
       .eq("is_active", true);
+    const saved = await getSavedProductOrder(supabase, org.id);
+    const skuOf = new Map((categories ?? []).map((row) => [row.id, row.sku]));
     const categoryOf = new Map(
       (categories ?? []).map((row) => [
         row.id,
         row.returnable_item_id ? "RGB" : (row.category ?? "PET"),
       ]),
     );
-    const products = data.products
+    // In the saved product order, then the NBC order, as in Bilikis.
+    const products = sortByProductMasterOrder(
+      data.products.map((product) => ({
+        ...product,
+        sku: skuOf.get(product.id) ?? null,
+        category: categoryOf.get(product.id) ?? "PET",
+      })),
+      saved,
+    )
       .filter(
         (product) =>
           product.returnable === (kind === "rgb") && !product.tracksSerials,
@@ -66,13 +80,8 @@ async function NewOrder({
         name: product.name,
         unit: product.unit,
         price: product.price,
-        category: categoryOf.get(product.id) ?? "PET",
-      }))
-      .sort(
-        (left, right) =>
-          categoryOrder(left.category) - categoryOrder(right.category) ||
-          left.name.localeCompare(right.name),
-      );
+        category: product.category,
+      }));
 
     return (
       <div className="max-w-7xl space-y-6">

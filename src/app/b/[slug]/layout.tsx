@@ -150,7 +150,7 @@ async function BusinessShell({
           ? ([
               {
                 href: `${base}/reports/stock-value`,
-                label: "Stock value",
+                label: org.sells_drinks ? "Inventory value" : "Stock value",
                 icon: "value",
               },
               { href: `${base}/activity`, label: "Activity", icon: "activity" },

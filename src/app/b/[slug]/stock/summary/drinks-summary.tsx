@@ -42,6 +42,7 @@ export function DrinksStockSummary({
   today,
   manager,
   rows: unsorted,
+  saved,
   empties,
   error,
 }: {
@@ -50,10 +51,11 @@ export function DrinksStockSummary({
   today: string;
   manager: boolean;
   rows: StockRow[];
+  saved: string[];
   empties: EmptiesRow | null;
   error: boolean;
 }) {
-  const rows = sortByProductMasterOrder(unsorted);
+  const rows = sortByProductMasterOrder(unsorted, saved);
   const value = (number: number) =>
     error ? "Unavailable" : formatQuantity(number);
   const categoryTotal = (category: string) =>

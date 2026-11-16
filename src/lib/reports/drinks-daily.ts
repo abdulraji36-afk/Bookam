@@ -5,7 +5,10 @@ import {
   SUBTRACT_REASONS,
   TRIP_STATUS_LABELS,
 } from "@/lib/format";
-import { sortByProductMasterOrder } from "@/lib/product-order";
+import {
+  getSavedProductOrder,
+  sortByProductMasterOrder,
+} from "@/lib/product-order";
 import type { ServerClient } from "@/lib/supabase/server";
 
 /**
@@ -665,11 +668,13 @@ export async function getDrinksDaily(
       exceptions,
       // In Bilikis's NBC product order, RGB crates first.
       products: sortByProductMasterOrder(
-        productRows.map((row) => ({
-          ...row,
-          sku: row.code === "—" ? null : row.code,
+        (stock.data ?? []).map((row, index) => ({
+          ...productRows[index],
+          product_id: row.product_id,
+          sku: productRows[index].code === "—" ? null : productRows[index].code,
         })),
-      ).map(({ sku: _sku, ...row }) => row),
+        await getSavedProductOrder(supabase, organizationId),
+      ).map(({ sku: _sku, product_id: _id, ...row }) => row),
     },
     error: null,
   };

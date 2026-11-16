@@ -13,6 +13,7 @@ import {
 } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { getSavedProductOrder } from "@/lib/product-order";
 import { DrinksStockSummary } from "./drinks-summary";
 
 export const metadata: Metadata = { title: "Stock summary" };
@@ -100,7 +101,7 @@ async function StockSummary({
     .limit(10000);
   if (selected) unitQuery = unitQuery.eq("location_id", selected.id);
 
-  const [stockResult, emptiesResult, unitsResult] = await Promise.all([
+  const [stockResult, emptiesResult, unitsResult, saved] = await Promise.all([
     supabase.rpc("stock_summary", {
       p_organization_id: org.id,
       p_date: day,
@@ -117,6 +118,9 @@ async function StockSummary({
     isToday && org.tracks_serials
       ? unitQuery
       : Promise.resolve({ data: [], error: null }),
+    org.sells_drinks
+      ? getSavedProductOrder(supabase, org.id)
+      : Promise.resolve([] as string[]),
   ]);
   const loadError = stockResult.error ?? emptiesResult.error;
   if (loadError) console.error("Stock summary could not load:", loadError);
@@ -130,6 +134,7 @@ async function StockSummary({
         today={today}
         manager={manager}
         rows={stockResult.data ?? []}
+        saved={saved}
         empties={emptiesResult.error ? null : (emptiesResult.data?.[0] ?? null)}
         error={Boolean(stockResult.error)}
       />
