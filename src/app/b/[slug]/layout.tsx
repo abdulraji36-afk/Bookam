@@ -58,11 +58,7 @@ async function BusinessShell({
               } as const,
             ]
           : []),
-        {
-          href: `${base}/stock/receipts`,
-          label: "Stock in",
-          icon: "deliveries",
-        },
+        { href: `${base}/stock`, label: "Stock", icon: "stock" },
         ...(tracksReturns
           ? [
               {
@@ -86,12 +82,6 @@ async function BusinessShell({
               } as const,
             ]
           : []),
-        {
-          href: `${base}/stock`,
-          label: "Stock",
-          icon: "stock",
-          excludes: [`${base}/stock/receipts`],
-        },
         ...(org.sells_drinks
           ? [
               {

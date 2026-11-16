@@ -4,7 +4,12 @@ import { Suspense } from "react";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
-import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
+import {
+  FilterBar,
+  PageHeader,
+  StatusTabs,
+  StockTabs,
+} from "@/components/ui/page-header";
 import { categoryOrder, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { getStockRows, type StockRow } from "@/lib/stock";
@@ -27,7 +32,8 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     .eq("is_active", true)
     .order("created_at");
   const locations = locationData ?? [];
-  const selected = locations.find((location) => location.id === query.location) ?? null;
+  const selected =
+    locations.find((location) => location.id === query.location) ?? null;
   const lowOnly = query.show === "low";
 
   let unitQuery = supabase
@@ -38,7 +44,10 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
     .limit(10000);
   if (selected) unitQuery = unitQuery.eq("location_id", selected.id);
 
-  const [allRows, unitsResult] = await Promise.all([getStockRows(supabase, org.id, selected?.id ?? null), unitQuery]);
+  const [allRows, unitsResult] = await Promise.all([
+    getStockRows(supabase, org.id, selected?.id ?? null),
+    unitQuery,
+  ]);
   const hasSerials = org.tracks_serials || (unitsResult.data ?? []).length > 0;
   const lowCount = allRows.filter((row) => row.isLow).length;
   const rows = lowOnly ? allRows.filter((row) => row.isLow) : allRows;
@@ -55,21 +64,33 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
   const groups: [string | null, StockRow[]][] = org.sells_drinks
     ? // A drinks depot sees its stock by category, RGB first, as on the NBC list.
       [...new Set(rows.map((row) => row.category ?? "Other"))]
-        .sort((x, y) => categoryOrder(x === "Other" ? null : x) - categoryOrder(y === "Other" ? null : y))
-        .map((name) => [name, rows.filter((row) => (row.category ?? "Other") === name)] as [string, StockRow[]])
+        .sort(
+          (x, y) =>
+            categoryOrder(x === "Other" ? null : x) -
+            categoryOrder(y === "Other" ? null : y),
+        )
+        .map(
+          (name) =>
+            [
+              name,
+              rows.filter((row) => (row.category ?? "Other") === name),
+            ] as [string, StockRow[]],
+        )
     : org.selling_mode === "serial"
       ? (
           [
             ["With serial numbers", rows.filter((row) => row.tracksSerials)],
-            ["Counted items", rows.filter((row) => !row.tracksSerials)]
+            ["Counted items", rows.filter((row) => !row.tracksSerials)],
           ] as [string, StockRow[]][]
         ).filter(([, groupRows]) => groupRows.length > 0)
       : [[null, rows]];
 
   const href = (change: { location?: string | null; show?: string | null }) => {
     const params = new URLSearchParams();
-    const location = change.location === undefined ? selected?.id : change.location;
-    const show = change.show === undefined ? (lowOnly ? "low" : null) : change.show;
+    const location =
+      change.location === undefined ? selected?.id : change.location;
+    const show =
+      change.show === undefined ? (lowOnly ? "low" : null) : change.show;
     if (location) params.set("location", location);
     if (show) params.set("show", show);
     const text = params.toString();
@@ -86,23 +107,30 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
             : "What you have on hand right now."
         }
         actions={
-          <>
-            <Link href={`${base}/receive`} className={buttonClass("primary")}>
-              + Receive stock
-            </Link>
-            <Link href={`${base}/receipts`} className={buttonClass("secondary")}>
-              Stock in
-            </Link>
-          </>
+          <Link href={`${base}/receive`} className={buttonClass("primary")}>
+            + Receive stock
+          </Link>
         }
       />
+      <StockTabs base={`/b/${org.slug}`} current="on-hand" />
 
       <FilterBar>
         {hasSerials ? (
-          <form method="get" action={`${base}/serials`} className="flex flex-wrap items-end gap-2" role="search">
+          <form
+            method="get"
+            action={`${base}/serials`}
+            className="flex flex-wrap items-end gap-2"
+            role="search"
+          >
             <label className="min-w-0 flex-1 text-sm font-bold">
               Find a serial number
-              <input type="search" name="q" autoComplete="off" placeholder="Type or scan a serial / IMEI" className={INPUT} />
+              <input
+                type="search"
+                name="q"
+                autoComplete="off"
+                placeholder="Type or scan a serial / IMEI"
+                className={INPUT}
+              />
             </label>
             <button type="submit" className={buttonClass("secondary")}>
               Find
@@ -116,24 +144,36 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
             hrefFor={(value) => href({ show: value === "low" ? "low" : null })}
             tabs={[
               { value: "all", label: "All products", count: allRows.length },
-              { value: "low", label: "Running low", count: lowCount }
+              { value: "low", label: "Running low", count: lowCount },
             ]}
           />
           {locations.length > 1 ? (
             <StatusTabs
               label="Location"
               current={selected?.id ?? "all"}
-              hrefFor={(value) => href({ location: value === "all" ? null : value })}
-              tabs={[{ value: "all", label: "All locations" }, ...locations.map((location) => ({ value: location.id, label: location.name }))]}
+              hrefFor={(value) =>
+                href({ location: value === "all" ? null : value })
+              }
+              tabs={[
+                { value: "all", label: "All locations" },
+                ...locations.map((location) => ({
+                  value: location.id,
+                  label: location.name,
+                })),
+              ]}
             />
           ) : null}
         </div>
       </FilterBar>
 
       {allRows.length === 0 ? (
-        <EmptyState title="No products yet">Add your products first, then record the stock you have.</EmptyState>
+        <EmptyState title="No products yet">
+          Add your products first, then record the stock you have.
+        </EmptyState>
       ) : rows.length === 0 ? (
-        <EmptyState title="Nothing is running low">Every product is above its warning level.</EmptyState>
+        <EmptyState title="Nothing is running low">
+          Every product is above its warning level.
+        </EmptyState>
       ) : (
         groups.map(([title, groupRows]) => (
           <TableCard key={title ?? "all"} title={title ?? undefined}>
@@ -141,7 +181,11 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
               label={title ?? "Stock"}
               rows={groupRows}
               rowKey={(row) => row.productId}
-              rowHref={manager ? (row) => `/b/${org.slug}/products/${row.productId}` : undefined}
+              rowHref={
+                manager
+                  ? (row) => `/b/${org.slug}/products/${row.productId}`
+                  : undefined
+              }
               footer={
                 groupRows.length > 1 ? (
                   <tr>
@@ -149,8 +193,13 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
                       Total
                     </td>
                     <td data-phone="hide" />
-                    <td data-phone="badge" className="px-4 py-3 text-right text-lg font-extrabold tabular-nums">
-                      {formatQuantity(groupRows.reduce((sum, row) => sum + row.onHand, 0))}
+                    <td
+                      data-phone="badge"
+                      className="px-4 py-3 text-right text-lg font-extrabold tabular-nums"
+                    >
+                      {formatQuantity(
+                        groupRows.reduce((sum, row) => sum + row.onHand, 0),
+                      )}
                     </td>
                     <td data-phone="hide" />
                     <td data-phone="hide" />
@@ -173,7 +222,7 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
                         </span>
                       ) : null}
                     </>
-                  )
+                  ),
                 },
                 { header: "Unit", phone: "hide", cell: (row) => row.unit },
                 {
@@ -182,21 +231,35 @@ async function Stock({ params, searchParams }: PageProps<"/b/[slug]/stock">) {
                   phone: "badge",
                   cell: (row) => (
                     <>
-                      <span className="text-xl font-extrabold">{formatQuantity(row.onHand)}</span>
-                      <span className="ml-1 text-sm font-medium text-ink-soft md:hidden">{row.unit}</span>
+                      <span className="text-xl font-extrabold">
+                        {formatQuantity(row.onHand)}
+                      </span>
+                      <span className="ml-1 text-sm font-medium text-ink-soft md:hidden">
+                        {row.unit}
+                      </span>
                     </>
-                  )
+                  ),
                 },
                 {
                   header: "Warn at",
                   align: "right",
                   phone: "hide",
-                  cell: (row) => (row.lowLevel > 0 ? formatQuantity(row.lowLevel) : <span className="text-ink-soft">—</span>)
+                  cell: (row) =>
+                    row.lowLevel > 0 ? (
+                      formatQuantity(row.lowLevel)
+                    ) : (
+                      <span className="text-ink-soft">—</span>
+                    ),
                 },
                 {
                   header: "Status",
-                  cell: (row) => (row.isLow ? <Badge tone="accent">Low stock</Badge> : <Badge tone="success">OK</Badge>)
-                }
+                  cell: (row) =>
+                    row.isLow ? (
+                      <Badge tone="accent">Low stock</Badge>
+                    ) : (
+                      <Badge tone="success">OK</Badge>
+                    ),
+                },
               ]}
             />
           </TableCard>

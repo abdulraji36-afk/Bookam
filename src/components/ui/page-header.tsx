@@ -6,7 +6,15 @@ import { PageTitle } from "@/components/ui/card";
  * Every page starts the same way: the title, one line on what the page is
  * for, and its actions on the right, the main one first.
  */
-export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  sub,
+  actions,
+}: {
+  title: ReactNode;
+  sub?: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div className="page-head">
       <PageTitle sub={sub}>{title}</PageTitle>
@@ -18,9 +26,22 @@ export function PageHeader({ title, sub, actions }: { title: ReactNode; sub?: Re
 export type Tab = { value: string; label: string; count?: number };
 
 /** Status filters as a row of tabs, e.g. Waiting · On a trip · Completed. */
-export function StatusTabs({ tabs, current, hrefFor, label }: { tabs: Tab[]; current: string; hrefFor: (value: string) => string; label: string }) {
+export function StatusTabs({
+  tabs,
+  current,
+  hrefFor,
+  label,
+}: {
+  tabs: Tab[];
+  current: string;
+  hrefFor: (value: string) => string;
+  label: string;
+}) {
   return (
-    <nav aria-label={label} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <nav
+      aria-label={label}
+      className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+    >
       <ul className="flex gap-1.5">
         {tabs.map((tab) => {
           const active = tab.value === current;
@@ -30,7 +51,9 @@ export function StatusTabs({ tabs, current, hrefFor, label }: { tabs: Tab[]; cur
                 href={hrefFor(tab.value)}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-10 items-center gap-2 whitespace-nowrap rounded-full border-2 px-3.5 text-sm font-bold ${
-                  active ? "border-ink bg-ink text-white" : "border-line bg-white text-ink hover:border-ink"
+                  active
+                    ? "border-ink bg-ink text-white"
+                    : "border-line bg-white text-ink hover:border-ink"
                 }`}
               >
                 {tab.label}
@@ -56,11 +79,86 @@ export function FilterBar({ children }: { children: ReactNode }) {
 }
 
 /** On a record's own page: the things you can do to it, in one place. */
-export function ActionsPanel({ children, title = "Actions" }: { children: ReactNode; title?: string }) {
+export function ActionsPanel({
+  children,
+  title = "Actions",
+}: {
+  children: ReactNode;
+  title?: string;
+}) {
   return (
     <section className="overflow-hidden rounded-md bg-white">
-      <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold">{title}</h2>
+      <h2 className="border-b-[3px] border-ink px-5 py-3 text-lg font-extrabold">
+        {title}
+      </h2>
       <div className="space-y-3 p-5">{children}</div>
     </section>
+  );
+}
+
+/**
+ * Two or more views of one place, as underlined tabs under the title (for
+ * example Stock: On hand | Stock in). Unlike StatusTabs, which filter a list,
+ * these switch between pages.
+ */
+export function SectionTabs({
+  tabs,
+  current,
+  label,
+}: {
+  tabs: { value: string; label: string; href: string }[];
+  current: string;
+  label: string;
+}) {
+  return (
+    <nav
+      aria-label={label}
+      className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0"
+    >
+      <ul className="flex gap-1 border-b-2 border-line">
+        {tabs.map((tab) => {
+          const active = tab.value === current;
+          return (
+            <li key={tab.value} className="-mb-0.5">
+              <Link
+                href={tab.href}
+                aria-current={active ? "page" : undefined}
+                className={`flex min-h-11 items-center whitespace-nowrap border-b-4 px-4 text-base font-extrabold ${
+                  active
+                    ? "border-accent text-ink"
+                    : "border-transparent text-ink-soft hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+/** The two views of Stock: what is on hand, and every time stock came in. */
+export function StockTabs({
+  base,
+  current,
+}: {
+  base: string;
+  current: "on-hand" | "stock-in";
+}) {
+  return (
+    <SectionTabs
+      label="Stock"
+      current={current}
+      tabs={[
+        { value: "on-hand", label: "On hand", href: `${base}/stock` },
+        {
+          value: "stock-in",
+          label: "Stock in",
+          href: `${base}/stock/receipts`,
+        },
+      ]}
+    />
   );
 }

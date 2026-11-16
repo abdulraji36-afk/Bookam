@@ -148,9 +148,16 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   assert.equal(await cola.getByText("Low stock").count(), 0, "no longer low after receiving");
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
   await a.screenshot({ path: `${SHOTS}/13-stock.png`, fullPage: true });
-  // Stock in has its own page in the menu.
-  await nav(a, "Stock in");
+  // Stock and Stock in are one place: one menu entry, two tabs.
+  assert.equal(await a.locator("aside").getByRole("link", { name: "Stock in" }).count(), 0, "no separate menu entry");
+  const stockTabs = a.getByRole("navigation", { name: "Stock", exact: true });
+  assert.equal(await stockTabs.getByRole("link", { name: "On hand" }).getAttribute("aria-current"), "page");
+  await stockTabs.getByRole("link", { name: "Stock in" }).click();
+  await a.waitForURL(new RegExp(base + "/stock/receipts$"));
   await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
+  assert.equal(await a.getByRole("navigation", { name: "Stock", exact: true }).getByRole("link", { name: "Stock in" }).getAttribute("aria-current"), "page");
+  // The Stock menu entry stays lit on the Stock in tab.
+  assert.equal(await a.locator("aside").getByRole("link", { name: "Stock", exact: true }).getAttribute("aria-current"), "page");
   ok("receiving stock updates the stock on hand and clears the low-stock warning");
 
   // Dashboard reflects it
