@@ -47,6 +47,7 @@ const ACTION_LABELS: Record<string, string> = {
   correct_trip_return: "Corrected a returned figure",
   correct_returnable_adjustment: "Corrected an adjustment",
   correct_stock_receipt: "Corrected a stock receipt",
+  correct_order: "Corrected a sale",
   record_empties_followup: "Recorded follow-up empties",
   void_empties_followup: "Voided follow-up empties",
   save_product_order: "Changed the product order",

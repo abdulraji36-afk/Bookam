@@ -1314,6 +1314,10 @@ export type Database = {
         Args: { p_line_id: string; p_returned_quantity: number; p_reason: string };
         Returns: undefined;
       };
+      correct_order: {
+        Args: { p_order_id: string; p_items: { product_id: string; quantity: number }[]; p_reason: string };
+        Returns: undefined;
+      };
       save_product_order: {
         Args: { p_organization_id: string; p_product_ids: string[] };
         Returns: undefined;

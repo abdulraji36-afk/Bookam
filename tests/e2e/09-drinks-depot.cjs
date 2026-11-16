@@ -458,6 +458,12 @@ let dbg;
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
   await vis(a.locator("main").getByText("Void this order", { exact: true })).click();
   await vis(a.getByLabel("Reason")).fill("Customer refused the delivery");
+  // As in Bilikis: the sale number must be typed to void it.
+  const saleNo = (await a.getByRole("heading", { level: 1 }).innerText()).trim();
+  await vis(a.getByLabel("Type the sale number to confirm")).fill("ORD-WRONG");
+  await vis(a.getByRole("button", { name: "Void order" })).click();
+  await a.getByText(`Type the sale number ${saleNo} exactly to void it.`).waitFor();
+  await vis(a.getByLabel("Type the sale number to confirm")).fill(saleNo.toLowerCase());
   await vis(a.getByRole("button", { name: "Void order" })).click();
   await vis(a.getByText("Voided", { exact: true })).first().waitFor();
   await go("/records/voided");
@@ -471,6 +477,24 @@ let dbg;
   await go("/records/pet");
   assert.match(await summary("PET sold").innerText(), /5$/);
   ok("a voided sale shows on Voided sales with its reason, and leaves the history");
+
+  // An owner corrects a sale that has gone out, in place: Mama really took 52 crates.
+  await go("/records/rgb");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByRole("link").first().click();
+  await a.waitForURL(/\/orders\/[0-9a-f-]{36}$/);
+  await vis(a.getByText("Correct this sale", { exact: true })).click();
+  await vis(a.getByLabel("Quantity on line 1")).fill("52");
+  await vis(a.getByLabel("Reason")).fill("Two more crates were loaded at the gate");
+  await vis(a.getByRole("button", { name: "Save correction" })).click();
+  await a.getByText("Sale corrected.", { exact: false }).waitFor();
+  await a.reload();
+  await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("52 crate", { exact: true }).first().waitFor();
+  // The 50 brought back now leave 2 owed on this order.
+  await go("/records/rgb");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Short 2").waitFor();
+  await go("/returns/shortages");
+  await a.locator("tr", { hasText: "Mama Tunde Stores" }).first().waitFor();
+  ok("an owner corrects a sale that went out; stock and the empties expected back follow");
 
   // 13. Empty balance, as in Bilikis: how the depot's empties add up.
   await menu(a).getByRole("link", { name: "Empty balance" }).click();
@@ -505,7 +529,7 @@ let dbg;
   // 14. The Bilikis admin dashboard, customer cards and the Manage page.
   await go("");
   await cardIs("PET sold today", "5"); // Mama's 5; Alhaji's 10 was voided
-  await cardIs("RGB sold today", "50");
+  await cardIs("RGB sold today", "52");
   await cardIs("Open RGB trips", "0");
   await cardIs("Empty balance", "310");
   await a.getByRole("heading", { name: "Admin control desk" }).waitFor();

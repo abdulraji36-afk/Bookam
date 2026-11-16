@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { voidEmptiesFollowupAction, voidOrderAction } from "@/app/actions/corrections";
+import { correctOrderAction, voidEmptiesFollowupAction, voidOrderAction } from "@/app/actions/corrections";
+import { CorrectSaleForm } from "@/components/orders/correct-sale-form";
+import { getSavedProductOrder, sortByProductMasterOrder } from "@/lib/product-order";
 import { cancelOrderAction, handOverOrderAction } from "@/app/actions/orders";
 import { recordEmptiesFollowupAction } from "@/app/actions/returns";
 import { ReasonForm } from "@/components/corrections/reason-form";
@@ -77,6 +79,24 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
   const returnLines = returnResult.data ?? [];
   const manager = canManage(role);
   const today = todayIn(org.timezone, await requestNow());
+  // Bilikis's admin correction of a drinks sale that has already gone out.
+  const isRgb = order.order_items.some((item) => item.returnable_items);
+  const canCorrect =
+    manager && org.sells_drinks && !order.voided_at && (order.status === "dispatched" || order.status === "completed");
+  let correctable: { id: string; name: string }[] = [];
+  if (canCorrect) {
+    let productQuery = supabase
+      .from("products")
+      .select("id, name, sku, category")
+      .eq("organization_id", org.id)
+      .eq("is_active", true)
+      .eq("tracks_serials", false);
+    productQuery = isRgb
+      ? productQuery.not("returnable_item_id", "is", null)
+      : productQuery.is("returnable_item_id", null);
+    const [{ data: productRows }, saved] = await Promise.all([productQuery, getSavedProductOrder(supabase, org.id)]);
+    correctable = sortByProductMasterOrder(productRows ?? [], saved).map((product) => ({ id: product.id, name: product.name }));
+  }
   const unitsByProduct = new Map<string, typeof order.product_units>();
   for (const unit of order.product_units) {
     unitsByProduct.set(unit.product_id, [...(unitsByProduct.get(unit.product_id) ?? []), unit]);
@@ -301,8 +321,16 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         );
       })}
 
-      {order.status === "pending" || canVoid ? (
+      {order.status === "pending" || canVoid || canCorrect ? (
         <ActionsPanel>
+          {canCorrect ? (
+            <CorrectSaleForm
+              action={correctOrderAction.bind(null, org.slug, order.id)}
+              products={correctable}
+              kind={isRgb ? "RGB" : "PET"}
+              lines={order.order_items.map((item) => ({ productId: item.product_id, quantity: Number(item.quantity) }))}
+            />
+          ) : null}
           {order.status === "pending" ? (
             <div className="flex flex-wrap items-start gap-3">
               {org.does_delivery ? (
@@ -337,6 +365,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
               trigger={`Void this ${words.one}`}
               explanation="Use this when the order should never have been recorded. Its stock goes back, the customer no longer owes anything for it, and any returns recorded against it are taken back out. The order stays on record, marked as voided."
               submitLabel={`Void ${words.one}`}
+              confirm={org.sells_drinks ? { label: "Type the sale number to confirm", value: order.order_no } : undefined}
             />
           ) : null}
         </ActionsPanel>

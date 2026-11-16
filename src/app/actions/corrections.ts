@@ -74,7 +74,68 @@ async function runVoid(
 }
 
 export async function voidOrderAction(slug: string, id: string, _previous: ActionState, formData: FormData) {
+  // As in Bilikis, a drinks sale is voided only once its number is typed in.
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  if (org.sells_drinks) {
+    if (!idSchema.safeParse(id).success) return { ok: false, message: "Record not found." };
+    const { data } = await supabase.from("orders").select("order_no").eq("id", id).maybeSingle();
+    const typed = String(formData.get("confirm") ?? "").trim().toUpperCase();
+    if (!data || typed !== data.order_no.toUpperCase()) {
+      return { ok: false, message: `Type the sale number ${data?.order_no ?? ""} exactly to void it.`.replace("  ", " ") };
+    }
+  }
   return runVoid("void_order", slug, id, formData);
+}
+
+const correctionLinesSchema = z
+  .array(
+    z.object({
+      product_id: z.uuid("Choose a product on every line."),
+      quantity: z.coerce
+        .number("Enter a quantity on every line.")
+        .int("Crates and packs are counted in whole numbers.")
+        .positive("Every line needs a quantity greater than zero.")
+        .max(9_999_999, "That quantity is too large.")
+    })
+  )
+  .min(1, "Keep at least one product on the sale. To cancel it, void it instead.")
+  .max(200, "A sale can hold up to 200 products.");
+
+/** Bilikis's admin sale correction: products and quantities, in place, with a reason. */
+export async function correctOrderAction(
+  slug: string,
+  orderId: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
+
+  const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
+  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+
+  let lines: unknown;
+  try {
+    lines = JSON.parse(String(formData.get("items") ?? "[]"));
+  } catch {
+    return { ok: false, message: "The product lines could not be read. Refresh the page and try again." };
+  }
+  const items = correctionLinesSchema.safeParse(lines);
+  if (!items.success) return { ok: false, message: items.error.issues[0].message };
+
+  const { error } = await supabase.rpc("correct_order", {
+    p_order_id: orderId,
+    p_items: items.data,
+    p_reason: reason.data
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, async () => {
+    const { data } = await supabase.from("orders").select("order_no").eq("id", orderId).maybeSingle();
+    return [`CORRECTED: sale ${data?.order_no ?? ""}`.trim(), `Reason: ${reason.data}`];
+  });
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Sale corrected. Stock and empties now follow the new quantities." };
 }
 
 export async function voidStockReceiptAction(slug: string, id: string, _previous: ActionState, formData: FormData) {

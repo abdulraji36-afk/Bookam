@@ -106,6 +106,12 @@ let dbg;
     await vis(scope.getByText(trigger, { exact: true })).click();
     if (quantity !== undefined) await vis(scope.getByLabel(/^Returned by/)).last().fill(String(quantity));
     await vis(scope.getByLabel("Reason")).fill(reason);
+    // A drinks sale is voided only once its number is typed, as in Bilikis.
+    const confirm = vis(scope.getByLabel("Type the sale number to confirm"));
+    if (await confirm.count()) {
+      const hint = await vis(scope.getByText(/^Type .+ exactly\.$/)).innerText();
+      await confirm.fill(hint.replace(/^Type /, "").replace(/ exactly\.$/, ""));
+    }
     await vis(scope.getByRole("button", { name: button })).click();
   }
   const stockOf = async (name, value) => {

@@ -15,6 +15,8 @@ type Props = {
   submitLabel: string;
   /** Set for a correction, to ask for the right figure as well as a reason. */
   quantity?: { label: string; current: number };
+  /** Ask the person to type this (e.g. the sale number) before it goes through, as in Bilikis. */
+  confirm?: { label: string; value: string };
   compact?: boolean;
 };
 
@@ -22,7 +24,7 @@ type Props = {
  * A fold-out form for undoing or correcting something. It always asks for a
  * reason, and stays closed until the person deliberately opens it.
  */
-export function ReasonForm({ action, trigger, explanation, submitLabel, quantity, compact }: Props) {
+export function ReasonForm({ action, trigger, explanation, submitLabel, quantity, confirm, compact }: Props) {
   const { state, pending, form } = useFormAction(action);
 
   return (
@@ -54,6 +56,15 @@ export function ReasonForm({ action, trigger, explanation, submitLabel, quantity
           hint="At least 10 characters."
           required
         />
+        {confirm ? (
+          <TextField
+            label={confirm.label}
+            name="confirm"
+            autoComplete="off"
+            hint={`Type ${confirm.value} exactly.`}
+            required
+          />
+        ) : null}
         <FormMessage state={state} />
         <SubmitButton variant="danger" size="sm" pending={pending} pendingLabel="Saving…">
           {submitLabel}
