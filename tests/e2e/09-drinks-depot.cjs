@@ -185,7 +185,7 @@ let dbg;
   await vis(a.getByLabel("Empties taken by the supplier")).fill("300");
   await vis(a.getByRole("button", { name: "Save exchange" })).click();
   await a.getByText("You only have 250 Empties in store here, so 300 cannot be taken.", { exact: false }).waitFor();
-  await go("/stock");
+  await go("/stock/summary");
   await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
   // A drinks depot sees its stock by category, RGB first.
   const headings = await a.locator("main section h2").allInnerTexts();

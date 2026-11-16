@@ -84,7 +84,7 @@ let dbg;
   await vis(a.getByLabel(/Selling price/)).fill("78000");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
-  await go("/stock");
+  await go("/stock/summary");
   assert.equal(await a.getByLabel("Find a serial number").count(), 0);
   ok("a shop that said no to both questions sees no Returns page, no return or serial fields, no serial search");
 
@@ -94,7 +94,7 @@ let dbg;
   await vis(a.getByLabel("Quantity")).fill("20");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
-  await go("/stock");
+  await go("/stock/summary");
   await a.locator("li, tr", { hasText: "Rice 50kg" }).getByText("20", { exact: true }).waitFor();
   assert.equal(await a.getByRole("link", { name: "Write off / correct" }).count(), 0);
   const gone = await a.goto(BASE + base + "/stock/adjust");

@@ -123,7 +123,7 @@ let dbg;
   ok("a serial number already in stock is refused");
 
   // Stock page breakdown
-  await go("/stock");
+  await go("/stock/summary");
   const phoneRow = a.locator("li, tr", { hasText: "iPhone 15 128GB" });
   await phoneRow.getByText("3", { exact: true }).waitFor();
   await phoneRow.getByText("Black ×2 · Blue ×1").waitFor();
@@ -154,7 +154,7 @@ let dbg;
   ok("a walk-in buyer takes a chosen phone at the counter and the order completes at once");
 
   // Serial lookup
-  await go("/stock");
+  await go("/stock/summary");
   await a.getByLabel("Find a serial number").fill("4563");
   await a.getByRole("button", { name: "Find" }).click();
   await a.waitForURL(/\/stock\/serials\?q=4563/);

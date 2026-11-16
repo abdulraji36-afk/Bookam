@@ -9,6 +9,7 @@ import {
   History,
   LayoutDashboard,
   Package,
+  PackageCheck,
   Settings,
   Truck,
   Undo2,
@@ -19,6 +20,7 @@ import {
 
 export type NavIconName =
   | "dashboard"
+  | "deliveries"
   | "shortages"
   | "exchanges"
   | "orders"
@@ -62,6 +64,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   drivers: Contact,
   value: Banknote,
   shortages: CircleAlert,
+  deliveries: PackageCheck,
   exchanges: ArrowLeftRight
 };
 

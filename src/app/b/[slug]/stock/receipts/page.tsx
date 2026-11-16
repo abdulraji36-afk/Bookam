@@ -5,12 +5,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
-import {
-  FilterBar,
-  PageHeader,
-  StatusTabs,
-  StockTabs,
-} from "@/components/ui/page-header";
+import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
 import { formatDate, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
@@ -99,7 +94,6 @@ async function Receipts({
           </Link>
         }
       />
-      <StockTabs base={`/b/${org.slug}`} current="stock-in" />
       <FilterBar>
         <SearchForm
           action={base}

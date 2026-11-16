@@ -241,7 +241,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         ) : (
           <StatTile label={`${words.Many} today`} value={perDay.get(today) ?? 0} href={`${base}/orders`} />
         )}
-        <StatTile label="Low stock" value={lowRows.length} href={`${base}/stock`} />
+        <StatTile label="Low stock" value={lowRows.length} href={`${base}/stock/summary?show=low`} />
         {tracksReturns ? (
           <StatTile label="Owed back by customers" value={owedBack} href={`${base}/returns`} />
         ) : (
@@ -311,7 +311,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         <TableCard
           title="Running low"
           action={
-            <Link href={`${base}/stock?show=low`} className={SEE_ALL}>
+            <Link href={`${base}/stock/summary?show=low`} className={SEE_ALL}>
               See stock
             </Link>
           }

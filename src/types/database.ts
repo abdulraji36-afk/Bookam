@@ -963,6 +963,32 @@ export type Database = {
       };
     };
     Functions: {
+      stock_summary: {
+        Args: { p_organization_id: string; p_date: string; p_location_id?: string | null };
+        Returns: {
+          product_id: string;
+          name: string;
+          sku: string | null;
+          unit: string;
+          category: string | null;
+          returnable: boolean;
+          low_stock_threshold: number;
+          tracks_serials: boolean;
+          in_stock: number;
+        }[];
+      };
+      empties_summary: {
+        Args: { p_organization_id: string; p_date: string; p_location_id?: string | null };
+        Returns: {
+          returnable_item_id: string;
+          name: string;
+          trip_returns: number;
+          followups: number;
+          taken_by_supplier: number;
+          adjustments: number;
+          in_store: number;
+        }[];
+      };
       record_empty_exchange: {
         Args: {
           p_organization_id: string;

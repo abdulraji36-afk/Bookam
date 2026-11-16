@@ -109,7 +109,7 @@ let dbg;
     await vis(scope.getByRole("button", { name: button })).click();
   }
   const stockOf = async (name, value) => {
-    await go("/stock");
+    await go("/stock/summary");
     await a.locator("li, tr", { hasText: name }).getByText(String(value), { exact: true }).waitFor();
   };
   const crateTotals = async (inStore, owed) => {

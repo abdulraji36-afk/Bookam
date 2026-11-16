@@ -120,8 +120,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await mamaRow.getByText("0803 000 0000", { exact: true }).waitFor();
   ok("owner adds a customer");
 
-  // Stock: starts at zero and low, then receive
-  await nav(a, "Stock");
+  // Stock summary: starts at zero and low, then receive
+  await nav(a, "Stock summary");
   await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("Low stock").waitFor();
   await a.getByText("1 product is running low.").waitFor();
   await a.locator("main").getByRole("link", { name: "+ Receive stock" }).click();
@@ -141,22 +141,25 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/stock\/receipts\//);
   await a.getByText("Saved. The stock below has been added.").waitFor();
   await a.getByRole("heading", { name: /^STK-\d{8}-0001$/ }).waitFor();
-  await nav(a, "Stock");
-  await a.waitForURL(new RegExp(base + "/stock$"));
+  // What is in the depot is on Stock summary, its own page in the menu.
+  await nav(a, "Stock summary");
+  await a.waitForURL(new RegExp(base + "/stock/summary$"));
   const cola = a.locator("li, tr", { hasText: "Cola 50cl" });
   await cola.getByText("100", { exact: true }).waitFor();
   assert.equal(await cola.getByText("Low stock").count(), 0, "no longer low after receiving");
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
-  await a.screenshot({ path: `${SHOTS}/13-stock.png`, fullPage: true });
-  // Stock and Stock in are one place: one menu entry, two tabs.
-  assert.equal(await a.locator("aside").getByRole("link", { name: "Stock in" }).count(), 0, "no separate menu entry");
-  const stockTabs = a.getByRole("navigation", { name: "Stock", exact: true });
-  assert.equal(await stockTabs.getByRole("link", { name: "On hand" }).getAttribute("aria-current"), "page");
-  await stockTabs.getByRole("link", { name: "Stock in" }).click();
+  await a.getByText("Products in stock").waitFor();
+  await a.screenshot({ path: `${SHOTS}/13-stock-summary.png`, fullPage: true });
+  // The day before, nothing had come in yet.
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  await a.goto(BASE + base + "/stock/summary?date=" + yesterday);
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("0", { exact: true }).waitFor();
+  // Stock is the Stock in list only: no stock counts, no tabs.
+  await nav(a, "Stock");
   await a.waitForURL(new RegExp(base + "/stock/receipts$"));
   await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
-  assert.equal(await a.getByRole("navigation", { name: "Stock", exact: true }).getByRole("link", { name: "Stock in" }).getAttribute("aria-current"), "page");
-  // The Stock menu entry stays lit on the Stock in tab.
+  assert.equal(await a.locator("main").getByText("Low stock").filter({ visible: true }).count(), 0, "no stock counts on Stock");
+  assert.equal(await a.getByRole("link", { name: "On hand" }).filter({ visible: true }).count(), 0, "no tabs on Stock");
   assert.equal(await a.locator("aside").getByRole("link", { name: "Stock", exact: true }).getAttribute("aria-current"), "page");
   ok("receiving stock updates the stock on hand and clears the low-stock warning");
 
@@ -195,7 +198,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.waitForURL(/\/stock\/receipts\//);
   await c.getByRole("heading", { name: /^STK-\d{8}-0002$/ }).waitFor();
   await c.getByText("Chidi Eze").waitFor();
-  await c.goto(BASE + base + "/stock");
+  await c.goto(BASE + base + "/stock/summary");
   await c.locator("li, tr", { hasText: "Cola 50cl" }).getByText("112", { exact: true }).waitFor();
   await c.screenshot({ path: `${SHOTS}/15-stock-mobile.png`, fullPage: true });
   ok("staff receives stock on a phone; receipt is numbered and credited to them");

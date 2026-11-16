@@ -245,5 +245,5 @@ version of the app, so the database can always go first.
 | 19 | Empty exchanges on their own page (list, new exchange, one record each) instead of on the stock-in form; drink products no longer ask "sold by", and the RGB/PET choice and PET category start empty | Done |
 | 20 | Drinks orders are RGB or PET, never both: New order has RGB and PET tabs, and the orders page shows RGB orders (sent out, brought back, left to complete) above PET orders; one trip still carries both | Done |
 | 21 | One New order page for drinks (RGB and PET tabs, several customers); the one-order address (`?single=1`) redirects here. Drinks are sold to saved customers only: no walk-in buyers for RGB or PET, enforced in the database. Phone and goods shops keep walk-in buyers on their one-order form | Done |
-| 22 | Stock and Stock in are one place: one "Stock" menu entry with two tabs, On hand and Stock in | Done |
+| 22 | Stock is the Stock in list only (every delivery received). Stock summary is its own page in the menu: everything in the depot at the close of any day (stock per product by category, cards, and the empties: in store, back with trips, follow-ups, adjustments, taken by the supplier) | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

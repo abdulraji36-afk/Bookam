@@ -123,7 +123,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.screenshot({ path: `${SHOTS}/21-order.png`, fullPage: true });
   // Her PET drinks are an order of their own.
   await newOrders(a, biz, "pet", [{ customer: "Mama Tunde Stores (Ikeja)", lines: [["Water 75cl", 10]] }]);
-  await a.goto(BASE + base + "/stock");
+  await a.goto(BASE + base + "/stock/summary");
   await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
   // The orders page shows RGB orders on top and PET orders below.
   await a.goto(BASE + base + "/orders");
@@ -165,7 +165,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Save changes" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.locator("tr", { hasText: "Water 75cl" }).getByText("20 pack", { exact: true }).waitFor();
-  await a.goto(BASE + base + "/stock");
+  await a.goto(BASE + base + "/stock/summary");
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
   ok("editing a waiting order adjusts the stock it holds");
 
@@ -218,7 +218,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await vis(a.getByRole("button", { name: "Cancel order" })).click();
   await a.getByRole("button", { name: /^Yes, / }).click();
   await a.getByText("Cancelled").first().waitFor();
-  await a.goto(BASE + base + "/stock");
+  await a.goto(BASE + base + "/stock/summary");
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
   ok("cancelling a waiting order puts its stock back");
 
