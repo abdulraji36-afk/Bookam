@@ -122,8 +122,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
 
   // Stock summary: starts at zero and low, then receive
   await nav(a, "Stock summary");
-  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("Low stock").waitFor();
-  await a.getByText("1 product is running low.").waitFor();
+  // As in Bilikis: every product with its status; nothing in yet, so out of stock.
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("Out of Stock").waitFor();
+  await a.getByRole("heading", { name: "Stock as at" }).waitFor();
+  // Stock comes in from the Stock page.
+  await nav(a, "Stock");
   await a.locator("main").getByRole("link", { name: "+ Receive stock" }).click();
   await a.getByLabel("Supplier delivery reference").fill("NBC-0001");
   await a.getByRole("button", { name: "Save and add to stock" }).click();
@@ -145,15 +148,22 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await nav(a, "Stock summary");
   await a.waitForURL(new RegExp(base + "/stock/summary$"));
   const cola = a.locator("li, tr", { hasText: "Cola 50cl" });
-  await cola.getByText("100", { exact: true }).waitFor();
-  assert.equal(await cola.getByText("Low stock").count(), 0, "no longer low after receiving");
-  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("40", { exact: true }).waitFor();
-  await a.getByText("Products in stock").waitFor();
+  await cola.locator("[data-current-stock]").getByText("100", { exact: true }).waitFor();
+  await cola.getByText("OK", { exact: true }).waitFor();
+  // Total in, total out, current stock, as in Bilikis.
+  assert.deepEqual(
+    (await cola.locator("td").allInnerTexts()).map((text) => text.trim()).slice(2, 5),
+    ["100", "0", "100"]
+  );
+  await a.locator("li, tr", { hasText: "Water 75cl" }).locator("[data-current-stock]").getByText("40", { exact: true }).waitFor();
+  // An owner sees the Bilikis admin cards, with the empties.
+  await a.getByText("Tracked products").waitFor();
+  await a.getByText("Current empty balance").waitFor();
   await a.screenshot({ path: `${SHOTS}/13-stock-summary.png`, fullPage: true });
   // The day before, nothing had come in yet.
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   await a.goto(BASE + base + "/stock/summary?date=" + yesterday);
-  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("0", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).locator("[data-current-stock]").getByText("0", { exact: true }).waitFor();
   // Stock is the Stock in list only: no stock counts, no tabs.
   await nav(a, "Stock");
   await a.waitForURL(new RegExp(base + "/stock/receipts$"));
@@ -199,7 +209,10 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await c.getByRole("heading", { name: /^STK-\d{8}-0002$/ }).waitFor();
   await c.getByText("Chidi Eze").waitFor();
   await c.goto(BASE + base + "/stock/summary");
-  await c.locator("li, tr", { hasText: "Cola 50cl" }).getByText("112", { exact: true }).waitFor();
+  await c.locator("li, tr", { hasText: "Cola 50cl" }).locator("[data-current-stock]").getByText("112", { exact: true }).waitFor();
+  // Staff see the Bilikis staff cards: stock by category and the empties in the depot.
+  await c.getByText("RGB stock").waitFor();
+  await c.getByText("Total empties in depot").waitFor();
   await c.screenshot({ path: `${SHOTS}/15-stock-mobile.png`, fullPage: true });
   ok("staff receives stock on a phone; receipt is numbered and credited to them");
 

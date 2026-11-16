@@ -13,6 +13,7 @@ import {
 } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { DrinksStockSummary } from "./drinks-summary";
 
 export const metadata: Metadata = { title: "Stock summary" };
 
@@ -119,6 +120,21 @@ async function StockSummary({
   ]);
   const loadError = stockResult.error ?? emptiesResult.error;
   if (loadError) console.error("Stock summary could not load:", loadError);
+
+  // A drinks depot gets the Bilikis Stock Summary.
+  if (org.sells_drinks) {
+    return (
+      <DrinksStockSummary
+        base={base}
+        day={day}
+        today={today}
+        manager={manager}
+        rows={stockResult.data ?? []}
+        empties={emptiesResult.error ? null : (emptiesResult.data?.[0] ?? null)}
+        error={Boolean(stockResult.error)}
+      />
+    );
+  }
 
   const allRows: Row[] = (stockResult.data ?? []).map((row) => {
     const onHand = Number(row.in_stock);

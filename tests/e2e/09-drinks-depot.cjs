@@ -186,10 +186,13 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save exchange" })).click();
   await a.getByText("You only have 250 Empties in store here, so 300 cannot be taken.", { exact: false }).waitFor();
   await go("/stock/summary");
-  await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("488", { exact: true }).waitFor();
-  // A drinks depot sees its stock by category, RGB first.
-  const headings = await a.locator("main section h2").allInnerTexts();
-  assert.deepEqual(headings.slice(0, 3), ["RGB", "PET", "Juice"]);
+  await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).locator("[data-current-stock]").getByText("488", { exact: true }).waitFor();
+  // As in Bilikis: one table in NBC order, RGB crates first, with each row's category.
+  const categories = await a.locator("main tbody tr").evaluateAll((rows) =>
+    rows.map((row) => row.querySelectorAll("td")[5]?.innerText.trim())
+  );
+  assert.equal(categories[0], "RGB");
+  assert.ok(categories.indexOf("PET") > categories.lastIndexOf("RGB"), "PET after every RGB product");
   ok("an exchange cannot take more empties than are in store");
 
   // 5. Several customers on one order screen, with Stock left counting down

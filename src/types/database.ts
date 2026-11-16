@@ -974,6 +974,8 @@ export type Database = {
           returnable: boolean;
           low_stock_threshold: number;
           tracks_serials: boolean;
+          total_in: number;
+          total_out: number;
           in_stock: number;
         }[];
       };

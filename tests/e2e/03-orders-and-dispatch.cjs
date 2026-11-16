@@ -124,7 +124,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // Her PET drinks are an order of their own.
   await newOrders(a, biz, "pet", [{ customer: "Mama Tunde Stores (Ikeja)", lines: [["Water 75cl", 10]] }]);
   await a.goto(BASE + base + "/stock/summary");
-  await a.locator("li, tr", { hasText: "Cola 50cl" }).getByText("60", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Cola 50cl" }).locator("[data-current-stock]").getByText("60", { exact: true }).waitFor();
   // The orders page shows RGB orders on top and PET orders below.
   await a.goto(BASE + base + "/orders");
   await a.locator("section", { hasText: "RGB orders" }).locator("tr", { hasText: "Mama Tunde Stores" }).getByText("40", { exact: true }).waitFor();
@@ -166,7 +166,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
   await a.locator("tr", { hasText: "Water 75cl" }).getByText("20 pack", { exact: true }).waitFor();
   await a.goto(BASE + base + "/stock/summary");
-  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).locator("[data-current-stock]").getByText("20", { exact: true }).waitFor();
   ok("editing a waiting order adjusts the stock it holds");
 
   // --- trip: drivers and workers come from the list
@@ -219,7 +219,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByRole("button", { name: /^Yes, / }).click();
   await a.getByText("Cancelled").first().waitFor();
   await a.goto(BASE + base + "/stock/summary");
-  await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Water 75cl" }).locator("[data-current-stock]").getByText("20", { exact: true }).waitFor();
   ok("cancelling a waiting order puts its stock back");
 
   // --- staff on a phone: order -> trip -> dispatch
