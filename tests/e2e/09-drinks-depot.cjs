@@ -430,6 +430,36 @@ let dbg;
   assert.match(await summary("PET sold").innerText(), /5$/);
   ok("a voided sale shows on Voided sales with its reason, and leaves the history");
 
+  // 13. Empty balance, as in Bilikis: how the depot's empties add up.
+  await menu(a).getByRole("link", { name: "Empty balance" }).click();
+  await a.getByRole("heading", { name: "Empty balance" }).waitFor();
+  const cardIs = async (label, value) => assert.match(await summary(label).innerText(), new RegExp(`${value}$`));
+  await cardIs("Opening empties", "500");
+  await cardIs("Trip returns", "50"); // 30 with the trip, 20 brought back later
+  await cardIs("NBC handoffs", "250");
+  await cardIs("Depot empties", "300");
+  // Setting the opening count again changes that one record, not a second one.
+  assert.equal(await vis(a.getByLabel("Opening empties")).inputValue(), "500");
+  await vis(a.getByLabel("Opening empties")).fill("520");
+  await vis(a.getByRole("button", { name: "Update opening empties" })).click();
+  await a.getByText("Opening empties set to 520.").waitFor();
+  await cardIs("Opening empties", "520");
+  await cardIs("Depot empties", "320");
+  const history = a.locator("section", { hasText: "Adjustment history" });
+  assert.equal(await history.locator("tbody tr").count(), 1);
+  // An adjustment's quantity is corrected in place, with a reason.
+  await history.locator("tr", { hasText: "Opening empties" }).getByRole("link").first().click();
+  await vis(a.getByText("Correct this adjustment", { exact: true })).click();
+  await vis(a.getByLabel("Correct quantity")).fill("510");
+  await vis(a.getByLabel("Reason")).fill("Recounted the stack at the gate");
+  await vis(a.getByRole("button", { name: "Correct adjustment" })).click();
+  await a.getByText("Adjustment corrected.").waitFor();
+  await go("/returns/adjustments");
+  await cardIs("Depot empties", "310");
+  await a.getByRole("heading", { name: "Adjustment history" }).waitFor();
+  await a.screenshot({ path: `${SHOTS}/99-empty-balance.png`, fullPage: true });
+  ok("Empty balance: opening empties set and changed in place, and an adjustment corrected with a reason");
+
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));
   console.log("browser errors:", real.length ? real : "none");

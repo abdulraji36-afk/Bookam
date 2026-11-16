@@ -126,3 +126,37 @@ export async function correctTripReturnAction(
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Figure corrected." };
 }
+
+export async function correctAdjustmentAction(
+  slug: string,
+  adjustmentId: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  if (!idSchema.safeParse(adjustmentId).success) return { ok: false, message: "Adjustment not found." };
+
+  const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
+  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+
+  const quantity = z.coerce
+    .number("Enter the correct number.")
+    .positive("Enter a number greater than zero. To cancel the adjustment, void it instead.")
+    .max(9_999_999, "That number is too large.")
+    .safeParse(String(formData.get("quantity") ?? "").trim() === "" ? undefined : formData.get("quantity"));
+  if (!quantity.success) return { ok: false, message: quantity.error.issues[0].message };
+
+  const { error } = await supabase.rpc("correct_returnable_adjustment", {
+    p_adjustment_id: adjustmentId,
+    p_quantity: quantity.data,
+    p_reason: reason.data
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, () => [
+    `CORRECTED: an empties adjustment is now ${formatQuantity(quantity.data)}`,
+    `Reason: ${reason.data}`
+  ]);
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Adjustment corrected." };
+}

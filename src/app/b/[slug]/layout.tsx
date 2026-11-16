@@ -79,6 +79,7 @@ async function BusinessShell({
                   `${base}/returns/shortages`,
                   `${base}/returns/exchanges`,
                   `${base}/returns/exchange`,
+                  `${base}/returns/adjustments`,
                 ],
               } as const,
             ]
@@ -98,6 +99,15 @@ async function BusinessShell({
                 href: `${base}/returns/exchanges`,
                 label: "Empty exchanges",
                 icon: "exchanges",
+              } as const,
+            ]
+          : []),
+        ...(org.sells_drinks
+          ? [
+              {
+                href: `${base}/returns/adjustments`,
+                label: manager ? "Empty balance" : "Empty adjustments",
+                icon: "balance",
               } as const,
             ]
           : []),

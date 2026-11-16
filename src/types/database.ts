@@ -1313,6 +1313,20 @@ export type Database = {
         Args: { p_line_id: string; p_returned_quantity: number; p_reason: string };
         Returns: undefined;
       };
+      correct_returnable_adjustment: {
+        Args: { p_adjustment_id: string; p_quantity: number; p_reason: string };
+        Returns: undefined;
+      };
+      set_opening_empties: {
+        Args: {
+          p_organization_id: string;
+          p_location_id: string;
+          p_returnable_item_id: string;
+          p_quantity: number;
+          p_date: string;
+        };
+        Returns: string;
+      };
       daily_stock_report: {
         Args: { p_organization_id: string; p_date: string };
         Returns: {

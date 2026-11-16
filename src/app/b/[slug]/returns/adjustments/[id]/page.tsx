@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { voidAdjustmentAction } from "@/app/actions/corrections";
+import { correctAdjustmentAction, voidAdjustmentAction } from "@/app/actions/corrections";
 import { ReasonForm } from "@/components/corrections/reason-form";
 import { RecordDetails } from "@/components/returns/record-details";
 import { Alert } from "@/components/ui/alert";
@@ -63,6 +63,13 @@ async function Adjustment({ params }: Pick<PageProps<"/b/[slug]/returns/adjustme
       {canManage(role) && !adjustment.voided_at ? (
         <ActionsPanel>
           <ReasonForm
+            action={correctAdjustmentAction.bind(null, org.slug, adjustment.id)}
+            trigger="Correct this adjustment"
+            explanation={`Use this when the number was wrong. The adjustment stays ${delta > 0 ? "an addition" : "a subtraction"}; only its quantity changes, and the store count follows.`}
+            submitLabel="Correct adjustment"
+            quantity={{ label: "Correct quantity", current: Math.abs(delta) }}
+          />
+          <ReasonForm
             action={voidAdjustmentAction.bind(null, org.slug, adjustment.id)}
             trigger="Void this adjustment"
             explanation="Use this when the adjustment was recorded by mistake. Its effect on the store count, and on the customer's balance if one was named, is reversed."
@@ -70,8 +77,11 @@ async function Adjustment({ params }: Pick<PageProps<"/b/[slug]/returns/adjustme
           />
         </ActionsPanel>
       ) : null}
-      <Link href={`/b/${org.slug}/returns`} className={buttonClass("secondary")}>
-        Back to {org.sells_drinks ? "empties" : "returns"}
+      <Link
+        href={`/b/${org.slug}/returns${org.sells_drinks ? "/adjustments" : ""}`}
+        className={buttonClass("secondary")}
+      >
+        Back to {org.sells_drinks ? (canManage(role) ? "empty balance" : "empty adjustments") : "returns"}
       </Link>
     </div>
   );

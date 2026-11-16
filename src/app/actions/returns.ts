@@ -249,3 +249,43 @@ export async function recordEmptiesFollowupAction(
   if (parsed.data.returnTo === "shortages") redirect(`/b/${slug}/returns/shortages?saved=followup`);
   redirect(`/b/${slug}/returns?saved=customer-return`);
 }
+
+const openingEmptiesSchema = z.object({
+  locationId: z.uuid("Choose a location."),
+  returnableItemId: z.uuid("Choose what you are counting."),
+  date: z.iso.date("Enter the date."),
+  quantity: z.coerce
+    .number("Enter how many empties are on the ground.")
+    .int("Empties are counted in whole numbers.")
+    .positive("Enter a number greater than zero.")
+    .max(9_999_999, "That number is too large.")
+});
+
+/** Bilikis's "Set opening empties": the crates already on the ground at the start. */
+export async function setOpeningEmptiesAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const parsed = openingEmptiesSchema.safeParse({
+    locationId: text(formData, "locationId"),
+    returnableItemId: text(formData, "returnableItemId"),
+    date: text(formData, "date"),
+    quantity: text(formData, "quantity").trim() === "" ? undefined : text(formData, "quantity")
+  });
+  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+
+  const { error } = await supabase.rpc("set_opening_empties", {
+    p_organization_id: org.id,
+    p_location_id: parsed.data.locationId,
+    p_returnable_item_id: parsed.data.returnableItemId,
+    p_quantity: parsed.data.quantity,
+    p_date: parsed.data.date
+  });
+  if (error) return { ok: false, message: describeDbError(error) };
+
+  notify({ supabase, org }, () => [`Opening empties set to ${formatQuantity(parsed.data.quantity)}`]);
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: `Opening empties set to ${formatQuantity(parsed.data.quantity)}.` };
+}

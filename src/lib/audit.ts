@@ -45,6 +45,7 @@ const ACTION_LABELS: Record<string, string> = {
   void_supplier_exchange: "Voided a supplier exchange",
   void_returnable_adjustment: "Voided an adjustment",
   correct_trip_return: "Corrected a returned figure",
+  correct_returnable_adjustment: "Corrected an adjustment",
   connect_telegram: "Connected Telegram",
   disconnect_telegram: "Disconnected Telegram",
   enable_notifications: "Resumed notifications",

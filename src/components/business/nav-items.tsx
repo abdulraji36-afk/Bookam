@@ -4,6 +4,7 @@ import {
   Boxes,
   ChartColumn,
   ClipboardList,
+  Scale,
   FolderOpen,
   CircleAlert,
   Contact,
@@ -36,7 +37,8 @@ export type NavIconName =
   | "settings"
   | "drivers"
   | "value"
-  | "records";
+  | "records"
+  | "balance";
 
 /** A menu entry. Icons are named, not passed, so the list can cross to the browser. */
 export type NavItem = {
@@ -61,6 +63,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   customers: Users,
   reports: ChartColumn,
   records: FolderOpen,
+  balance: Scale,
   team: UserCog,
   activity: History,
   settings: Settings,
