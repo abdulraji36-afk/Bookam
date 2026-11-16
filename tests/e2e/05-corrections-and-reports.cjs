@@ -208,13 +208,21 @@ let dbg;
 
   // Activity log
   await go("/activity");
-  const log = a.locator("section", { hasText: "Latest activity" });
+  await a.getByRole("heading", { name: "Audit log" }).waitFor();
+  const log = a.locator("section", { hasText: "Audit history" });
   await log.locator("li, tr", { hasText: "Voided an order" }).first().getByText(/Recorded for the wrong customer|Customer changed their mind/).waitFor();
   await log.locator("li, tr", { hasText: "Corrected a returned figure" }).getByText(/Six more crates were found/).waitFor();
   await log.locator("li, tr", { hasText: "Voided a stock receipt" }).getByText("Ada Obi").waitFor();
   await log.locator("li, tr", { hasText: "Received stock" }).first().waitFor();
+  // Narrowed to one action, as in Bilikis.
+  await a.getByLabel("Action").selectOption({ label: "Voided an order" });
+  await a.getByRole("button", { name: "Apply" }).click();
+  await a.waitForURL(/action=void_order/);
+  const loggedActions = await log.locator("tbody tr td:nth-child(3)").allInnerTexts();
+  assert.ok(loggedActions.length > 0 && loggedActions.every((text) => text.includes("Voided an order")), loggedActions.join(" | "));
+  await log.locator("tr", { hasText: "Voided an order" }).first().getByText(/^Order ORD-/).waitFor();
   await a.screenshot({ path: `${SHOTS}/42-activity.png`, fullPage: true });
-  ok("the activity page lists who did what, with the reasons");
+  ok("the audit log lists who did what, with the reasons, and filters by action");
 
   // Daily report
   await go("/reports/daily");
@@ -262,6 +270,11 @@ let dbg;
   assert.equal(await c.getByText(/₦/).count(), 0, "staff see no money on the report");
   assert.equal(await c.getByText("Exceptions on", { exact: false }).count(), 0, "no exceptions for staff");
   await c.screenshot({ path: `${SHOTS}/44-daily-report-mobile.png`, fullPage: true });
+  // The Bilikis staff dashboard: quantities, quick actions and today's focus.
+  await c.goto(BASE + base);
+  await c.getByRole("heading", { name: "Today's focus" }).waitFor();
+  await c.locator("[data-summary-card]", { hasText: "Stock in entries" }).waitFor();
+  assert.equal(await c.getByRole("heading", { name: "Admin control desk" }).count(), 0);
   ok("staff cannot void, correct or open Activity, and their report shows no money");
 
   await browser.close();

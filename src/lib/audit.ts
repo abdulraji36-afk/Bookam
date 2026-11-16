@@ -46,12 +46,51 @@ const ACTION_LABELS: Record<string, string> = {
   void_returnable_adjustment: "Voided an adjustment",
   correct_trip_return: "Corrected a returned figure",
   correct_returnable_adjustment: "Corrected an adjustment",
+  correct_stock_receipt: "Corrected a stock receipt",
+  record_empties_followup: "Recorded follow-up empties",
+  void_empties_followup: "Voided follow-up empties",
   save_product_order: "Changed the product order",
   connect_telegram: "Connected Telegram",
   disconnect_telegram: "Disconnected Telegram",
   enable_notifications: "Resumed notifications",
   disable_notifications: "Paused notifications"
 };
+
+/** Every action with a plain-language name, for the audit log's filter. */
+export const AUDIT_ACTIONS = Object.entries(ACTION_LABELS).sort((a, b) => a[1].localeCompare(b[1]));
+
+const RECORD_LABELS: Record<string, string> = {
+  organizations: "Business",
+  locations: "Location",
+  memberships: "Team member",
+  invitations: "Invitation",
+  products: "Product",
+  customers: "Customer",
+  stock_receipts: "Stock in",
+  stock_receipt_items: "Stock in line",
+  stock_adjustments: "Stock adjustment",
+  orders: "Order",
+  dispatch_trips: "Trip",
+  trip_return_lines: "Trip return",
+  supplier_exchanges: "Empty exchange",
+  returnable_adjustments: "Empty adjustment",
+  empties_followups: "Follow-up return",
+  dispatch_workers: "Driver or worker",
+  organization_notifications: "Notifications"
+};
+
+/** "Order ORD-20261116-0003", or the record type and a short id. */
+export function describeRecord(entityType: string, entityId: string, ...values: (Json | null)[]) {
+  const label = RECORD_LABELS[entityType] ?? entityType.replace(/_/g, " ");
+  for (const value of values) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const record = value as Record<string, Json | undefined>;
+    for (const key of ["order_no", "trip_no", "receipt_no", "exchange_no", "name"]) {
+      if (typeof record[key] === "string") return `${label} ${record[key]}`;
+    }
+  }
+  return `${label} · ${entityId.slice(0, 8)}`;
+}
 
 export function describeAction(action: string) {
   return ACTION_LABELS[action] ?? action.replace(/_/g, " ");

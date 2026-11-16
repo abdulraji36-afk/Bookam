@@ -502,6 +502,23 @@ let dbg;
   await a.screenshot({ path: `${SHOTS}/99-empty-balance.png`, fullPage: true });
   ok("Empty balance: opening empties set and changed in place, and an adjustment corrected with a reason");
 
+  // 14. The Bilikis admin dashboard, customer cards and the Manage page.
+  await go("");
+  await cardIs("PET sold today", "5"); // Mama's 5; Alhaji's 10 was voided
+  await cardIs("RGB sold today", "50");
+  await cardIs("Open RGB trips", "0");
+  await cardIs("Empty balance", "310");
+  await a.getByRole("heading", { name: "Admin control desk" }).waitFor();
+  await a.getByRole("link", { name: /^Manage/ }).click();
+  await a.getByRole("heading", { name: "Manage", exact: true }).waitFor();
+  await a.getByRole("link", { name: /Customer records Customers/ }).click();
+  await a.waitForURL(/\/customers$/);
+  await cardIs("Total customers", "2");
+  await cardIs("Bought PET / RGB", "1 / 1");
+  await cardIs("Both channels", "1");
+  await a.screenshot({ path: `${SHOTS}/99-customers.png`, fullPage: true });
+  ok("the admin dashboard shows Bilikis's cards and control desk; customers show who buys PET, RGB or both");
+
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));
   console.log("browser errors:", real.length ? real : "none");

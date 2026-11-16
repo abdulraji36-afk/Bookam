@@ -6,7 +6,8 @@ import { Badge, EmptyState, PageSkeleton } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { NoMatches, Pager, SearchForm } from "@/components/ui/list-search";
 import { FilterBar, PageHeader, StatusTabs } from "@/components/ui/page-header";
-import { describeOwed } from "@/lib/format";
+import { SummaryCard, SummaryCards } from "@/components/ui/summary-card";
+import { describeOwed, formatQuantity } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
 
@@ -29,11 +30,33 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
     .range(search.from, search.to);
   if (search.q) listQuery = listQuery.or(matchAny(search.q, ["name", "area", "phone"]));
 
-  const [listResult, activeCount, offCount] = await Promise.all([
+  // Bilikis's customer cards for a drinks depot, from what each customer has bought.
+  const channelsQuery = org.sells_drinks
+    ? supabase
+        .from("order_summaries")
+        .select("customer_id, has_returns")
+        .eq("organization_id", org.id)
+        .is("voided_at", null)
+        .not("customer_id", "is", null)
+        .limit(20000)
+    : Promise.resolve({ data: [] });
+  const [listResult, activeCount, offCount, channelsResult] = await Promise.all([
     listQuery,
     supabase.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true),
-    supabase.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", false)
+    supabase.from("customers").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", false),
+    channelsQuery
   ]);
+  const channels = new Map<string, Set<"RGB" | "PET">>();
+  for (const row of channelsResult.data ?? []) {
+    if (!row.customer_id) continue;
+    const kinds = channels.get(row.customer_id) ?? new Set();
+    kinds.add(row.has_returns ? "RGB" : "PET");
+    channels.set(row.customer_id, kinds);
+  }
+  const buying = [...channels.values()];
+  const rgbBuyers = buying.filter((kinds) => kinds.has("RGB")).length;
+  const petBuyers = buying.filter((kinds) => kinds.has("PET")).length;
+  const bothBuyers = buying.filter((kinds) => kinds.size === 2).length;
   const customers = listResult.data ?? [];
 
   const { data: balanceData } =
@@ -75,6 +98,13 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
           </Link>
         }
       />
+      {org.sells_drinks ? (
+        <SummaryCards columns={3}>
+          <SummaryCard label="Total customers" value={formatQuantity((activeCount.count ?? 0) + (offCount.count ?? 0))} />
+          <SummaryCard label="Bought PET / RGB" value={`${formatQuantity(petBuyers)} / ${formatQuantity(rgbBuyers)}`} />
+          <SummaryCard label="Both channels" value={formatQuantity(bothBuyers)} />
+        </SummaryCards>
+      ) : null}
       <FilterBar>
         <SearchForm action={base} q={search.q} label="Search customers" placeholder="Search by name, area or phone" />
         <StatusTabs

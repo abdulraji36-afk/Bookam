@@ -10,6 +10,7 @@ import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { saleWords } from "@/lib/selling";
 import { getStockRows } from "@/lib/stock";
+import { DrinksCards, DrinksDesk } from "./drinks-desk";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -234,7 +235,10 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         </form>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {org.sells_drinks ? (
+        <DrinksCards supabase={supabase} organizationId={org.id} today={today} manager={manager} />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label={waitingTitle} value={waiting.count ?? 0} strong href={`${base}/orders`} />
         {delivers ? (
           <StatTile label="Trips loading" value={loading.count ?? 0} href={`${base}/dispatch`} />
@@ -247,7 +251,8 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         ) : (
           <StatTile label="Customers" value={customers.count ?? 0} href={`${base}/customers`} />
         )}
-      </div>
+        </div>
+      )}
 
       {settingUp ? (
         <Card>
@@ -273,6 +278,8 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
           </ol>
         </Card>
       ) : null}
+
+      {org.sells_drinks ? <DrinksDesk base={base} manager={manager} /> : null}
 
       <Card>
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

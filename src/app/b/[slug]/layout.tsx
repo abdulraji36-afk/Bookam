@@ -153,7 +153,7 @@ async function BusinessShell({
                 label: org.sells_drinks ? "Inventory value" : "Stock value",
                 icon: "value",
               },
-              { href: `${base}/activity`, label: "Activity", icon: "activity" },
+              { href: `${base}/activity`, label: "Audit log", icon: "activity" },
             ] as const)
           : []),
       ],

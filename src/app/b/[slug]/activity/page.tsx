@@ -1,95 +1,163 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, CardHeader, EmptyState, PageSkeleton } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
-import { describeAction, describeDetails, isCorrection } from "@/lib/audit";
+import { Pager } from "@/components/ui/list-search";
+import { PageHeader } from "@/components/ui/page-header";
+import { AUDIT_ACTIONS, describeAction, describeDetails, describeRecord, isCorrection } from "@/lib/audit";
+import { formatDay } from "@/lib/format";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import { dayOf, formatTime, readDateRange, recordHref } from "@/lib/records";
+import { requestNow } from "@/lib/request-time";
+import { readListSearch } from "@/lib/search";
 
-export const metadata: Metadata = { title: "Activity" };
+export const metadata: Metadata = { title: "Audit log" };
 
 const PAGE_SIZE = 50;
+const INPUT =
+  "mt-1.5 block min-h-12 w-full rounded-md border-2 border-field bg-white px-3 text-base font-medium focus:border-ink focus:outline-2 focus:outline-accent";
 
-function formatWhen(iso: string, timeZone: string) {
-  return new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(iso));
-}
-
-async function Activity({ params, searchParams }: PageProps<"/b/[slug]/activity">) {
+/**
+ * Bilikis's Audit Log: everything anyone did in the business, newest first,
+ * narrowed by date, action or person. Owners and admins only.
+ */
+async function AuditLog({ params, searchParams }: PageProps<"/b/[slug]/activity">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
-  const before = typeof query.before === "string" && !Number.isNaN(Date.parse(query.before)) ? query.before : null;
+  const path = `/b/${org.slug}/activity`;
+  const range = readDateRange(query, org.timezone, await requestNow());
+  const page = readListSearch(query, PAGE_SIZE);
+  const action =
+    typeof query.action === "string" && AUDIT_ACTIONS.some(([key]) => key === query.action) ? query.action : "";
+  const actor = typeof query.actor === "string" && /^[0-9a-f-]{36}$/i.test(query.actor) ? query.actor : "";
 
   let request = supabase
     .from("audit_logs")
-    .select("id, action, new_values, created_at, profiles (full_name, email)")
+    .select("id, action, entity_type, entity_id, old_values, new_values, created_at, user_id, profiles (full_name, email)", {
+      count: "exact"
+    })
     .eq("organization_id", org.id)
+    .gte("created_at", range.start)
+    .lt("created_at", range.end)
     .order("created_at", { ascending: false })
-    .limit(PAGE_SIZE + 1);
-  if (before) request = request.lt("created_at", before);
+    .range(page.from, page.to);
+  if (action) request = request.eq("action", action);
+  if (actor) request = request.eq("user_id", actor);
 
-  const { data } = await request;
-  const entries = (data ?? []).slice(0, PAGE_SIZE);
-  const hasMore = (data ?? []).length > PAGE_SIZE;
-  const base = `/b/${org.slug}/activity`;
+  const [result, members] = await Promise.all([
+    request,
+    supabase.from("memberships").select("user_id, profiles (full_name, email)").eq("organization_id", org.id)
+  ]);
+  if (result.error) console.error("Audit log could not load:", result.error);
+  const entries = result.data ?? [];
+  const total = result.count ?? 0;
+  const people = (members.data ?? [])
+    .map((member) => ({
+      id: member.user_id,
+      name: member.profiles?.full_name || member.profiles?.email || "Team member"
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const filters = { from: range.from, to: range.to, action, actor };
 
   return (
-    <div className="space-y-6">
-      <PageTitle sub="Everything anyone has done in this business, newest first. Only owners and admins see this.">
-        Activity
-      </PageTitle>
+    <div className="space-y-5">
+      <PageHeader
+        title="Audit log"
+        sub="Everything anyone has done in this business, newest first. Only owners and admins see this."
+      />
 
-      {entries.length === 0 ? (
-        <EmptyState title="Nothing here">There is no earlier activity.</EmptyState>
+      <Card>
+        <CardHeader title="Find records" description="Narrow the audit log by date, action or team member." />
+        <form method="get" action={path} className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.3fr_1.1fr_auto] xl:items-end">
+          <label className="block text-sm font-bold">
+            From
+            <input className={INPUT} type="date" name="from" defaultValue={range.from} max={range.today} />
+          </label>
+          <label className="block text-sm font-bold">
+            To
+            <input className={INPUT} type="date" name="to" defaultValue={range.to} max={range.today} />
+          </label>
+          <label className="block text-sm font-bold">
+            Action
+            <select className={INPUT} name="action" defaultValue={action}>
+              <option value="">All actions</option>
+              {AUDIT_ACTIONS.map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-bold">
+            Team member
+            <select className={INPUT} name="actor" defaultValue={actor}>
+              <option value="">Everyone</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" className={buttonClass("primary")}>
+              Apply
+            </button>
+            <Link href={path} className={buttonClass("ghost")}>
+              Reset
+            </Link>
+          </div>
+        </form>
+      </Card>
+
+      {result.error ? (
+        <Alert tone="error">The audit log could not be loaded. Please refresh the page.</Alert>
+      ) : entries.length === 0 ? (
+        <EmptyState title="Nothing recorded">
+          Nothing matches between {formatDay(range.from)} and {formatDay(range.to)}.
+        </EmptyState>
       ) : (
-        <TableCard title={before ? "Earlier activity" : "Latest activity"}>
+        <TableCard title="Audit history">
           <DataTable
-            label="Activity"
+            label="Audit history"
             rows={entries}
             rowKey={(entry) => entry.id}
             columns={[
+              { header: "Date", cell: (entry) => formatDay(dayOf(entry.created_at, org.timezone)) },
+              { header: "Time", cell: (entry) => formatTime(entry.created_at, org.timezone) },
               {
-                header: "What happened",
+                header: "Action",
                 wrap: true,
                 cell: (entry) => (
-                  <>
+                  <span className="flex flex-wrap items-center gap-2">
                     <span className="font-extrabold">{describeAction(entry.action)}</span>
-                    {describeDetails(entry.new_values) ? (
-                      <span className="block break-words text-sm font-medium text-ink-soft">{describeDetails(entry.new_values)}</span>
-                    ) : null}
-                  </>
+                    {isCorrection(entry.action) ? <Badge tone="accent">Undo</Badge> : null}
+                  </span>
                 )
               },
               {
-                header: "Kind",
-                phone: "badge",
-                cell: (entry) => (isCorrection(entry.action) ? <Badge tone="accent">Undo</Badge> : null)
+                header: "Record",
+                wrap: true,
+                cell: (entry) => describeRecord(entry.entity_type, entry.entity_id, entry.new_values, entry.old_values)
               },
               {
-                header: "Who",
+                header: "Actor",
+                wrap: true,
                 cell: (entry) => entry.profiles?.full_name || entry.profiles?.email || "Someone no longer on the team"
               },
-              { header: "When", cell: (entry) => formatWhen(entry.created_at, org.timezone) }
+              {
+                header: "Details",
+                wrap: true,
+                cell: (entry) => <span className="text-sm text-ink-soft">{describeDetails(entry.new_values) || "—"}</span>
+              }
             ]}
           />
         </TableCard>
       )}
-
-      <div className="flex flex-wrap gap-3">
-        {before ? (
-          <Link href={base} className={buttonClass("secondary")}>
-            Back to latest
-          </Link>
-        ) : null}
-        {hasMore ? (
-          <Link
-            href={`${base}?before=${encodeURIComponent(entries[entries.length - 1].created_at)}`}
-            className={buttonClass("secondary")}
-          >
-            Show earlier
-          </Link>
-        ) : null}
-      </div>
+      <Pager base={path} search={page} total={total} hrefFor={(number) => recordHref(path, { ...filters, page: number })} />
     </div>
   );
 }
@@ -97,7 +165,7 @@ async function Activity({ params, searchParams }: PageProps<"/b/[slug]/activity"
 export default function ActivityPage(props: PageProps<"/b/[slug]/activity">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <Activity {...props} />
+      <AuditLog {...props} />
     </Suspense>
   );
 }
