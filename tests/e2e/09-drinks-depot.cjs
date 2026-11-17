@@ -324,6 +324,19 @@ let dbg;
   // Only Mama took RGB crates, so only she has a box.
   const mamaBox = vis(a.getByLabel("Returned by Mama Tunde Stores"));
   await mamaBox.fill("30");
+  // As in Bilikis: pressing back with returns half entered asks first.
+  const asked = [];
+  const answerNo = async (dialog) => {
+    asked.push(dialog.message());
+    await dialog.dismiss();
+  };
+  a.on("dialog", answerNo);
+  await a.goBack();
+  await a.waitForTimeout(300);
+  a.off("dialog", answerNo);
+  assert.match(asked[0] ?? "", /Leave without saving these returns\?/);
+  assert.equal(a.url(), tripUrl);
+  assert.equal(await mamaBox.inputValue(), "30");
   assert.equal(await vis(a.getByLabel("Returned by Alhaji Musa Kiosk")).count(), 0);
   await vis(a.getByRole("button", { name: "Record returns and complete trip" })).click();
   // Wait for the save itself: "Short by 20" also shows as a hint while typing.

@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { formatQuantity } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
+import { useLeaveWarning } from "@/lib/use-leave-warning";
 
 export type ReturnLine = {
   orderId: string;
@@ -30,6 +31,12 @@ export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
   const [returned, setReturned] = useState(() => lines.map(() => ""));
   const [missing, setMissing] = useState<number | null>(null);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  // As in Bilikis: half-entered returns are not lost to a stray back press.
+  const started = returned.some((value) => value.trim() !== "");
+  useLeaveWarning(
+    started && !pending && !state.ok,
+    "Leave without saving these returns? The numbers you typed will be lost."
+  );
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const blank = returned.findIndex((value) => value.trim() === "");
