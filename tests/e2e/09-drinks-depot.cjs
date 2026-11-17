@@ -556,6 +556,45 @@ let dbg;
   await a.screenshot({ path: `${SHOTS}/99-customers.png`, fullPage: true });
   ok("the admin dashboard shows Bilikis's cards and control desk; customers show who buys PET, RGB or both");
 
+  // 15. Bilikis's end-of-day Telegram summary, sent by the scheduled job.
+  const TG = process.env.E2E_TELEGRAM_MOCK_URL ?? "http://127.0.0.1:8099";
+  const CHAT = -1009900000000 - Math.floor(Math.random() * 100000);
+  const chatMessages = async () => (await (await fetch(TG + "/messages")).json()).filter((m) => m.chat_id === CHAT);
+  await go("/settings");
+  const telegram = a.locator("section", { hasText: "Telegram notifications" });
+  await telegram.getByRole("button", { name: "Connect Telegram" }).click();
+  const command = await telegram.locator("code").innerText();
+  await fetch(BASE + "/api/telegram/webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-telegram-bot-api-secret-token": process.env.E2E_TELEGRAM_SECRET ?? "test-secret" },
+    body: JSON.stringify({ update_id: 1, message: { message_id: 1, chat: { id: CHAT, type: "supergroup", title: "Depot" }, text: command } })
+  });
+  const cron = (query = "", secret = process.env.E2E_CRON_SECRET ?? "test-cron-secret") =>
+    fetch(BASE + "/api/cron/daily-summary" + query, { headers: { authorization: `Bearer ${secret}` } });
+  assert.equal((await cron("", "wrong")).status, 401);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" });
+  assert.equal((await cron(`?date=${today}`)).status, 200);
+  let dailyText;
+  for (let i = 0; i < 20 && !dailyText; i++) {
+    dailyText = (await chatMessages()).find((m) => /DAILY OPERATIONS - /.test(m.text))?.text;
+    if (!dailyText) await new Promise((r) => setTimeout(r, 250));
+  }
+  assert.ok(dailyText, "the daily summary reached the chat");
+  assert.match(dailyText, /\nACTIVITY\nStock received: 1 record \/ 528 units\n- RGB: 488 crates\n- PET: 40 packs\n/);
+  assert.match(dailyText, /\nRGB sales recorded: 1 sale \/ 52 crates\nPET dispatched: 1 trip \/ 5 packs\nRGB dispatched: 1 trip \/ 52 crates\n/);
+  assert.match(dailyText, /\nEMPTY MOVEMENT\nTrip returns: \+30\nShortage follow-ups: \+20\nGiven to NBC: -250\nAdjustments: 1 record \/ \+510\n/);
+  assert.match(dailyText, /- EMPTY BALANCE: 310\n/);
+  assert.match(dailyText, /\nOPEN WORK\nPET sales waiting: 1\nOutstanding shortage cases: 1\nOutstanding empties: 2\n/);
+  assert.match(dailyText, /\nADMIN ACTIVITY\nCorrections: 4\nVoided sales: 1\n/);
+  assert.doesNotMatch(dailyText, /₦/);
+  // The scheduled run sends each business the day that just ended, once.
+  const before = (await chatMessages()).length;
+  assert.equal((await cron()).status, 200);
+  assert.equal((await cron()).status, 200);
+  await new Promise((r) => setTimeout(r, 500));
+  assert.equal((await chatMessages()).length, before + 1, "one summary for yesterday, not two");
+  ok("the end-of-day Telegram summary is sent as in Bilikis, once per day, with quantities only");
+
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));
   console.log("browser errors:", real.length ? real : "none");

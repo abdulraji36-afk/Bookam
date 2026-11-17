@@ -294,9 +294,12 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   ok("staff records trip returns on a phone but cannot adjust or record follow-ups");
 
   await go("");
-  await a.getByRole("link", { name: /Owed back by customers/ }).getByText("0", { exact: true }).waitFor();
+  // A drinks business gets the Bilikis admin cards: every trip is back, so no open RGB trips.
+  const dashCard = (label) => a.locator("[data-summary-card]", { hasText: label });
+  assert.match(await dashCard("Open RGB trips").innerText(), /0$/);
+  await dashCard("Empty balance").waitFor();
   await a.screenshot({ path: `${SHOTS}/37-dashboard.png`, fullPage: true });
-  ok("dashboard shows the total owed back");
+  ok("dashboard shows Bilikis's cards, with no RGB trips left open");
 
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));

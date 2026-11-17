@@ -75,7 +75,28 @@ export type OpenWork = {
   shortageFollowUps: number;
 };
 
+/** The day's figures as numbers, for the Telegram daily summary. */
+export type DailyTotals = {
+  stockRecords: number;
+  stockUnits: number;
+  petSales: number;
+  petPacks: number;
+  rgbSales: number;
+  rgbCrates: number;
+  petTrips: number;
+  petOut: number;
+  rgbTrips: number;
+  rgbOut: number;
+  tripReturns: number;
+  followups: number;
+  givenToSupplier: number;
+  adjustmentRecords: number;
+  adjustmentTotal: number;
+  voidedSales: number;
+};
+
 export type DrinksDaily = {
+  totals: DailyTotals;
   petClosing: number;
   rgbClosing: number;
   emptiesAtClose: number | null;
@@ -645,8 +666,28 @@ export async function getDrinksDaily(
     };
   });
 
+  const totals: DailyTotals = {
+    stockRecords: stockReceived.length,
+    stockUnits: sum(stockReceived, (row) => row.quantity),
+    petSales: petOrders.length,
+    petPacks: sum(petOrders, (order) => sum(order.order_items, (item) => Number(item.quantity))),
+    rgbSales: rgbOrders.length,
+    rgbCrates: sum(rgbOrders, (order) => sum(order.order_items, (item) => Number(item.quantity))),
+    petTrips,
+    petOut,
+    rgbTrips,
+    rgbOut,
+    tripReturns: returned,
+    followups: followupTotal,
+    givenToSupplier: sum(exchangeRows, (row) => Number(row.quantity_taken)),
+    adjustmentRecords: adjustmentRows.length,
+    adjustmentTotal: sum(adjustmentRows, (row) => Number(row.quantity_delta)),
+    voidedSales: voidedRows.length,
+  };
+
   return {
     data: {
+      totals,
       petClosing: sum(
         productRows.filter((row) => row.category !== "RGB"),
         (row) => row.closing,

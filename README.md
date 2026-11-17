@@ -58,7 +58,9 @@ the app in Chromium, the way a person would. To run them:
    walkthrough set `TELEGRAM_BOT_TOKEN=test-token`,
    `TELEGRAM_BOT_USERNAME=bookam_test_bot`, `TELEGRAM_WEBHOOK_SECRET=` any
    value and `TELEGRAM_API_BASE=http://127.0.0.1:8099`. The runner starts a
-   stand-in Telegram on that port.
+   stand-in Telegram on that port. For the daily summary in the drinks
+   walkthrough also set `CRON_SECRET=test-cron-secret` and
+   `SUPABASE_SECRET_KEY` to the local secret key (`npx supabase status`).
 3. `npm run build && npm start`, then `npm run test:e2e` in another terminal.
    `npm run test:e2e -- 04 08` runs only the files starting with those numbers.
    Screenshots go to `test-results/e2e/`.
@@ -184,6 +186,23 @@ Messages are sent after an action has finished, so a slow or unreachable
 Telegram never delays or fails the action. A message that fails to send is
 logged and not retried.
 
+### End-of-day summary (drinks)
+
+As in Bilikis, each drinks business with Telegram linked gets a "DAILY
+OPERATIONS" message just after midnight for the day that ended: activity,
+empty movement, closing position by category and the empty balance, open
+work, and corrections and voids. Quantities only, no money. To switch it on:
+
+1. Set two more environment variables on the host and redeploy:
+   - `SUPABASE_SECRET_KEY`: the secret (service) key from Supabase, Project
+     Settings -> API keys. It stays on the server.
+   - `CRON_SECRET`: any long random string you make up.
+2. Have something call `<APP ADDRESS>/api/cron/daily-summary` once a day with
+   the header `Authorization: Bearer <CRON_SECRET>`. On Vercel, `vercel.json`
+   already does this at 23:05 UTC (00:05 in Lagos). Elsewhere, use any
+   scheduler (for example cron-job.org). Each business gets each day once,
+   however often it is called; `?date=YYYY-MM-DD` sends that day again.
+
 ## Emails
 
 Supabase Auth sends the sign-up and password-reset emails; the app sends none
@@ -253,4 +272,5 @@ version of the app, so the database can always go first.
 | 27 | Inventory value and products for drinks, as in Bilikis: Inventory value as at any closing date with Total inventory value, Valued products and Products missing cost, value by category and by product (weighted-average cost, status); Products with pictures for the NBC drinks, the cards Total products, PET vs RGB, Active products and Costed / priced, and a saved product order (owners and admins) that the order screen, stock summary, daily report and inventory value follow | Done |
 | 28 | Dashboards, audit log and Manage, as in Bilikis: for drinks, owners and admins see PET sold today, Open RGB trips, RGB sold today and Empty balance with an admin control desk; staff see Stock in entries, Open RGB, PET and RGB sold today, quick actions and Today's focus. The Activity page is now the Audit log (date, time, action, record, actor, details; filtered by dates, action and team member; paged). A Manage page links products, customers and drivers / workers. Customers stay one simple form; drinks customers get cards for Total customers, who bought PET / RGB, and Both channels | Done |
 | 29 | Correcting a drinks sale in place, as in Bilikis: an owner or admin changes the products and quantities of a sale that has gone out, with a reason; stock, the empties owed and the empties expected back follow (never below what already came back), prices stay as sold, and a PET sale stays PET. Voiding a drinks sale asks for its sale number to be typed | Done |
+| 30 | Trip returns warn before leaving with numbers half entered (back button, links, closing the tab), as in Bilikis; and Bilikis's end-of-day Telegram summary for drinks businesses (see Telegram notifications) | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |
