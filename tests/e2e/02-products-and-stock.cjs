@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, receiveCards } = require("./helpers.cjs");
+const { receiveCards } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
