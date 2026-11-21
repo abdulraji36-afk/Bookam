@@ -103,29 +103,6 @@
     touch-action: manipulation;
   }
 
-  /*
-   * Date and time boxes. Safari on iPhone draws its own: it keeps a minimum
-   * width of its own (so the box pokes out past a narrow card) and ignores
-   * the height set on it. Drawn plainly, they size like every other box.
-   */
-  input[type="date"],
-  input[type="time"],
-  input[type="month"],
-  input[type="datetime-local"] {
-    -webkit-appearance: none;
-    appearance: none;
-    min-width: 0;
-    max-width: 100%;
-  }
-  input[type="date"]::-webkit-date-and-time-value,
-  input[type="time"]::-webkit-date-and-time-value,
-  input[type="month"]::-webkit-date-and-time-value,
-  input[type="datetime-local"]::-webkit-date-and-time-value {
-    min-height: 1.5em;
-    margin: 0;
-    text-align: left;
-  }
-
   /* A fold-out section eases open. */
   details[open] > summary ~ * {
     animation: var(--animate-pop-in);
@@ -234,5 +211,46 @@
   .menu-scroll {
     scrollbar-width: thin;
     scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
+}
+
+/*
+ * Date and time boxes. Safari on iPhone draws its own: it keeps a minimum
+ * width of its own (so the box pokes out past a narrow card), ignores the
+ * height set on it and puts the date at the top edge. Drawn plainly, and
+ * centred, they look like every other box. Kept outside the layers on
+ * purpose, so a box's own "block" class cannot undo the centring.
+ */
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 3rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  line-height: 1.5;
+  text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  margin: 0;
+  text-align: left;
+}
+
+/* Only Safari on iPhone and iPad needs the date centred by hand. */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="time"],
+  input[type="month"],
+  input[type="datetime-local"] {
+    display: flex;
+    align-items: center;
   }
 }
