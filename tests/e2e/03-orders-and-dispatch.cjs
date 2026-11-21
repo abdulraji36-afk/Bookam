@@ -265,7 +265,7 @@ let dbg;
 
   await nav(a, "Dashboard");
   // A drinks dashboard has the Bilikis cards; the waiting orders are listed below them.
-  const waitingList = a.locator("section", { hasText: "Waiting for dispatch" }).filter({ has: a.locator("tbody") });
+  const waitingList = a.locator("section").filter({ has: a.getByRole("heading", { name: "Waiting for dispatch", exact: true }) });
   await waitingList.locator("tbody tr", { hasText: "Mama Tunde Stores" }).waitFor();
   assert.equal(await waitingList.locator("tbody tr").count(), 1);
   await a.screenshot({ path: `${SHOTS}/28-dashboard.png`, fullPage: true });
