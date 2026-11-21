@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, addCrew, newOrders } = require("./helpers.cjs");
+const { pick, addCrew, newOrders, receiveCards } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -78,8 +78,7 @@ let dbg;
   }
   async function receive(product, quantity) {
     await go("/stock/receive");
-    await pick(a, "Product", product);
-    await vis(a.getByLabel("Quantity")).fill(String(quantity));
+    await receiveCards(a, [[product.replace(/ \(.*\)$/, ""), quantity]]);
     await vis(a.getByLabel("Supplier delivery reference")).fill(`NBC-${Date.now()}`);
     await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
     await a.waitForURL(/\/stock\/receipts\/[0-9a-f-]{36}/);

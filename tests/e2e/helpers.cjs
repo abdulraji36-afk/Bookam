@@ -65,4 +65,13 @@ async function newOrders(page, businessUrl, kind, rows, options = {}) {
   return new URL(page.url()).searchParams.get("ids").split(",");
 }
 
-module.exports = { pick, addCrew, newOrders };
+/** Stock in on a drinks depot's product cards: Add, then how many came in. */
+async function receiveCards(page, rows) {
+  const vis = (locator) => locator.filter({ visible: true });
+  for (const [name, quantity] of rows) {
+    await vis(page.getByRole("button", { name: `Add ${name}`, exact: true })).click();
+    await vis(page.getByRole("textbox", { name: `${name} received` })).fill(String(quantity));
+  }
+}
+
+module.exports = { pick, addCrew, newOrders, receiveCards };

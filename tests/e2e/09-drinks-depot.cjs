@@ -3,7 +3,7 @@
 // the customer settling it later at the depot.
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
-const { pick, newOrders } = require("./helpers.cjs");
+const { pick, newOrders, receiveCards } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
@@ -152,11 +152,10 @@ let dbg;
 
   // 4. NBC delivery: 500 RGB crates in; then, on its own sheet, 250 empties taken
   await go("/stock/receive");
-  await pick(a, "Product", "Coca-Cola 50cl RGB");
-  await vis(a.getByLabel("Quantity")).fill("500");
-  await vis(a.getByRole("button", { name: "Add another product" })).click();
-  await pick(a, "Product 2", "Coca-Cola 50cl PET");
-  await vis(a.getByLabel("Quantity")).nth(1).fill("40");
+  // Product cards, as on the order screen, each with what is in stock now.
+  assert.equal(await a.getByLabel("In stock for Coca-Cola 50cl RGB").innerText(), "In stock: 0");
+  await receiveCards(a, [["Coca-Cola 50cl RGB", 500], ["Coca-Cola 50cl PET", 40]]);
+  await a.getByText("+500 → 500").waitFor();
   await vis(a.getByLabel("Supplier", { exact: true })).fill("NBC");
   await vis(a.getByLabel("Supplier delivery reference")).fill("NBC-7781");
   // The stock-in form has no empties: those are an exchange of their own.

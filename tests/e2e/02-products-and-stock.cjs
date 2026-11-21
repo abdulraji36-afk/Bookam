@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick } = require("./helpers.cjs");
+const { pick, receiveCards } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -131,11 +131,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByLabel("Supplier delivery reference").fill("NBC-0001");
   await a.getByRole("button", { name: "Save and add to stock" }).click();
   await a.getByText("Add at least one product.").waitFor();
-  await pick(a, "Product", "Cola 50cl (crate)");
-  await a.getByLabel("Quantity").fill("100");
-  await a.getByRole("button", { name: "Add another product" }).click();
-  await pick(a, "Product 2", "Water 75cl (pack)");
-  await a.getByLabel("Quantity").nth(1).fill("40");
+  // Product cards, as on the order screen.
+  await receiveCards(a, [["Cola 50cl", 100], ["Water 75cl", 40]]);
+  await a.locator("aside", { hasText: "On this delivery" }).getByText("140", { exact: true }).waitFor();
   await a.getByLabel("Supplier", { exact: true }).fill("Main supplier");
   // Empties the supplier takes are an exchange of their own, not part of the delivery.
   assert.equal(await a.getByLabel(/did the supplier take\?/).count(), 0);
@@ -201,8 +199,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
 
   await c.goto(BASE + base + "/stock");
   await c.locator("main").getByRole("link", { name: "+ Receive stock" }).click();
-  await pick(c, "Product", "Cola 50cl (crate)");
-  await c.getByLabel("Quantity").fill("12");
+  await receiveCards(c, [["Cola 50cl", 12]]);
   await c.getByLabel("Supplier delivery reference").fill("NBC-0002");
   await c.getByRole("button", { name: "Save and add to stock" }).click();
   await c.waitForURL(/\/stock\/receipts\//);
@@ -232,10 +229,8 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.goto(BASE + base + "/products?status=off");
   await a.locator("tr", { hasText: "Water 75cl" }).waitFor();
   await a.goto(BASE + base + "/stock/receive");
-  const receiveBox = a.getByRole("combobox", { name: "Product", exact: true }).filter({ visible: true });
-  await receiveBox.click();
-  await receiveBox.fill("Water");
-  await a.getByText(/Nothing matches/).waitFor();
+  await a.getByRole("button", { name: "Add Cola 50cl", exact: true }).waitFor();
+  assert.equal(await a.getByRole("button", { name: "Add Water 75cl", exact: true }).count(), 0, "no card for a switched-off product");
   ok("a switched-off product can no longer be received");
 
   await browser.close();

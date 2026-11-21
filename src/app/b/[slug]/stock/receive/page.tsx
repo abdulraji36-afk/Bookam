@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { recordStockReceiptAction } from "@/app/actions/stock";
+import { ProductPicture } from "@/components/products/product-picture";
+import { ReceiveCardsForm } from "@/components/stock/receive-cards-form";
 import { ReceiveStockForm } from "@/components/stock/receive-stock-form";
 import { Card, EmptyState, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { todayIn } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
+import { getSavedProductOrder, sortByProductMasterOrder } from "@/lib/product-order";
 import { getDrinksStock } from "@/lib/returnables";
 
 export const metadata: Metadata = { title: "Receive stock" };
@@ -18,7 +21,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
   const [productsResult, locationsResult, coloursResult] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, unit, tracks_serials, returnable_item_id")
+      .select("id, name, sku, category, unit, tracks_serials, returnable_item_id")
       .eq("organization_id", org.id)
       .eq("is_active", true)
       .order("name"),
@@ -45,6 +48,42 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
     colours: [...(colours.get(product.id) ?? [])].sort()
   }));
 
+  const today = todayIn(org.timezone, await requestNow());
+
+  // A drinks depot gets product cards, like the order screen.
+  if (org.sells_drinks && products.length > 0) {
+    const [levels, saved] = await Promise.all([
+      supabase.from("product_stock_levels").select("location_id, product_id, on_hand").eq("organization_id", org.id),
+      getSavedProductOrder(supabase, org.id)
+    ]);
+    const stock: Record<string, Record<string, number>> = {};
+    for (const level of levels.data ?? []) (stock[level.location_id] ??= {})[level.product_id] = Number(level.on_hand);
+    const cards = sortByProductMasterOrder(
+      (productsResult.data ?? [])
+        .filter((product) => !product.tracks_serials)
+        .map((product) => ({ ...product, category: product.returnable_item_id ? "RGB" : (product.category ?? "PET") })),
+      saved
+    ).map((product) => ({
+      id: product.id,
+      name: product.name,
+      unit: product.unit,
+      category: product.category,
+      picture: <ProductPicture sku={product.sku} name={product.name} />
+    }));
+    return (
+      <div className="max-w-7xl space-y-6">
+        <PageTitle sub="Record goods as they arrive. They are added to your stock straight away.">Receive stock</PageTitle>
+        <ReceiveCardsForm
+          action={recordStockReceiptAction.bind(null, org.slug)}
+          products={cards}
+          locations={locationsResult.data ?? []}
+          stock={stock}
+          today={today}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
       <PageTitle sub="Record goods as they arrive. They are added to your stock straight away.">
@@ -70,7 +109,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
             products={products}
             locations={locationsResult.data ?? []}
             drinks={drinks}
-            today={todayIn(org.timezone, await requestNow())}
+            today={today}
           />
         </Card>
       )}
