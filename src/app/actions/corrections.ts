@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { plainNumber, safeText } from "@/lib/validation";
 import { describeDbError, type ActionState } from "@/lib/action-state";
 import { formatQuantity } from "@/lib/format";
 import { notify } from "@/lib/notify";
@@ -9,9 +10,7 @@ import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import type { ServerClient } from "@/lib/supabase/server";
 
 const idSchema = z.uuid();
-const reasonSchema = z
-  .string()
-  .trim()
+const reasonSchema = safeText()
   .min(10, "Give a reason of at least 10 characters.")
   .max(500, "Use at most 500 characters for the reason.");
 
@@ -91,11 +90,10 @@ const correctionLinesSchema = z
   .array(
     z.object({
       product_id: z.uuid("Choose a product on every line."),
-      quantity: z.coerce
-        .number("Enter a quantity on every line.")
+      quantity: plainNumber(z.number("Enter a quantity on every line.")
         .int("Crates and packs are counted in whole numbers.")
         .positive("Every line needs a quantity greater than zero.")
-        .max(9_999_999, "That quantity is too large.")
+        .max(9_999_999, "That quantity is too large."))
     })
   )
   .min(1, "Keep at least one product on the sale. To cancel it, void it instead.")
@@ -166,10 +164,9 @@ export async function correctTripReturnAction(
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
   if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
 
-  const quantity = z.coerce
-    .number("Enter the correct number.")
+  const quantity = plainNumber(z.number("Enter the correct number.")
     .min(0, "The number cannot be less than zero.")
-    .max(9_999_999, "That number is too large.")
+    .max(9_999_999, "That number is too large."))
     .safeParse(String(formData.get("quantity") ?? "").trim() === "" ? undefined : formData.get("quantity"));
   if (!quantity.success) return { ok: false, message: quantity.error.issues[0].message };
 
@@ -200,10 +197,9 @@ export async function correctAdjustmentAction(
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
   if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
 
-  const quantity = z.coerce
-    .number("Enter the correct number.")
+  const quantity = plainNumber(z.number("Enter the correct number.")
     .positive("Enter a number greater than zero. To cancel the adjustment, void it instead.")
-    .max(9_999_999, "That number is too large.")
+    .max(9_999_999, "That number is too large."))
     .safeParse(String(formData.get("quantity") ?? "").trim() === "" ? undefined : formData.get("quantity"));
   if (!quantity.success) return { ok: false, message: quantity.error.issues[0].message };
 

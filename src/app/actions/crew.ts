@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { safeText, phoneText } from "@/lib/validation";
 import { describeDbError, type ActionState } from "@/lib/action-state";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 
 const workerSchema = z.object({
-  name: z.string().trim().min(2, "Enter the name.").max(80, "Use at most 80 characters for the name."),
+  name: safeText().min(2, "Enter the name.").max(80, "Use at most 80 characters for the name."),
   role: z.enum(["driver", "loader"], "Choose driver or worker."),
-  phone: z.string().trim().max(30, "That phone number is too long.")
+  phone: phoneText()
 });
 
 /** Owners and admins add a driver or worker to the list, or change one (workerId set). */

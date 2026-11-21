@@ -7,7 +7,7 @@ import { describeDbError, type ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity } from "@/lib/format";
 import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg, type OrgContext } from "@/lib/org";
-import { firstIssue, orderSchema, readQuantity, tripSchema } from "@/lib/validation";
+import { firstIssue, orderSchema, readQuantity, tripSchema, safeText } from "@/lib/validation";
 
 const idSchema = z.uuid();
 
@@ -128,7 +128,7 @@ const batchSchema = z.object({
   locationId: z.uuid("Choose where the stock comes from."),
   orderDate: z.iso.date("Enter the order date."),
   paymentType: z.enum(["cash", "transfer", "credit"]).catch("cash"),
-  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+  note: safeText().max(500, "Use at most 500 characters for the note."),
   orders: z
     .array(
       z.object({

@@ -32,6 +32,7 @@ async function signUp(page, name, email, expectUrl) {
 }
 const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).getByRole("link", { name, exact: true }).click();
 
+let dbg;
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
@@ -42,6 +43,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
     return page;
   };
   const a = await newPage();
+  dbg = a;
   await a.goto(BASE + "/signup");
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
@@ -266,8 +268,10 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   ok("an owner cancels a trip that has not left and its order waits again");
 
   await nav(a, "Dashboard");
-  const tile = a.getByRole("link", { name: /Waiting for dispatch/ });
-  await tile.getByText("1", { exact: true }).waitFor();
+  // A drinks dashboard has the Bilikis cards; the waiting orders are listed below them.
+  const waitingList = a.locator("section", { hasText: "Waiting for dispatch" }).filter({ has: a.locator("tbody") });
+  await waitingList.locator("tbody tr", { hasText: "Mama Tunde Stores" }).waitFor();
+  assert.equal(await waitingList.locator("tbody tr").count(), 1);
   await a.screenshot({ path: `${SHOTS}/28-dashboard.png`, fullPage: true });
   ok("dashboard shows what is waiting");
 
@@ -290,4 +294,11 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   console.log("browser errors:", real.length ? real : "none");
   console.log(`${passed} steps passed`);
   if (real.length) process.exit(1);
-})().catch((e) => { console.error("FAIL", e.message.split("\n").slice(0, 14).join("\n")); process.exit(1); });
+})().catch(async (e) => {
+  try {
+    await dbg?.screenshot({ path: SHOTS + "/fail.png", fullPage: true });
+    console.error("URL", dbg?.url());
+  } catch {}
+  console.error("FAIL", e.message.split("\n").slice(0, 14).join("\n"));
+  process.exit(1);
+});

@@ -8,13 +8,7 @@ import { ADD_REASONS, formatQuantity, SUBTRACT_REASONS } from "@/lib/format";
 import { notify } from "@/lib/notify";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import type { ServerClient } from "@/lib/supabase/server";
-import {
-  firstIssue,
-  openingDebtSchema,
-  returnableAdjustmentSchema,
-  supplierExchangeSchema,
-  tripReturnsSchema
-} from "@/lib/validation";
+import { firstIssue, openingDebtSchema, returnableAdjustmentSchema, supplierExchangeSchema, tripReturnsSchema, plainNumber, safeText } from "@/lib/validation";
 
 const idSchema = z.uuid();
 const text = (formData: FormData, name: string) => String(formData.get(name) ?? "");
@@ -199,12 +193,11 @@ export async function recordOpeningDebtAction(
 const followupSchema = z.object({
   lineId: z.uuid("Choose the order the empties are for."),
   receivedDate: z.iso.date("Enter the date they brought them back."),
-  quantity: z.coerce
-    .number("Enter how many they brought back.")
+  quantity: plainNumber(z.number("Enter how many they brought back.")
     .int("Empties are counted in whole numbers.")
     .positive("Enter how many they brought back, more than 0.")
-    .max(9_999_999, "That number is too large."),
-  note: z.string().trim().max(500, "Use at most 500 characters for the note."),
+    .max(9_999_999, "That number is too large.")),
+  note: safeText().max(500, "Use at most 500 characters for the note."),
   returnTo: z.enum(["order", "returns", "shortages"]).catch("returns")
 });
 
@@ -254,11 +247,10 @@ const openingEmptiesSchema = z.object({
   locationId: z.uuid("Choose a location."),
   returnableItemId: z.uuid("Choose what you are counting."),
   date: z.iso.date("Enter the date."),
-  quantity: z.coerce
-    .number("Enter how many empties are on the ground.")
+  quantity: plainNumber(z.number("Enter how many empties are on the ground.")
     .int("Empties are counted in whole numbers.")
     .positive("Enter a number greater than zero.")
-    .max(9_999_999, "That number is too large.")
+    .max(9_999_999, "That number is too large."))
 });
 
 /** Bilikis's "Set opening empties": the crates already on the ground at the start. */
