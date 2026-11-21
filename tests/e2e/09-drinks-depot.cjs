@@ -169,6 +169,9 @@ let dbg;
   // Each delivery line keeps its buying cost.
   await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("₦3,900", { exact: true }).waitFor();
 
+  // Empty exchanges sits right under Stock in the menu.
+  const menuLabels = (await menu(a).getByRole("link").allInnerTexts()).map((text) => text.trim());
+  assert.equal(menuLabels[menuLabels.indexOf("Stock") + 1], "Empty exchanges");
   // The empty exchange, from the Empty exchanges page in the menu.
   await menu(a).getByRole("link", { name: "Empty exchanges" }).click();
   await a.getByText("No exchanges yet.").waitFor();

@@ -64,6 +64,16 @@ async function BusinessShell({
           icon: "deliveries",
           excludes: [`${base}/stock/summary`],
         },
+        // Right under Stock (stock in): what the supplier took back with a delivery.
+        ...(org.sells_drinks
+          ? [
+              {
+                href: `${base}/returns/exchanges`,
+                label: "Empty exchanges",
+                icon: "exchanges",
+              } as const,
+            ]
+          : []),
         {
           href: `${base}/stock/summary`,
           label: "Stock summary",
@@ -90,15 +100,6 @@ async function BusinessShell({
                 href: `${base}/returns/shortages`,
                 label: "Empty shortages",
                 icon: "shortages",
-              } as const,
-            ]
-          : []),
-        ...(org.sells_drinks
-          ? [
-              {
-                href: `${base}/returns/exchanges`,
-                label: "Empty exchanges",
-                icon: "exchanges",
               } as const,
             ]
           : []),
