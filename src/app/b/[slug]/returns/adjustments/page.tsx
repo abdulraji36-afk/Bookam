@@ -40,7 +40,7 @@ async function EmptyBalance({
   params,
 }: PageProps<"/b/[slug]/returns/adjustments">) {
   const { slug } = await params;
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   if (!org.sells_drinks) notFound();
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
@@ -75,7 +75,7 @@ async function EmptyBalance({
   const labels = new Map<string, string>([
     ...ADD_REASONS,
     ...SUBTRACT_REASONS,
-    ["opening_count", "Opening empties"],
+    ["opening_count", t("Opening empties")],
   ]);
   const adjustments = adjustmentsResult.data ?? [];
   const live = adjustments.filter((row) => !row.voided_at);
@@ -104,11 +104,11 @@ async function EmptyBalance({
   return (
     <div className="space-y-5">
       <PageHeader
-        title={manager ? "Empty balance" : "Empty adjustments"}
+        title={manager ? t("Empty balance") : t("Empty adjustments")}
         sub={
           manager
-            ? "Set the empty crates already on the ground before the depot started here, and keep the count right."
-            : "Every adjustment made to the empties count."
+            ? t("Set the empty crates already on the ground before the depot started here, and keep the count right.")
+            : t("Every adjustment made to the empties count.")
         }
         actions={
           manager ? (
@@ -131,7 +131,7 @@ async function EmptyBalance({
 
       {manager ? (
         <SummaryCards columns={5}>
-          <SummaryCard label="Opening empties" value={formatQuantity(openingTotal)} />
+          <SummaryCard label={t("Opening empties")} value={formatQuantity(openingTotal)} />
           <SummaryCard label="Trip returns" value={formatQuantity(tripReturns)} />
           <SummaryCard label="Adjustments" value={signed(otherAdjustments)} />
           <SummaryCard
@@ -139,7 +139,7 @@ async function EmptyBalance({
             value={formatQuantity(Number(summary?.taken_by_supplier ?? 0))}
           />
           <SummaryCard
-            label="Depot empties"
+            label={t("Depot empties")}
             value={formatQuantity(Number(summary?.in_store ?? 0))}
             strong
           />
@@ -147,15 +147,15 @@ async function EmptyBalance({
       ) : (
         <SummaryCards columns={3}>
           <SummaryCard label="Adjustment records" value={formatQuantity(live.length)} />
-          <SummaryCard label="Empties added" value={formatQuantity(added)} />
-          <SummaryCard label="Empties removed" value={formatQuantity(removed)} />
+          <SummaryCard label={t("Empties added")} value={formatQuantity(added)} />
+          <SummaryCard label={t("Empties removed")} value={formatQuantity(removed)} />
         </SummaryCards>
       )}
 
       {manager && pool ? (
         <Card>
           <CardHeader
-            title="Set opening empties"
+            title={t("Set opening empties")}
             description="Setting it again changes the same opening count; it is not added twice."
           />
           <OpeningEmptiesForm

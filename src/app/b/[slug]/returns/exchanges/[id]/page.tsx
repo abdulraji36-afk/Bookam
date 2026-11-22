@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Supplier exchange" };
 
 async function Exchange({ params, searchParams }: PageProps<"/b/[slug]/returns/exchanges/[id]">) {
   const [{ slug, id }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const { data: exchange } = await supabase
     .from("supplier_exchanges")
     .select(
@@ -50,7 +50,7 @@ async function Exchange({ params, searchParams }: PageProps<"/b/[slug]/returns/e
             ["Date", formatDay(exchange.exchange_date)],
             ["Reference", exchange.reference],
             [
-              "RGB crates delivered",
+              t("RGB crates delivered"),
               exchange.crates_delivered === null ? null : formatQuantity(Number(exchange.crates_delivered))
             ],
             [`${name} taken by the supplier`, `${formatQuantity(Number(exchange.quantity_taken))} ${name}`],

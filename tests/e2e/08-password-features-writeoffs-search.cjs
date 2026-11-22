@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const { createClient } = require("@supabase/supabase-js");
-const { pick } = require("./helpers.cjs");
+const { pick, receiveCards, newOrders } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
@@ -69,7 +69,10 @@ let dbg;
   await a.getByText("I count my goods").click();
   // Drinks is its own workspace, so it is not asked again here.
   assert.equal(await a.getByLabel("I sell drinks (RGB crates and PET packs)").count(), 0);
-  assert.equal(await a.getByLabel("I also sell some items with serial numbers").isChecked(), false);
+  // A goods business is asked whether anything comes back, not about serial numbers.
+  assert.equal(await a.getByLabel("I also sell some items with serial numbers").count(), 0);
+  assert.equal(await a.getByLabel("Customers bring things back to me").isChecked(), false);
+  assert.equal(await a.getByLabel("What do they bring back?").count(), 0, "only asked once something comes back");
   assert.equal(await a.getByLabel("We deliver to customers").isChecked(), true, "a goods business delivers by default");
   await a.screenshot({ path: `${SHOTS}/80-onboarding-questions.png`, fullPage: true });
   await a.getByLabel("Business name").fill(`Tola Foods ${run}`);
@@ -81,12 +84,18 @@ let dbg;
 
   await menu(a).getByRole("link", { name: "Orders", exact: true }).waitFor();
   assert.equal(await menu(a).getByRole("link", { name: "Returns", exact: true }).count(), 0);
+  assert.equal(await menu(a).getByRole("link", { name: "Returnables", exact: true }).count(), 0);
+  assert.equal(await menu(a).getByRole("link", { name: "Return shortages", exact: true }).count(), 0);
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Rice 50kg");
   assert.equal(await a.getByLabel("Customers must bring something back").count(), 0);
   assert.equal(await a.getByLabel("Track each unit by serial number").count(), 0);
+  // Nothing comes back here, so there is no Returnable choice: only the category.
+  assert.equal(await a.getByText("Does anything come back with it?").count(), 0);
   await vis(a.getByLabel("Sold by the", { exact: true })).fill("bag");
   await vis(a.getByLabel(/Selling price/)).fill("78000");
+  await vis(a.getByLabel(/Buying cost/)).fill("72000");
+  await vis(a.getByLabel("Category")).fill("Grains");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
   await go("/stock/summary");
@@ -95,18 +104,18 @@ let dbg;
 
   // 2. No write-offs: stock only comes in through deliveries (and goes out on orders).
   await go("/stock/receive");
-  await pick(a, "Product", "Rice 50kg");
-  await vis(a.getByLabel("Quantity")).fill("20");
+  await receiveCards(a, [["Rice 50kg", 20]]);
+  await vis(a.getByLabel("Supplier delivery reference")).fill("WB-001");
   await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
   await a.waitForURL(/\/stock\/receipts\//);
   await go("/stock/summary");
-  await a.locator("li, tr", { hasText: "Rice 50kg" }).getByText("20", { exact: true }).waitFor();
+  await a.locator("li, tr", { hasText: "Rice 50kg" }).locator("[data-current-stock]").getByText("20", { exact: true }).waitFor();
   assert.equal(await a.getByRole("link", { name: "Write off / correct" }).count(), 0);
   const gone = await a.goto(BASE + base + "/stock/adjust");
   assert.equal(gone.status(), 404);
   await go("/reports/daily");
-  const riceRow = a.locator("section", { hasText: "Stock" }).first().locator("tr", { hasText: "Rice 50kg" });
-  assert.deepEqual((await riceRow.locator("td").allInnerTexts()).map((t) => t.trim()), ["0", "20", "0", "20"]);
+  const riceRow = a.locator("section", { hasText: "Product movement on" }).locator("tr", { hasText: "Rice 50kg" });
+  assert.deepEqual((await riceRow.locator("td").allInnerTexts()).map((t) => t.trim()).slice(4), ["0", "20", "0", "20"]);
   ok("there is no write-off screen; stock comes in through deliveries and the report has no write-off column");
 
   // 3. Search and paging, with enough customers to need a second page.
@@ -154,27 +163,8 @@ let dbg;
   await a.getByText("Showing 1–50 of 55").waitFor();
   await a.screenshot({ path: `${SHOTS}/82-customers-paged.png`, fullPage: true });
 
-  // Orders: search by customer and by number.
-  await go("/orders/new");
-  // A goods business has one New order form; a missed customer, product or
-  // quantity is pointed out at the field itself.
-  const saveOrder = () => vis(a.getByRole("button", { name: "Save order" })).click();
-  await saveOrder();
-  await a.getByText("Choose the customer before saving the order.").waitFor();
-  await pick(a, "Customer", "Iya Basira Provisions");
-  await saveOrder();
-  await a.getByText("Choose the product, or remove this line.").waitFor();
-  await pick(a, "Product", "Rice 50kg");
-  await saveOrder();
-  await a.getByText(/^Enter how many .* of Rice 50kg\.$/).waitFor();
-  assert.equal(
-    await vis(a.getByLabel("Quantity")).evaluate((el) => el === document.activeElement),
-    true,
-    "the quantity box is focused"
-  );
-  await vis(a.getByLabel("Quantity")).fill("2");
-  await vis(a.getByRole("button", { name: "Save order" })).click();
-  await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+  // Orders: the depot order screen (several customers at once), then search.
+  await newOrders(a, BASE + base, "pet", [{ customer: "Iya Basira Provisions", lines: [["Rice 50kg", 2]] }]);
   await go("/orders?q=basira");
   await a.locator("tr", { hasText: "Iya Basira Provisions" }).first().waitFor();
   await go("/orders?q=nobody-here");
@@ -185,34 +175,27 @@ let dbg;
   await a.locator("tr").getByText(/^STK-/).first().waitFor();
   ok("customers page in fifties; orders, customers, products and deliveries can be searched");
 
-  // 4. Switching serial numbers on later, and a serial write-off.
+  // 4. Settings: something starts coming back later, with its own name.
   await go("/settings");
-  const features = a.locator("form", { has: a.getByText("How do you sell?") });
-  await features.getByLabel("I also sell some items with serial numbers").check();
-  await features.getByRole("button", { name: "Save" }).click();
-  await features.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  await vis(a.getByLabel("Customers bring things back to me")).check();
+  await vis(a.getByLabel("What do they bring back?")).fill("Empty sacks");
+  await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
+  await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  await go("");
+  await menu(a).getByRole("link", { name: "Empty sacks", exact: true }).waitFor();
+  await menu(a).getByRole("link", { name: "Return shortages", exact: true }).waitFor();
+  // A product can now be Returnable.
   await go("/products/new");
-  await vis(a.getByLabel("Product name")).fill("Infinix Hot 40");
-  await vis(a.getByLabel("Sold by the", { exact: true })).fill("phone");
-  await vis(a.getByLabel(/Selling price/)).fill("185000");
-  await vis(a.getByLabel("Track each unit by serial number")).check();
-  await vis(a.getByRole("button", { name: "Save product" })).click();
-  await a.waitForURL(new RegExp(base + "/products$"));
-  await go("/stock/receive");
-  await pick(a, "Product", "Infinix Hot 40");
-  await vis(a.getByLabel("Serial / IMEI 1")).fill("861234560000011");
-  await vis(a.getByLabel("Serial / IMEI 1")).press("Enter");
-  await vis(a.getByLabel("Serial / IMEI 2")).fill("861234560000022");
-  await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
-  await a.waitForURL(/\/stock\/receipts\//);
-
+  await a.getByText("Does anything come back with it?").waitFor();
+  await vis(a.getByLabel(/^Returnable/)).waitFor();
+  // And it can be switched off again while nothing returnable is in use.
   await go("/settings");
-  await features.getByLabel("I also sell some items with serial numbers").uncheck();
-  await features.getByRole("button", { name: "Save" }).click();
-  await features
-    .getByText("Serial numbers cannot be switched off while Infinix Hot 40 is tracked by serial number.", { exact: false })
-    .waitFor();
-  ok("serial numbers can be switched on later, and cannot be switched off while a product uses them");
+  await vis(a.getByLabel("Customers bring things back to me")).uncheck();
+  await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
+  await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  await go("");
+  assert.equal(await menu(a).getByRole("link", { name: "Empty sacks", exact: true }).count(), 0);
+  ok("a goods business names what comes back in Settings, and can switch it off again")
 
   // 5. Forgot password
   await vis(a.getByRole("button", { name: "Log out" })).click();

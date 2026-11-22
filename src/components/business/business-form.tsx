@@ -155,6 +155,32 @@ function WorkspaceChoice({ types }: { types: string[] }) {
   );
 }
 
+/** A goods business at sign-up: does anything come back, and what is it called? */
+function GoodsReturns() {
+  const [comesBack, setComesBack] = useState(false);
+  return (
+    <div className="space-y-3">
+      <CheckboxField
+        label="Customers bring things back to me"
+        name="tracksReturns"
+        checked={comesBack}
+        onChange={(event) => setComesBack(event.currentTarget.checked)}
+        hint="Gas cylinders, pallets, water bottles. Those goods are Returnable: BukAm tracks what each order still owes you."
+      />
+      {comesBack ? (
+        <TextField
+          label="What do they bring back?"
+          name="returnableName"
+          placeholder="e.g. Empty cylinders"
+          hint="One name for all of it. You can change it later in Settings."
+          maxLength={40}
+          required
+        />
+      ) : null}
+    </div>
+  );
+}
+
 type SellingDefaults = {
   mode?: SellingMode;
   returns?: boolean;
@@ -219,7 +245,11 @@ export function SellingQuestions({
       {mode ? (
         <fieldset className="space-y-4 rounded-md border-2 border-ink p-4">
           <legend className="px-1 text-lg font-extrabold">A few more questions</legend>
-          {mode === "quantity" ? (
+          {mode === "quantity" && !offerDrinks ? (
+            // At sign-up a goods business gets the depot workspace (as drinks
+            // does): returnable goods work like RGB, the rest like PET.
+            <GoodsReturns />
+          ) : mode === "quantity" ? (
             <>
               {offerDrinks ? (
                 <CheckboxField

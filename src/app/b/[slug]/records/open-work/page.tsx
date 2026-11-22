@@ -29,7 +29,7 @@ const ORDER_COLUMNS =
  */
 async function OpenWork({ params }: PageProps<"/b/[slug]/records/open-work">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!org.sells_drinks) notFound();
   const base = `/b/${org.slug}`;
 
@@ -87,7 +87,7 @@ async function OpenWork({ params }: PageProps<"/b/[slug]/records/open-work">) {
       cell: (row: (typeof petSales)[number]) => row.customer_name,
     },
     {
-      header: rgb ? "Total crates" : "Total qty",
+      header: rgb ? t("Total crates") : "Total qty",
       align: "right" as const,
       cell: (row: (typeof petSales)[number]) =>
         formatQuantity(Number(row.total_quantity)),
@@ -176,7 +176,7 @@ async function OpenWork({ params }: PageProps<"/b/[slug]/records/open-work">) {
     <div className="space-y-5">
       <PageHeader
         title="Incomplete work"
-        sub="Unfinished PET and RGB work that still needs staff action."
+        sub={t("Unfinished PET and RGB work that still needs staff action.")}
         actions={
           <Link
             href={`${base}/records`}
@@ -187,12 +187,12 @@ async function OpenWork({ params }: PageProps<"/b/[slug]/records/open-work">) {
         }
       />
       <SummaryCards columns={6}>
-        <SummaryCard label="PET open sales" value={formatQuantity(petSales.length)} />
-        <SummaryCard label="PET draft trips" value={formatQuantity(petTrips.length)} />
-        <SummaryCard label="RGB open sales" value={formatQuantity(rgbSales.length)} />
-        <SummaryCard label="RGB draft trips" value={formatQuantity(rgbDrafts)} />
-        <SummaryCard label="RGB waiting returns" value={formatQuantity(waitingReturns)} />
-        <SummaryCard label="RGB open trips" value={formatQuantity(rgbTrips.length)} strong />
+        <SummaryCard label={t("PET open sales")} value={formatQuantity(petSales.length)} />
+        <SummaryCard label={t("PET draft trips")} value={formatQuantity(petTrips.length)} />
+        <SummaryCard label={t("RGB open sales")} value={formatQuantity(rgbSales.length)} />
+        <SummaryCard label={t("RGB draft trips")} value={formatQuantity(rgbDrafts)} />
+        <SummaryCard label={t("RGB waiting returns")} value={formatQuantity(waitingReturns)} />
+        <SummaryCard label={t("RGB open trips")} value={formatQuantity(rgbTrips.length)} strong />
       </SummaryCards>
 
       {error ? (
@@ -201,43 +201,43 @@ async function OpenWork({ params }: PageProps<"/b/[slug]/records/open-work">) {
         </Alert>
       ) : (
         <>
-          <TableCard title="PET open sales">
+          <TableCard title={t("PET open sales")}>
             <DataTable
-              label="PET open sales"
+              label={t("PET open sales")}
               rows={petSales}
               rowKey={(row) => row.id}
               rowHref={(row) => `${base}/orders/${row.id}`}
-              empty="No open PET sales. Every PET sale has gone out."
+              empty={t("No open PET sales. Every PET sale has gone out.")}
               columns={saleColumns(false)}
             />
           </TableCard>
-          <TableCard title="PET draft dispatch trips">
+          <TableCard title={t("PET draft dispatch trips")}>
             <DataTable
-              label="PET draft dispatch trips"
+              label={t("PET draft dispatch trips")}
               rows={petTrips}
               rowKey={(trip) => trip.id}
               rowHref={(trip) => `${base}/dispatch/${trip.id}`}
-              empty="No PET draft trips."
+              empty={t("No PET draft trips.")}
               columns={tripColumns}
             />
           </TableCard>
-          <TableCard title="RGB open sales">
+          <TableCard title={t("RGB open sales")}>
             <DataTable
-              label="RGB open sales"
+              label={t("RGB open sales")}
               rows={rgbSales}
               rowKey={(row) => row.id}
               rowHref={(row) => `${base}/orders/${row.id}`}
-              empty="No open RGB sales. Every RGB sale has its empties counted."
+              empty={t("No open RGB sales. Every RGB sale has its empties counted.")}
               columns={saleColumns(true)}
             />
           </TableCard>
-          <TableCard title="RGB open dispatch trips">
+          <TableCard title={t("RGB open dispatch trips")}>
             <DataTable
-              label="RGB open dispatch trips"
+              label={t("RGB open dispatch trips")}
               rows={rgbTrips}
               rowKey={(trip) => trip.id}
               rowHref={(trip) => `${base}/dispatch/${trip.id}`}
-              empty="No incomplete RGB trips."
+              empty={t("No incomplete RGB trips.")}
               columns={tripColumns}
             />
           </TableCard>

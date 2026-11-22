@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { FormMessage } from "@/components/ui/alert";
 import { TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -25,6 +26,7 @@ export function OpeningEmptiesForm({
   locations: { id: string; name: string }[];
   current: { quantity: number; date: string } | null;
 }) {
+  const t = useSay();
   const { state, pending, form } = useFormAction(action);
 
   return (
@@ -46,12 +48,12 @@ export function OpeningEmptiesForm({
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
-          label="Opening empties"
+          label={t("Opening empties")}
           name="quantity"
           inputMode="numeric"
           autoComplete="off"
           defaultValue={current ? String(current.quantity) : undefined}
-          hint="Empty crates already on the ground before the depot started here."
+          hint={t("Empty crates already on the ground before the depot started here.")}
           required
         />
         <TextField
@@ -65,7 +67,7 @@ export function OpeningEmptiesForm({
       </div>
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel="Saving…">
-        {current ? "Update opening empties" : "Set opening empties"}
+        {current ? t("Update opening empties") : t("Set opening empties")}
       </SubmitButton>
     </form>
   );

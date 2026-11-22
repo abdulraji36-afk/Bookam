@@ -75,7 +75,9 @@ export function DrinksDailyReport({
   currency,
   data,
   error,
+  t,
 }: {
+  t: (text: string) => string;
   base: string;
   day: string;
   today: string;
@@ -139,10 +141,10 @@ export function DrinksDailyReport({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <SummaryCard label="PET closing stock" value={n(data.petClosing)} />
-            <SummaryCard label="RGB closing stock" value={n(data.rgbClosing)} />
+            <SummaryCard label={t("PET closing stock")} value={n(data.petClosing)} />
+            <SummaryCard label={t("RGB closing stock")} value={n(data.rgbClosing)} />
             <SummaryCard
-              label="Empty balance at close"
+              label={t("Empty balance at close")}
               value={
                 data.emptiesAtClose === null
                   ? "Unavailable"
@@ -166,10 +168,10 @@ export function DrinksDailyReport({
               ...(manager ? [{ header: "Details" }] : []),
             ]}
             rows={data.activity.map((row) => [
-              row.activity,
+              t(row.activity),
               n(row.records),
-              row.quantity,
-              ...(manager ? [row.detail] : []),
+              t(row.quantity),
+              ...(manager ? [t(row.detail)] : []),
             ])}
             empty="No daily activity"
           />
@@ -205,7 +207,7 @@ export function DrinksDailyReport({
           ).map(([kind, rows]) => (
             <Section
               key={kind}
-              title={`${kind} sales recorded on ${date}`}
+              title={t(`${kind} sales recorded on ${date}`)}
               columns={[
                 { header: "Sales no." },
                 { header: "Time" },
@@ -224,7 +226,7 @@ export function DrinksDailyReport({
                 row.products,
                 n(row.quantity),
                 ...(manager ? [money(row.value)] : []),
-                row.status,
+                t(row.status),
               ])}
               empty={`No ${kind} sales recorded`}
             />
@@ -242,19 +244,19 @@ export function DrinksDailyReport({
               { header: "Status" },
             ]}
             rows={data.dispatches.map((row) => [
-              row.channel,
+              t(row.channel),
               row.time,
               row.reference,
               row.driver,
               row.customers,
               n(row.quantity),
-              row.status,
+              t(row.status),
             ])}
             empty="No dispatches made"
           />
 
           <Section
-            title={`Empty movements on ${date}`}
+            title={t(`Empty movements on ${date}`)}
             columns={[
               { header: "Activity" },
               { header: "Time" },
@@ -264,12 +266,12 @@ export function DrinksDailyReport({
               ...(manager ? [{ header: "Note" }] : []),
             ]}
             rows={data.emptyMovements.map((row) => [
-              row.activity,
+              t(row.activity),
               row.time,
-              row.reference,
+              t(row.reference),
               row.party,
               signed(row.quantity),
-              ...(manager ? [row.note || "—"] : []),
+              ...(manager ? [t(row.note || "—")] : []),
             ])}
             empty="No empty movements"
           />
@@ -285,11 +287,11 @@ export function DrinksDailyReport({
                 { header: "Stock impact" },
               ]}
               rows={data.exceptions.map((row) => [
-                row.event,
+                t(row.event),
                 row.time,
                 row.reference,
                 row.reason,
-                row.impact,
+                t(row.impact),
               ])}
               empty="No exceptions"
             />
@@ -302,11 +304,11 @@ export function DrinksDailyReport({
             </p>
             <div className="grid grid-cols-2 gap-3 p-5 xl:grid-cols-5">
               <SummaryCard
-                label="PET waiting dispatch"
+                label={t("PET waiting dispatch")}
                 value={n(data.openWork.petWaiting)}
               />
               <SummaryCard
-                label="RGB waiting dispatch"
+                label={t("RGB waiting dispatch")}
                 value={n(data.openWork.rgbWaiting)}
               />
               <SummaryCard
@@ -339,7 +341,7 @@ export function DrinksDailyReport({
             rows={data.products.map((row) => [
               row.code,
               row.name,
-              row.category,
+              t(row.category),
               row.unit,
               n(row.opening),
               n(row.received),

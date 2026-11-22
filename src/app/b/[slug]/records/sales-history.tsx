@@ -36,7 +36,7 @@ export async function SalesHistory({
   query: Query;
   kind: "RGB" | "PET";
 }) {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   if (!org.sells_drinks) notFound();
   const base = `/b/${org.slug}`;
   const path = `${base}/records/${kind.toLowerCase()}`;
@@ -44,6 +44,8 @@ export async function SalesHistory({
   const customer = readCustomer(query);
   const page = readListSearch(query, PAGE_SIZE);
   const rgb = kind === "RGB";
+  // How this depot says it: RGB / PET for drinks, Returnable / Non-returnable for goods.
+  const label = t(kind);
 
   const matching = (columns: string) => {
     let builder = supabase
@@ -109,11 +111,11 @@ export async function SalesHistory({
   return (
     <div className="space-y-5">
       <PageHeader
-        title={rgb ? "RGB transaction history" : "PET transaction history"}
+        title={rgb ? t("RGB transaction history") : t("PET transaction history")}
         sub={
           rgb
-            ? "RGB sales delivered to customers, with how their empties came back."
-            : "PET sales delivered to customers."
+            ? t("RGB sales delivered to customers, with how their empties came back.")
+            : t("PET sales delivered to customers.")
         }
         actions={
           <Link
@@ -130,7 +132,7 @@ export async function SalesHistory({
           value={formatQuantity(records)}
         />
         <SummaryCard
-          label={rgb ? "Crates delivered" : "PET sold"}
+          label={rgb ? t("Crates delivered") : t("PET sold")}
           value={formatQuantity(total.quantity)}
         />
       </SummaryCards>
@@ -148,16 +150,16 @@ export async function SalesHistory({
           keeps happening, the database may be missing its latest update.
         </Alert>
       ) : rows.length === 0 ? (
-        <EmptyState title={`No ${kind} sales`}>
-          {kind} sales delivered between {formatDay(range.from)} and{" "}
+        <EmptyState title={`No ${label} sales`}>
+          {label} sales delivered between {formatDay(range.from)} and{" "}
           {formatDay(range.to)} will appear here.
         </EmptyState>
       ) : (
         <TableCard
-          title={`${kind} sales, ${formatDay(range.from)} to ${formatDay(range.to)}`}
+          title={`${label} sales, ${formatDay(range.from)} to ${formatDay(range.to)}`}
         >
           <DataTable
-            label={`${kind} sales`}
+            label={`${label} sales`}
             rows={rows}
             rowKey={(row) => row.id}
             rowHref={(row) => `${base}/orders/${row.id}`}
@@ -176,7 +178,7 @@ export async function SalesHistory({
                 cell: (row) => row.customer_name,
               },
               {
-                header: rgb ? "Total crates" : "Total qty",
+                header: rgb ? t("Total crates") : "Total qty",
                 align: "right",
                 cell: (row) => formatQuantity(Number(row.total_quantity)),
               },

@@ -67,10 +67,10 @@ export async function saveOrderAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
 
   const parsed = readOrder(formData);
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
   const items = parsed.data.items.map((item) =>
     item.tracked
       ? { product_id: item.productId, unit_ids: item.unitIds }
@@ -94,9 +94,9 @@ export async function saveOrderAction(
       p_buyer_phone: buyerPhone
     });
     const order = data?.[0];
-    if (error || !order) return { ok: false, message: describeDbError(error) };
+    if (error || !order) return { ok: false, message: t(describeDbError(error)) };
 
-    notify({ supabase, org }, () =>
+    notify({ supabase, org, t }, () =>
       orderLines({ supabase, org }, order.id, (no) =>
         parsed.data.handedOver ? `Sold at the counter ${no}` : `New order ${no}`
       )
@@ -117,9 +117,9 @@ export async function saveOrderAction(
     p_buyer_name: buyerName,
     p_buyer_phone: buyerPhone
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Order ${no} was changed`));
+  notify({ supabase, org, t }, () => orderLines({ supabase, org }, orderId, (no) => `Order ${no} was changed`));
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/orders/${orderId}?saved=1`);
 }
@@ -152,7 +152,7 @@ export async function saveOrderBatchAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
 
   let orders: unknown;
   try {
@@ -167,7 +167,7 @@ export async function saveOrderBatchAction(
     note: String(formData.get("note") ?? ""),
     orders
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { data, error } = await supabase.rpc("create_order_batch", {
     p_organization_id: org.id,
@@ -177,10 +177,10 @@ export async function saveOrderBatchAction(
     p_note: parsed.data.note || null,
     p_orders: parsed.data.orders
   });
-  if (error || !data?.length) return { ok: false, message: describeDbError(error) };
+  if (error || !data?.length) return { ok: false, message: t(describeDbError(error)) };
 
   for (const order of data) {
-    notify({ supabase, org }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
+    notify({ supabase, org, t }, () => orderLines({ supabase, org }, order.id, (no) => `New order ${no}`));
   }
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/orders?saved=batch&ids=${data.map((order) => order.id).join(",")}`);
@@ -191,13 +191,13 @@ export async function cancelOrderAction(
   orderId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const { error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () =>
+  notify({ supabase, org, t }, () =>
     orderLines({ supabase, org }, orderId, (no) => `Order ${no} cancelled. Its stock was put back.`)
   );
 
@@ -210,13 +210,13 @@ export async function handOverOrderAction(
   orderId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const { error } = await supabase.rpc("hand_over_order", { p_order_id: orderId });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () => orderLines({ supabase, org }, orderId, (no) => `Handed over at the counter ${no}`));
+  notify({ supabase, org, t }, () => orderLines({ supabase, org }, orderId, (no) => `Handed over at the counter ${no}`));
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Order handed over and completed." };
 }
@@ -226,7 +226,7 @@ export async function createTripAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
 
   const parsed = tripSchema.safeParse({
     locationId: formData.get("locationId") ?? "",
@@ -236,7 +236,7 @@ export async function createTripAction(
     note: formData.get("note") ?? "",
     orderIds: formData.getAll("orderId").map(String)
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { data, error } = await supabase.rpc("create_dispatch_trip_with_crew", {
     p_organization_id: org.id,
@@ -248,7 +248,7 @@ export async function createTripAction(
     p_worker_ids: parsed.data.workerIds
   });
   const trip = data?.[0];
-  if (error || !trip) return { ok: false, message: describeDbError(error) };
+  if (error || !trip) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/dispatch/${trip.id}`);
@@ -259,13 +259,13 @@ export async function dispatchTripAction(
   tripId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   const { error } = await supabase.rpc("dispatch_trip", { p_trip_id: tripId });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => {
+  notify({ supabase, org, t }, async () => {
     const { data } = await supabase
       .from("dispatch_trip_summaries")
       .select("trip_no, driver_name, vehicle, order_count, total_quantity, has_returns")
@@ -288,13 +288,13 @@ export async function cancelTripAction(
   tripId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   const { error } = await supabase.rpc("cancel_dispatch_trip", { p_trip_id: tripId });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => {
+  notify({ supabase, org, t }, async () => {
     const { data } = await supabase.from("dispatch_trips").select("trip_no").eq("id", tripId).maybeSingle();
     return data ? [`Trip ${data.trip_no} cancelled before leaving. Its orders are waiting again.`] : [];
   });

@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: "Products" };
 
 async function Products({ params, searchParams }: PageProps<"/b/[slug]/products">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}/products`;
   const manager = canManage(role);
   // A drinks depot sees every product on one page, in its saved order.
@@ -106,7 +106,7 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
               <Link href={`${base}/new`} className={buttonClass("primary")}>
                 + New product
               </Link>
-              {org.sells_drinks ? (
+              {org.sells_drinks && org.trade === "drinks" ? (
                 <Link href={`${base}/nbc`} className={buttonClass("secondary")}>
                   Add from the NBC list
                 </Link>
@@ -123,7 +123,7 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
       {drinks ? (
         <SummaryCards columns={4}>
           <SummaryCard label="Total products" value={formatQuantity(all.length)} />
-          <SummaryCard label="PET vs RGB" value={`${formatQuantity(all.length - rgbCount)} / ${formatQuantity(rgbCount)}`} />
+          <SummaryCard label={t("PET vs RGB")} value={`${formatQuantity(all.length - rgbCount)} / ${formatQuantity(rgbCount)}`} />
           <SummaryCard label="Active products" value={formatQuantity(activeCount.count ?? 0)} />
           <SummaryCard
             label={manager ? "Costed / priced" : "Priced"}
@@ -146,7 +146,7 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
             items={ordered.map((product) => ({
               id: product.id,
               name: product.name,
-              category: product.category,
+              category: t(product.category),
               picture: <ProductPicture sku={product.sku} name={product.name} />
             }))}
           />
@@ -201,7 +201,7 @@ async function Products({ params, searchParams }: PageProps<"/b/[slug]/products"
                       phone: "badge" as const,
                       cell: (product: Product) =>
                         kind(product) ? (
-                          <Badge tone={product.returnable_items || product.tracks_serials ? "solid" : "plain"}>{kind(product)}</Badge>
+                          <Badge tone={product.returnable_items || product.tracks_serials ? "solid" : "plain"}>{t(kind(product) ?? "")}</Badge>
                         ) : null
                     }
                   ]

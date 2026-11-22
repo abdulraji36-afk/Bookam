@@ -21,7 +21,7 @@ const PAGE_SIZE = 30;
 
 async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const words = saleWords(org.selling_mode);
   const delivers = org.does_delivery;
@@ -204,13 +204,14 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
         <NoMatches q={search.q} base={`${base}/orders`} />
       ) : drinks ? (
         <>
-          <TableCard title="RGB orders">
+          <TableCard title={t("RGB orders")}>
             <RgbOrderTable
+              t={t}
               rows={rows}
               base={base}
               currency={org.currency_code}
               showMoney={canManage(role)}
-              empty="No RGB orders here."
+              empty={t("No RGB orders here.")}
             />
           </TableCard>
           <Pager
@@ -219,7 +220,7 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
             total={total}
             hrefFor={(page) => href(current.value, page, petSearch.page)}
           />
-          <TableCard title="PET orders">
+          <TableCard title={t("PET orders")}>
             <OrderTable
               rows={petRows}
               base={base}
@@ -227,7 +228,7 @@ async function Orders({ params, searchParams }: PageProps<"/b/[slug]/orders">) {
               showMoney={canManage(role)}
               delivers={delivers}
               oneWord={words.One}
-              empty="No PET orders here."
+              empty={t("No PET orders here.")}
             />
           </TableCard>
           <Pager

@@ -53,7 +53,7 @@ async function Shortages({
   searchParams,
 }: PageProps<"/b/[slug]/returns/shortages">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   if (!org.sells_drinks) redirect(`${base}/returns`);
 
@@ -85,15 +85,15 @@ async function Shortages({
         <Alert tone="success">Follow-up return saved.</Alert>
       ) : null}
       <PageHeader
-        title="Empty shortages"
-        sub="Every order that came back with fewer empties than it took. A line stays here after the customer has brought them all back, marked completed."
+        title={t("Empty shortages")}
+        sub={t("Every order that came back with fewer empties than it took. A line stays here after the customer has brought them all back, marked completed.")}
         actions={
           canManage(role) ? (
             <Link
               href={`${base}/returns/customer-return`}
               className={buttonClass("primary")}
             >
-              Customer brought back empties
+              {t("Customer brought back empties")}
             </Link>
           ) : null
         }
@@ -109,7 +109,7 @@ async function Shortages({
           value={formatQuantity(summary.openCustomers)}
         />
         <Figure
-          label="Outstanding empties"
+          label={t("Outstanding empties")}
           value={formatQuantity(summary.outstanding)}
           strong
         />
@@ -155,13 +155,13 @@ async function Shortages({
 
       {error ? (
         <Alert tone="error">
-          Empty shortages could not load. Please try again.
+          {t("Empty shortages could not load. Please try again.")}
         </Alert>
       ) : null}
 
       <TableCard title="Customer empty shortage history">
         <DataTable
-          label="Empty shortages"
+          label={t("Empty shortages")}
           rows={page}
           rowKey={(line) => line.id}
           rowHref={(line) => `${base}/orders/${line.order_id}`}

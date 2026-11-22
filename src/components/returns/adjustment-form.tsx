@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { useState } from "react";
 import type { Choice } from "@/components/returns/exchange-form";
 import { FormMessage } from "@/components/ui/alert";
@@ -37,6 +38,7 @@ export function AdjustmentForm({
   drinks,
   initialReason,
 }: Props) {
+  const t = useSay();
   const { state, pending, form } = useFormAction(action);
   const startsOnAdd =
     !initialReason || ADD_REASONS.some(([value]) => value === initialReason);
@@ -54,7 +56,7 @@ export function AdjustmentForm({
         [
           value,
           drinks && value === "opening_count"
-            ? "Opening empties (already in store)"
+            ? t("Opening empties (already in store)")
             : label,
         ] as const,
     );

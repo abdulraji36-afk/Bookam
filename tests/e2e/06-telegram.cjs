@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick } = require("./helpers.cjs");
+const { pick, receiveCards, newOrders } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const TG = process.env.E2E_TELEGRAM_MOCK_URL ?? "http://127.0.0.1:8099";
@@ -64,10 +64,13 @@ let dbg;
   const base = new URL(a.url()).pathname;
   const go = (path) => a.goto(BASE + base + path);
 
+  // A goods depot where nothing comes back: each product has a price, cost and category.
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Water 75cl");
   await vis(a.getByLabel("Sold by the", { exact: true })).fill("pack");
   await vis(a.getByLabel(/Selling price/)).fill("1800");
+  await vis(a.getByLabel(/Buying cost/)).fill("1500");
+  await vis(a.getByLabel("Category")).fill("Water");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
   await go("/customers/new");
@@ -76,18 +79,13 @@ let dbg;
   await a.waitForURL(new RegExp(base + "/customers$"));
   async function receive(quantity) {
     await go("/stock/receive");
-    await pick(a, "Product", "Water 75cl (pack)");
-    await vis(a.getByLabel("Quantity")).fill(String(quantity));
+    await receiveCards(a, [["Water 75cl", quantity]]);
+    await vis(a.getByLabel("Supplier delivery reference")).fill(`WB-${Date.now()}`);
     await vis(a.getByRole("button", { name: "Save and add to stock" })).click();
     await a.waitForURL(/\/stock\/receipts\//);
   }
   async function order(quantity) {
-    await go("/orders/new");
-    await pick(a, "Customer", "Mama Tunde Stores");
-    await pick(a, "Product", "Water 75cl");
-    await vis(a.getByLabel("Quantity")).fill(String(quantity));
-    await vis(a.getByRole("button", { name: "Save order" })).click();
-    await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
+    await newOrders(a, BASE + base, "pet", [{ customer: "Mama Tunde Stores", lines: [["Water 75cl", quantity]] }]);
   }
   await receive(50);
   assert.equal((await sent()).length, 0, "nothing is sent before a chat is linked");

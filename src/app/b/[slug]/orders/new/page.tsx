@@ -32,7 +32,7 @@ async function NewOrder({
   searchParams,
 }: PageProps<"/b/[slug]/orders/new">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const kind = query.kind === "pet" ? "pet" : "rgb";
 
@@ -80,21 +80,21 @@ async function NewOrder({
         name: product.name,
         unit: product.unit,
         price: product.price,
-        category: product.category,
+        category: t(product.category),
       }));
 
     return (
       <div className="max-w-7xl space-y-6">
         <PageTitle sub="Add each customer and what they are taking. Stock left on each product counts down as you type.">
-          {kind === "rgb" ? "New RGB orders" : "New PET orders"}
+          {kind === "rgb" ? t("New RGB orders") : t("New PET orders")}
         </PageTitle>
         <StatusTabs
           label="Kind of order"
           current={kind}
           hrefFor={(value) => `${base}/orders/new?kind=${value}`}
           tabs={[
-            { value: "rgb", label: "RGB orders" },
-            { value: "pet", label: "PET orders" },
+            { value: "rgb", label: t("RGB orders") },
+            { value: "pet", label: t("PET orders") },
           ]}
         />
         {data.products.length === 0 ? (

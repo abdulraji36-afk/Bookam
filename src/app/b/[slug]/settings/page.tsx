@@ -7,9 +7,10 @@ import {
   setNotificationsEnabledAction,
   startTelegramLinkAction
 } from "@/app/actions/notifications";
-import { createLocationAction, setBusinessFeaturesAction, updateBusinessAction } from "@/app/actions/organizations";
+import { createLocationAction, setBusinessFeaturesAction, updateBusinessAction, setGoodsDepotAction } from "@/app/actions/organizations";
 import { BusinessForm } from "@/components/business/business-form";
 import { FeaturesForm } from "@/components/business/features-form";
+import { GoodsSettingsForm } from "@/components/business/goods-settings-form";
 import { LocationForm } from "@/components/business/location-form";
 import { TelegramConnect } from "@/components/settings/telegram-connect";
 import { ActionButton } from "@/components/team/action-button";
@@ -23,7 +24,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "params">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, words } = await requireOrg(slug, MANAGER_ROLES);
 
   const [locationsResult, planResult, notificationsResult] = await Promise.all([
     supabase
@@ -70,14 +71,23 @@ async function Settings({ params }: Pick<PageProps<"/b/[slug]/settings">, "param
           title="How you sell"
           description="This decides which parts of BukAm you see. Turning something off hides it; nothing is deleted."
         />
-        <FeaturesForm
-          action={setBusinessFeaturesAction.bind(null, org.slug)}
-          mode={org.selling_mode}
-          returns={org.tracks_returns}
-          serials={org.tracks_serials}
-          delivery={org.does_delivery}
-          drinks={org.sells_drinks}
-        />
+        {org.sells_drinks && org.trade === "goods" ? (
+          <GoodsSettingsForm
+            action={setGoodsDepotAction.bind(null, org.slug)}
+            returns={org.tracks_returns}
+            returnableName={words.pool}
+            delivery={org.does_delivery}
+          />
+        ) : (
+          <FeaturesForm
+            action={setBusinessFeaturesAction.bind(null, org.slug)}
+            mode={org.selling_mode}
+            returns={org.tracks_returns}
+            serials={org.tracks_serials}
+            delivery={org.does_delivery}
+            drinks={org.sells_drinks}
+          />
+        )}
       </Card>
 
       <Card>

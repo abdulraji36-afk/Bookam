@@ -56,7 +56,7 @@ async function DailyReport({
   searchParams,
 }: PageProps<"/b/[slug]/reports/daily">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const words = saleWords(org.selling_mode);
   const base = `/b/${org.slug}`;
   const today = todayIn(org.timezone, await requestNow());
@@ -76,6 +76,7 @@ async function DailyReport({
     );
     return (
       <DrinksDailyReport
+        t={t}
         base={`/b/${org.slug}`}
         day={day}
         today={today}
@@ -444,7 +445,7 @@ async function DailyReport({
 
           {returnableRows.length > 0 ? (
             <ListCard
-              title={org.sells_drinks ? "Empties count" : "Returnables"}
+              title={org.sells_drinks ? t("Empties count") : "Returnables"}
             >
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[38rem]">
@@ -546,7 +547,7 @@ async function DailyReport({
                   ? [
                       {
                         header: org.sells_drinks
-                          ? "Empties given back"
+                          ? t("Empties given back")
                           : "Returnables given back",
                         align: "right" as const,
                         cell: (delivery: (typeof deliveryRows)[number]) =>
@@ -569,11 +570,11 @@ async function DailyReport({
 
           {org.tracks_returns ? (
             <TableCard
-              title={`${org.sells_drinks ? "Empty exchanges" : "Supplier exchanges"} (${exchangeRows.length})`}
+              title={t(`${org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges"} (${exchangeRows.length})`)}
             >
               <DataTable
                 label={
-                  org.sells_drinks ? "Empty exchanges" : "Supplier exchanges"
+                  org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges"
                 }
                 rows={exchangeRows}
                 rowKey={(exchange) => exchange.id}
@@ -600,7 +601,7 @@ async function DailyReport({
                   ...(org.sells_drinks
                     ? [
                         {
-                          header: "RGB crates delivered",
+                          header: t("RGB crates delivered"),
                           align: "right" as const,
                           cell: (exchange: (typeof exchangeRows)[number]) =>
                             exchange.crates_delivered === null ? (
@@ -627,7 +628,7 @@ async function DailyReport({
             <ListCard
               title={
                 org.sells_drinks
-                  ? "Empties in and out"
+                  ? t("Empties in and out")
                   : "Returnables in and out"
               }
             >
@@ -755,7 +756,7 @@ async function DailyReport({
                 ...(org.tracks_returns
                   ? [
                       [
-                        `${org.sells_drinks ? "Empty shortages" : "Customers owing returnables"}: ${shortageCustomers} customer${shortageCustomers === 1 ? "" : "s"}`,
+                        `${org.sells_drinks ? t("Empty shortages") : "Customers owing returnables"}: ${shortageCustomers} customer${shortageCustomers === 1 ? "" : "s"}`,
                         shortageTotal,
                         org.sells_drinks
                           ? `${base}/returns/shortages`

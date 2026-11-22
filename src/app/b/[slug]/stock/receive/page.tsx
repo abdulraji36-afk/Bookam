@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Receive stock" };
 
 async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive">, "params">) {
   const { slug } = await params;
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
 
   const [productsResult, locationsResult, coloursResult] = await Promise.all([
     supabase
@@ -67,7 +67,7 @@ async function ReceiveStock({ params }: Pick<PageProps<"/b/[slug]/stock/receive"
       id: product.id,
       name: product.name,
       unit: product.unit,
-      category: product.category,
+      category: t(product.category),
       picture: <ProductPicture sku={product.sku} name={product.name} />
     }));
     return (

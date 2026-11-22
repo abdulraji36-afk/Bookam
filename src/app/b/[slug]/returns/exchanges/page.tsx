@@ -19,11 +19,11 @@ async function Exchanges({
   searchParams,
 }: PageProps<"/b/[slug]/returns/exchanges">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   const base = `/b/${org.slug}/returns/exchanges`;
   const search = readListSearch(query, 30);
   const showVoided = query.status === "voided";
-  const title = org.sells_drinks ? "Empty exchanges" : "Supplier exchanges";
+  const title = org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges";
 
   let listQuery = supabase
     .from("supplier_exchanges")
@@ -90,7 +90,7 @@ async function Exchanges({
     <div className="space-y-5">
       <PageHeader
         title={title}
-        sub="Each time the supplier took empties away. Open one to see its details or void it."
+        sub={t("Each time the supplier took empties away. Open one to see its details or void it.")}
         actions={
           <Link
             href={`/b/${org.slug}/returns/exchange`}
@@ -164,7 +164,7 @@ async function Exchanges({
             ...(org.sells_drinks
               ? [
                   {
-                    header: "RGB crates delivered",
+                    header: t("RGB crates delivered"),
                     align: "right" as const,
                     cell: (row: Row) =>
                       row.crates_delivered === null

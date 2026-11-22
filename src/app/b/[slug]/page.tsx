@@ -27,7 +27,7 @@ function lastSevenDays(today: string) {
 
 async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const { slug } = await params;
-  const { supabase, org, role, user } = await requireOrg(slug);
+  const { supabase, org, role, user, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const today = todayIn(org.timezone, await requestNow());
   const week = lastSevenDays(today);
@@ -120,7 +120,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
   const productCount = products.count ?? 0;
   const lowRows = stockRows.filter((row) => row.isLow);
   const manager = canManage(role);
-  const tracksReturns = (returnables.data ?? []).length > 0;
+  const tracksReturns = (returnables.data ?? []).length > 0 && (!org.sells_drinks || org.tracks_returns);
   const owedBack = (returnables.data ?? []).reduce((sum, item) => sum + Number(item.owed), 0);
   // A drinks depot counts the empties it already has before it starts.
   const { count: openingEmpties } = org.sells_drinks
@@ -163,10 +163,10 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       done: productCount > 0,
       href: manager ? `${base}/products/new` : undefined
     },
-    ...(org.sells_drinks
+    ...(org.sells_drinks && org.tracks_returns
       ? [
           {
-            label: "Count your opening empties",
+            label: t("Count your opening empties"),
             done: (openingEmpties ?? 0) > 0,
             href: manager ? `${base}/returns/adjust?reason=opening_count` : undefined
           }
@@ -236,7 +236,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
       ) : null}
 
       {org.sells_drinks ? (
-        <DrinksCards supabase={supabase} organizationId={org.id} today={today} manager={manager} />
+        <DrinksCards supabase={supabase} organizationId={org.id} today={today} manager={manager} t={t} />
       ) : (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label={waitingTitle} value={waiting.count ?? 0} strong href={`${base}/orders`} />
@@ -279,7 +279,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
         </Card>
       ) : null}
 
-      {org.sells_drinks ? <DrinksDesk base={base} manager={manager} /> : null}
+      {org.sells_drinks ? <DrinksDesk base={base} manager={manager} t={t} /> : null}
 
       <Card>
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -372,7 +372,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
             ) : null}
 
             <TableCard
-              title={org.sells_drinks ? "Empty shortages" : "Owes the most"}
+              title={org.sells_drinks ? t("Empty shortages") : "Owes the most"}
               action={
                 <Link href={`${base}/returns`} className={SEE_ALL}>
                   See all
@@ -380,7 +380,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
               }
             >
               <DataTable
-                label={org.sells_drinks ? "Empty shortages" : "Owes the most"}
+                label={org.sells_drinks ? t("Empty shortages") : "Owes the most"}
                 rows={balances.data ?? []}
                 rowKey={(balance) => `${balance.customer_id}-${balance.returnable_item_id}`}
                 empty="No customer owes anything right now."

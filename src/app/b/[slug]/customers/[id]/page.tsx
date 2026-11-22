@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Edit customer" };
 
 async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]">, "params">) {
   const { slug, id } = await params;
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const { data: customer } = await supabase
     .from("customers")
@@ -51,9 +51,9 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
         </Card>
       ) : null}
       {shortages.rows.length > 0 ? (
-        <TableCard title="Empty shortages">
+        <TableCard title={t("Empty shortages")}>
           <DataTable
-            label="Empty shortages"
+            label={t("Empty shortages")}
             rows={shortages.rows}
             rowKey={(line) => line.id}
             rowHref={(line) => `/b/${org.slug}/orders/${line.order_id}`}

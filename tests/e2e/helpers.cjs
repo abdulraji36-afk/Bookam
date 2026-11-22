@@ -48,7 +48,10 @@ async function addCrew(page, businessUrl, drivers, workers = ["Sule"]) {
 async function newOrders(page, businessUrl, kind, rows, options = {}) {
   const vis = (locator) => locator.filter({ visible: true });
   await page.goto(businessUrl + "/orders/new" + (kind === "pet" ? "?kind=pet" : ""));
-  await page.getByRole("heading", { name: kind === "pet" ? "New PET orders" : "New RGB orders" }).waitFor();
+  // Drinks say RGB / PET; a goods depot says Returnable / Non-returnable.
+  await page
+    .getByRole("heading", { name: kind === "pet" ? /^New (PET|Non-returnable) orders$/ : /^New (RGB|Returnable) orders$/ })
+    .waitFor();
   for (const [i, row] of rows.entries()) {
     if (i > 0) await vis(page.getByRole("button", { name: "Add customer" })).click();
     const region = page.getByRole("region", { name: `Customer ${i + 1}` });

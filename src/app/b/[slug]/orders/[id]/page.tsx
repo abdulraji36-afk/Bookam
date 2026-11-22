@@ -26,7 +26,7 @@ export const metadata: Metadata = { title: "Order" };
 
 async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]">) {
   const [{ slug, id }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
   const [orderResult, summaryResult, returnResult] = await Promise.all([
@@ -311,7 +311,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
                     compact
                     action={voidEmptiesFollowupAction.bind(null, org.slug, followup.id)}
                     trigger={`Void the follow-up of ${formatQuantity(Number(followup.quantity))} on ${formatDay(followup.received_date)}`}
-                    explanation="Use this when the follow-up was recorded by mistake. The customer owes those empties again and they come off the store count."
+                    explanation={t("Use this when the follow-up was recorded by mistake. The customer owes those empties again and they come off the store count.")}
                     submitLabel="Void follow-up"
                   />
                 ))}

@@ -19,7 +19,7 @@ type RecordLink = {
 /** Bilikis's Transaction Records: one place to choose which records to review. */
 async function Records({ params }: PageProps<"/b/[slug]/records">) {
   const { slug } = await params;
-  const { org, role } = await requireOrg(slug);
+  const { org, role, t } = await requireOrg(slug);
   if (!org.sells_drinks) notFound();
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
@@ -34,28 +34,28 @@ async function Records({ params }: PageProps<"/b/[slug]/records">) {
                 href: `${base}/records/open-work`,
                 label: "Incomplete work",
                 eyebrow: "Admin watch",
-                body: "Monitor unfinished PET and RGB sales, draft trips and RGB empty returns.",
+                body: t("Monitor unfinished PET and RGB sales, draft trips and RGB empty returns."),
                 dark: true,
               },
             ]
           : []),
         {
           href: `${base}/records/pet`,
-          label: "PET sales",
-          eyebrow: "Sell PET",
-          body: "Review PET sales delivered to customers and their dispatch trips.",
+          label: t("PET sales"),
+          eyebrow: t("Sell PET"),
+          body: t("Review PET sales delivered to customers and their dispatch trips."),
         },
         {
           href: `${base}/records/rgb`,
-          label: "RGB sales",
-          eyebrow: "Sell RGB",
-          body: "Review RGB sales, their trips and how the empties came back.",
+          label: t("RGB sales"),
+          eyebrow: t("Sell RGB"),
+          body: t("Review RGB sales, their trips and how the empties came back."),
         },
         {
           href: `${base}/returns/shortages`,
-          label: "Empty shortages",
+          label: t("Empty shortages"),
           eyebrow: "Return shortages",
-          body: "Review customers whose RGB returns came back short.",
+          body: t("Review customers whose RGB returns came back short."),
         },
       ],
     },
@@ -72,9 +72,9 @@ async function Records({ params }: PageProps<"/b/[slug]/records">) {
         },
         {
           href: `${base}/returns/exchanges`,
-          label: "Empty exchange",
+          label: t("Empty exchange"),
           eyebrow: "Depot returns",
-          body: "Review empties handed to the supplier and the RGB cases delivered.",
+          body: t("Review empties handed to the supplier and the RGB cases delivered."),
         },
       ],
     },
@@ -87,7 +87,7 @@ async function Records({ params }: PageProps<"/b/[slug]/records">) {
                 href: `${base}/records/voided`,
                 label: "Voided sales",
                 eyebrow: "Protected record",
-                body: "Review PET and RGB sales reversed by an owner or admin.",
+                body: t("Review PET and RGB sales reversed by an owner or admin."),
               },
             ],
           },

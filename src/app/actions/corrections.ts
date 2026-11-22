@@ -53,18 +53,18 @@ async function runVoid(
   id: string,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(id).success) return { ok: false, message: "Record not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
-  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+  if (!reason.success) return { ok: false, message: t(reason.error.issues[0].message) };
 
   // Each void function takes the record's id under its own argument name.
   const args = { [VOIDS[fn].argument]: id, p_reason: reason.data };
   const { error } = await supabase.rpc(fn, args as never);
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => [
+  notify({ supabase, org, t }, async () => [
     `VOIDED: ${await describeVoided(supabase, fn, id)}`,
     `Reason: ${reason.data}`
   ]);
@@ -106,11 +106,11 @@ export async function correctOrderAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(orderId).success) return { ok: false, message: "Order not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
-  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+  if (!reason.success) return { ok: false, message: t(reason.error.issues[0].message) };
 
   let lines: unknown;
   try {
@@ -119,21 +119,21 @@ export async function correctOrderAction(
     return { ok: false, message: "The product lines could not be read. Refresh the page and try again." };
   }
   const items = correctionLinesSchema.safeParse(lines);
-  if (!items.success) return { ok: false, message: items.error.issues[0].message };
+  if (!items.success) return { ok: false, message: t(items.error.issues[0].message) };
 
   const { error } = await supabase.rpc("correct_order", {
     p_order_id: orderId,
     p_items: items.data,
     p_reason: reason.data
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => {
+  notify({ supabase, org, t }, async () => {
     const { data } = await supabase.from("orders").select("order_no").eq("id", orderId).maybeSingle();
     return [`CORRECTED: sale ${data?.order_no ?? ""}`.trim(), `Reason: ${reason.data}`];
   });
   revalidatePath(`/b/${slug}`, "layout");
-  return { ok: true, message: "Sale corrected. Stock and empties now follow the new quantities." };
+  return { ok: true, message: t("Sale corrected. Stock and empties now follow the new quantities.") };
 }
 
 export async function voidStockReceiptAction(slug: string, id: string, _previous: ActionState, formData: FormData) {
@@ -158,26 +158,26 @@ export async function correctTripReturnAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(lineId).success) return { ok: false, message: "Return record not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
-  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+  if (!reason.success) return { ok: false, message: t(reason.error.issues[0].message) };
 
   const quantity = plainNumber(z.number("Enter the correct number.")
     .min(0, "The number cannot be less than zero.")
     .max(9_999_999, "That number is too large."))
     .safeParse(String(formData.get("quantity") ?? "").trim() === "" ? undefined : formData.get("quantity"));
-  if (!quantity.success) return { ok: false, message: quantity.error.issues[0].message };
+  if (!quantity.success) return { ok: false, message: t(quantity.error.issues[0].message) };
 
   const { error } = await supabase.rpc("correct_trip_return", {
     p_line_id: lineId,
     p_returned_quantity: quantity.data,
     p_reason: reason.data
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () => [
+  notify({ supabase, org, t }, () => [
     `CORRECTED: a returned figure is now ${formatQuantity(quantity.data)}`,
     `Reason: ${reason.data}`
   ]);
@@ -191,26 +191,26 @@ export async function correctAdjustmentAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(adjustmentId).success) return { ok: false, message: "Adjustment not found." };
 
   const reason = reasonSchema.safeParse(formData.get("reason") ?? "");
-  if (!reason.success) return { ok: false, message: reason.error.issues[0].message };
+  if (!reason.success) return { ok: false, message: t(reason.error.issues[0].message) };
 
   const quantity = plainNumber(z.number("Enter the correct number.")
     .positive("Enter a number greater than zero. To cancel the adjustment, void it instead.")
     .max(9_999_999, "That number is too large."))
     .safeParse(String(formData.get("quantity") ?? "").trim() === "" ? undefined : formData.get("quantity"));
-  if (!quantity.success) return { ok: false, message: quantity.error.issues[0].message };
+  if (!quantity.success) return { ok: false, message: t(quantity.error.issues[0].message) };
 
   const { error } = await supabase.rpc("correct_returnable_adjustment", {
     p_adjustment_id: adjustmentId,
     p_quantity: quantity.data,
     p_reason: reason.data
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () => [
+  notify({ supabase, org, t }, () => [
     `CORRECTED: an empties adjustment is now ${formatQuantity(quantity.data)}`,
     `Reason: ${reason.data}`
   ]);

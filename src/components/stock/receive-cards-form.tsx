@@ -50,7 +50,9 @@ export function ReceiveCardsForm({ action, products, locations, stock, today }: 
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const categories = useMemo(() => {
     const seen = new Set(products.map((product) => product.category));
-    return ["all", ...(seen.has("RGB") ? ["RGB"] : []), ...[...seen].filter((name) => name !== "RGB").sort()];
+    // The returnable category first: "RGB" for drinks, "Returnable" for goods.
+    const first = [...seen].find((name) => name === "RGB" || name === "Returnable");
+    return ["all", ...(first ? [first] : []), ...[...seen].filter((name) => name !== first).sort()];
   }, [products]);
   const visible = products.filter((product) => category === "all" || product.category === category);
 

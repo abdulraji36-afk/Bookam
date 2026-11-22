@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { FormMessage } from "@/components/ui/alert";
 import { SelectField, TextField } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -28,6 +29,7 @@ export function ExchangeForm({
   drinks,
   inStore,
 }: Props) {
+  const t = useSay();
   const { state, pending, form } = useFormAction(action);
   const name = returnables.length === 1 ? returnables[0].name : "";
   const inStoreHint =
@@ -84,11 +86,11 @@ export function ExchangeForm({
         />
         {drinks ? (
           <TextField
-            label="RGB crates delivered (optional)"
+            label={t("RGB crates delivered (optional)")}
             name="cratesDelivered"
             inputMode="numeric"
             autoComplete="off"
-            hint="For the record only. It does not change stock or empties."
+            hint={t("For the record only. It does not change stock or empties.")}
           />
         ) : (
           <input type="hidden" name="cratesDelivered" value="" />

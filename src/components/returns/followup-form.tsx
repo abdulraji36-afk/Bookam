@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { useMemo, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { TextField } from "@/components/ui/field";
@@ -22,11 +23,12 @@ export type OpenShortage = {
 };
 
 function Fields({ today, minDate, max }: { today: string; minDate?: string | null; max: number }) {
+  const t = useSay();
   return (
     <>
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
-          label="How many empties did they bring?"
+          label={t("How many empties did they bring?")}
           name="quantity"
           inputMode="numeric"
           autoComplete="off"

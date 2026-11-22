@@ -17,7 +17,7 @@ export async function saveProductAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = productSchema.safeParse({
     name: formData.get("name") ?? "",
@@ -31,7 +31,7 @@ export async function saveProductAction(
     tracksSerials: formData.get("tracksSerials") === "on",
     warrantyMonths: formData.get("warrantyMonths") ?? ""
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
   if (productId !== null && !idSchema.safeParse(productId).success) {
     return { ok: false, message: "Product not found." };
   }
@@ -39,14 +39,14 @@ export async function saveProductAction(
   const drinkKind = String(formData.get("drinkKind") ?? "");
   const typed = String(formData.get("category") ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
   if (org.sells_drinks && drinkKind !== "rgb" && drinkKind !== "pet") {
-    return { ok: false, message: "Choose whether this drink is RGB or PET." };
+    return { ok: false, message: t("Choose whether this drink is RGB or PET.") };
   }
   if (org.sells_drinks && drinkKind === "pet" && !typed) {
-    return { ok: false, message: "Choose a category for this drink, or type your own." };
+    return { ok: false, message: t("Choose a category for this drink, or type your own.") };
   }
   // A drink's own category (Beer, Malt...) is fine; RGB is only for crates that come back.
   if (org.sells_drinks && drinkKind === "pet" && typed.toUpperCase() === "RGB") {
-    return { ok: false, message: "RGB is for drinks whose crates come back. Choose RGB above, or another category." };
+    return { ok: false, message: t("RGB is for drinks whose crates come back. Choose RGB above, or another category.") };
   }
   if (!safeText().safeParse(typed).success) {
     return { ok: false, message: "Remove the hidden formatting characters from the category." };
@@ -81,7 +81,7 @@ export async function saveProductAction(
     // Drinks only: RGB, PET, Juice and so on. The database sets RGB itself.
     p_category: category || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/products`);
@@ -93,14 +93,14 @@ export async function setProductActiveAction(
   isActive: boolean,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(productId).success) return { ok: false, message: "Product not found." };
 
   const { error } = await supabase.rpc("set_product_active", {
     p_product_id: productId,
     p_is_active: isActive
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: isActive ? "Product switched back on." : "Product switched off." };
@@ -113,7 +113,7 @@ export async function saveCustomerAction(
   formData: FormData
 ): Promise<ActionState> {
   // Anyone on the team may add a customer; the database limits edits to managers.
-  const { supabase, org } = await requireOrg(slug, customerId === null ? undefined : MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, customerId === null ? undefined : MANAGER_ROLES);
 
   const parsed = customerSchema.safeParse({
     name: formData.get("name") ?? "",
@@ -121,7 +121,7 @@ export async function saveCustomerAction(
     area: formData.get("area") ?? "",
     address: formData.get("address") ?? ""
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
   if (customerId !== null && !idSchema.safeParse(customerId).success) {
     return { ok: false, message: "Customer not found." };
   }
@@ -134,7 +134,7 @@ export async function saveCustomerAction(
     p_area: parsed.data.area || null,
     p_address: parsed.data.address || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/customers`);
@@ -146,14 +146,14 @@ export async function setCustomerActiveAction(
   isActive: boolean,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(customerId).success) return { ok: false, message: "Customer not found." };
 
   const { error } = await supabase.rpc("set_customer_active", {
     p_customer_id: customerId,
     p_is_active: isActive
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: isActive ? "Customer switched back on." : "Customer switched off." };
@@ -165,8 +165,8 @@ export async function setCustomerActiveAction(
  * reported by name; the others are still added.
  */
 export async function addNbcProductsAction(slug: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
-  if (!org.sells_drinks) return { ok: false, message: "The NBC list is for drinks businesses." };
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
+  if (!org.sells_drinks) return { ok: false, message: t("The NBC list is for drinks businesses.") };
 
   const picked = NBC_PRODUCTS.filter((product) => formData.get(`pick-${product.code}`) === "on");
   if (picked.length === 0) return { ok: false, message: "Tick at least one product to add." };
@@ -206,7 +206,7 @@ export async function addNbcProductsAction(slug: string, _previous: ActionState,
       p_return_item_name: product.category === "RGB" ? emptiesName : null,
       p_category: product.category
     });
-    if (error) failed.push(`${product.name}: ${describeDbError(error)}`);
+    if (error) failed.push(`${product.name}: ${t(describeDbError(error))}`);
   }
 
   revalidatePath(`/b/${slug}`, "layout");
@@ -225,7 +225,7 @@ export async function saveProductOrderAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const ids = String(formData.get("ids") ?? "")
     .split(",")
     .filter(Boolean);
@@ -236,7 +236,7 @@ export async function saveProductOrderAction(
     p_organization_id: org.id,
     p_product_ids: ids
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Product order saved. The order screen and reports now follow it." };
 }

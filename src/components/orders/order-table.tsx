@@ -140,17 +140,20 @@ export function RgbOrderTable({
   currency,
   showMoney,
   empty,
+  t = (text: string) => text,
 }: {
   rows: RgbOrderTableRow[];
   base: string;
   currency: string;
   showMoney: boolean;
   empty?: string;
+  /** Says it in the business's words (Returnable instead of RGB). */
+  t?: (text: string) => string;
 }) {
   const dash = <span className="text-ink-soft">—</span>;
   return (
     <DataTable
-      label="RGB orders"
+      label={t("RGB orders")}
       rows={rows}
       rowKey={(row) => row.id}
       rowHref={(row) => `${base}/orders/${row.id}`}

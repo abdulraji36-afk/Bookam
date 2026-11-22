@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay, useWords } from "@/components/business/words-context";
 import { useId, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { CheckboxField, SelectField, TextField } from "@/components/ui/field";
@@ -59,6 +60,11 @@ export function ProductForm({
   defaults,
   categories = [],
 }: Props) {
+  const t = useSay();
+  // A drinks depot sells RGB by the crate and PET by the pack, so it is not
+  // asked the unit; a goods depot says its own (cylinder, bag, carton).
+  const words = useWords();
+  const drinksUnits = Boolean(features.drinks) && words.trade === "drinks";
   const { state, pending, form } = useFormAction(action);
   const [requiresReturn, setRequiresReturn] = useState(
     Boolean(defaults?.returnItemName),
@@ -69,8 +75,10 @@ export function ProductForm({
     defaults ? defaults.tracksSerials : Boolean(features.serialByDefault),
   );
   // Drinks: RGB or PET is chosen on purpose for a new product, never assumed.
+  // A goods depot where nothing comes back sells everything as non-returnable.
+  const nothingComesBack = Boolean(features.drinks) && !features.returns && !defaults?.returnItemName;
   const [drinkKind, setDrinkKind] = useState<"rgb" | "pet" | null>(
-    defaults ? (defaults.returnItemName ? "rgb" : "pet") : null,
+    defaults ? (defaults.returnItemName ? "rgb" : "pet") : nothingComesBack ? "pet" : null,
   );
   // RGB is sold by the crate and PET by the pack, so drinks are not asked.
   const drinkUnit =
@@ -92,14 +100,14 @@ export function ProductForm({
         required
       />
       <div className="grid gap-5 sm:grid-cols-2">
-        {features.drinks ? (
+        {drinksUnits ? (
           <input type="hidden" name="unit" value={drinkUnit} />
         ) : (
           <TextField
             label="Sold by the"
             name="unit"
             list={unitListId}
-            defaultValue={defaults?.unit ?? "crate"}
+            defaultValue={defaults?.unit ?? (features.drinks ? "" : "crate")}
             hint="The unit you count this product in."
             maxLength={30}
             required
@@ -118,7 +126,7 @@ export function ProductForm({
           defaultValue={defaults?.sellingPrice}
           hint={
             features.drinks
-              ? "Per unit. Needed before the drink can be sold."
+              ? t("Per unit. Needed before the drink can be sold.")
               : "Per unit. Leave empty to set it later."
           }
           required={features.drinks}
@@ -156,6 +164,7 @@ export function ProductForm({
           defaultReturnable={defaults?.returnItemName}
           defaultCategory={defaults?.category}
           categories={categories}
+          fixed={nothingComesBack}
         />
       ) : features.returns || requiresReturn ? (
         <div className="space-y-4 rounded-md border-2 border-ink p-4">
@@ -164,7 +173,7 @@ export function ProductForm({
             name="requiresReturn"
             checked={requiresReturn}
             onChange={(event) => setRequiresReturn(event.currentTarget.checked)}
-            hint="Tick this for goods sold in a crate, cylinder or other container you need returned. Leave it off for goods that are simply sold."
+            hint={t("Tick this for goods sold in a crate, cylinder or other container you need returned. Leave it off for goods that are simply sold.")}
           />
           {requiresReturn ? (
             <>
@@ -173,7 +182,7 @@ export function ProductForm({
                 name="returnItemName"
                 list={returnListId}
                 defaultValue={defaults?.returnItemName}
-                placeholder="e.g. Empty crate"
+                placeholder={t("e.g. Empty crate")}
                 maxLength={60}
                 required
               />
@@ -229,7 +238,10 @@ function DrinkKind({
   defaultReturnable,
   defaultCategory,
   categories,
+  fixed = false,
 }: {
+  /** Nothing comes back in this business: no choice to make, only the category. */
+  fixed?: boolean;
   returnables: string[];
   kind: "rgb" | "pet" | null;
   onChange: (kind: "rgb" | "pet") => void;
@@ -237,9 +249,12 @@ function DrinkKind({
   defaultCategory?: string;
   categories: string[];
 }) {
+  const t = useSay();
+  const goods = useWords().trade === "goods";
   // The usual drink categories, then any of the business's own (Beer, Malt...).
+  // A goods depot has only its own.
   const suggestions = [
-    ...DRINK_CATEGORIES,
+    ...(goods ? [] : DRINK_CATEGORIES),
     ...categories.filter(
       (name) =>
         name.toUpperCase() !== "RGB" &&
@@ -250,21 +265,26 @@ function DrinkKind({
   const options = [
     {
       value: "rgb" as const,
-      title: "RGB",
-      detail:
-        "Glass bottles, sold by the crate. The customer must bring the empty crate back.",
+      title: t("RGB"),
+      detail: goods
+        ? "It comes in a container the customer must bring back, such as a gas cylinder, pallet or bottle."
+        : "Glass bottles, sold by the crate. The customer must bring the empty crate back.",
     },
     {
       value: "pet" as const,
-      title: "PET, can or carton",
-      detail: "Sold by the pack. Nothing comes back.",
+      title: goods ? "Non-returnable" : "PET, can or carton",
+      detail: goods ? "Sold outright. Nothing comes back." : "Sold by the pack. Nothing comes back.",
     },
   ];
   return (
     <fieldset className="space-y-3">
-      <legend className="mb-1.5 text-sm font-bold">
-        What kind of drink is it?
-      </legend>
+      {fixed ? <input type="hidden" name="drinkKind" value="pet" /> : null}
+      {fixed ? null : (
+        <legend className="mb-1.5 text-sm font-bold">
+          {goods ? "Does anything come back with it?" : "What kind of drink is it?"}
+        </legend>
+      )}
+      {fixed ? null : (
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -291,6 +311,7 @@ function DrinkKind({
           </label>
         ))}
       </div>
+      )}
       {kind === "pet" ? (
         <>
           <TextField
@@ -301,7 +322,7 @@ function DrinkKind({
               defaultCategory && defaultCategory !== "RGB" ? defaultCategory : ""
             }
             placeholder="Choose or type a category"
-            hint="Pick one, or type your own, such as Beer, Malt or Sachet water."
+            hint={goods ? "Type a category, such as Cooking gas or Accessories. Ones you used before are offered." : "Pick one, or type your own, such as Beer, Malt or Sachet water."}
             maxLength={30}
             autoComplete="off"
             required
@@ -319,7 +340,7 @@ function DrinkKind({
           <input type="hidden" name="requiresReturn" value="on" />
           {returnables.length > 1 ? (
             <SelectField
-              label="Which empties come back?"
+              label={t("Which empties come back?")}
               name="returnItemName"
               defaultValue={defaultReturnable ?? returnables[0]}
             >

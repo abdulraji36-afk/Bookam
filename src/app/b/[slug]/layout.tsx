@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { MobileNav } from "@/components/business/mobile-nav";
+import { WordsProvider } from "@/components/business/words-context";
 import type { NavGroup, NavItem } from "@/components/business/nav-items";
 import { NavLink } from "@/components/business/nav-link";
 import { Logo } from "@/components/logo";
@@ -19,7 +20,7 @@ async function BusinessShell({
   children: ReactNode;
 }) {
   const { slug } = await params;
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t, words: depotWordList } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   // A business that only sells outright never sees the Returns page.
   const { count: returnableCount } = await supabase
@@ -33,7 +34,11 @@ async function BusinessShell({
 
   const manager = canManage(role);
   // Shown when the business tracks returns, or still has returnables on record.
-  const tracksReturns = org.tracks_returns || Boolean(returnableCount);
+  // A depot (drinks or goods) follows its own setting: a goods depot may have
+  // nothing that comes back, though it keeps its returnable pool for later.
+  const tracksReturns = org.sells_drinks ? org.tracks_returns : org.tracks_returns || Boolean(returnableCount);
+  // The depot's returnables pages: exchanges, shortages and the balance.
+  const depotReturns = org.sells_drinks && org.tracks_returns;
   const words = saleWords(org.selling_mode);
 
   // Daily work first, then what you set up, then reports, then admin.
@@ -65,11 +70,11 @@ async function BusinessShell({
           excludes: [`${base}/stock/summary`],
         },
         // Right under Stock (stock in): what the supplier took back with a delivery.
-        ...(org.sells_drinks
+        ...(depotReturns
           ? [
               {
                 href: `${base}/returns/exchanges`,
-                label: "Empty exchanges",
+                label: t("Empty exchanges"),
                 icon: "exchanges",
               } as const,
             ]
@@ -83,7 +88,7 @@ async function BusinessShell({
           ? [
               {
                 href: `${base}/returns`,
-                label: org.sells_drinks ? "Empties" : "Returns",
+                label: org.sells_drinks ? t("Empties") : "Returns",
                 icon: "returns",
                 excludes: [
                   `${base}/returns/shortages`,
@@ -94,20 +99,20 @@ async function BusinessShell({
               } as const,
             ]
           : []),
-        ...(org.sells_drinks
+        ...(depotReturns
           ? [
               {
                 href: `${base}/returns/shortages`,
-                label: "Empty shortages",
+                label: t("Empty shortages"),
                 icon: "shortages",
               } as const,
             ]
           : []),
-        ...(org.sells_drinks
+        ...(depotReturns
           ? [
               {
                 href: `${base}/returns/adjustments`,
-                label: manager ? "Empty balance" : "Empty adjustments",
+                label: t(manager ? "Empty balance" : "Empty adjustments"),
                 icon: "balance",
               } as const,
             ]
@@ -271,7 +276,7 @@ async function BusinessShell({
         ) : null}
         {/* Extra room at the bottom on phones so the tab bar never covers content. */}
         <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">
-          {children}
+          <WordsProvider words={depotWordList}>{children}</WordsProvider>
         </main>
       </div>
 

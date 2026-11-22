@@ -19,13 +19,13 @@ export async function inviteMemberAction(
   _previous: ActionState<InviteResult>,
   formData: FormData
 ): Promise<ActionState<InviteResult>> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = inviteSchema.safeParse({
     email: formData.get("email"),
     role: formData.get("role")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { data, error } = await supabase.rpc("invite_member", {
     p_organization_id: org.id,
@@ -34,7 +34,7 @@ export async function inviteMemberAction(
   });
 
   const invitation = data?.[0];
-  if (error || !invitation) return { ok: false, message: describeDbError(error) };
+  if (error || !invitation) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/team`);
   return {
@@ -49,11 +49,11 @@ export async function revokeInvitationAction(
   invitationId: string,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(invitationId).success) return { ok: false, message: "Invitation not found." };
 
   const { error } = await supabase.rpc("revoke_invitation", { p_invitation_id: invitationId });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/team`);
   return { ok: true, message: "Invitation cancelled." };
@@ -65,7 +65,7 @@ export async function setMemberRoleAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, ["owner"]);
+  const { supabase, t } = await requireOrg(slug, ["owner"]);
   const role = z.enum(["admin", "staff"]).safeParse(formData.get("role"));
   if (!idSchema.safeParse(membershipId).success || !role.success) {
     return { ok: false, message: "Choose Admin or Staff." };
@@ -75,7 +75,7 @@ export async function setMemberRoleAction(
     p_membership_id: membershipId,
     p_role: role.data
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/team`);
   return { ok: true, message: "Role updated." };
@@ -87,14 +87,14 @@ export async function setMemberActiveAction(
   isActive: boolean,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!idSchema.safeParse(membershipId).success) return { ok: false, message: "Team member not found." };
 
   const { error } = await supabase.rpc("set_member_active", {
     p_membership_id: membershipId,
     p_is_active: isActive
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/team`);
   return { ok: true, message: isActive ? "Access restored." : "Access removed." };

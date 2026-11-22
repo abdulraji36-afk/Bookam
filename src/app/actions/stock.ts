@@ -15,7 +15,7 @@ export async function recordStockReceiptAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
 
   // Each line sends lineKey, productId, quantity and tracked, in step. Each
   // serial-numbered unit sends unitLine, serial and colour, in step,
@@ -46,7 +46,7 @@ export async function recordStockReceiptAction(
     note: formData.get("note") ?? "",
     items
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const receiptArgs = {
     p_organization_id: org.id,
@@ -75,13 +75,13 @@ export async function recordStockReceiptAction(
     : await supabase.rpc("record_stock_receipt", receiptArgs);
 
   const receipt = data?.[0];
-  if (error || !receipt) return { ok: false, message: describeDbError(error) };
+  if (error || !receipt) return { ok: false, message: t(describeDbError(error)) };
 
   const total = parsed.data.items.reduce(
     (sum, item) => sum + (item.tracked ? item.units.length : (item.quantity ?? 0)),
     0
   );
-  notify({ supabase, org }, () => [
+  notify({ supabase, org, t }, () => [
     `Stock received ${receipt.receipt_no}`,
     `${parsed.data.items.length} product${parsed.data.items.length === 1 ? "" : "s"}, ${formatQuantity(total)} items in total`,
     parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`
@@ -98,13 +98,13 @@ export async function setReceiptItemCostAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!z.uuid().safeParse(receiptItemId).success) return { ok: false, message: "Delivery line not found." };
   const cost = readQuantity(String(formData.get("unitCost") ?? ""));
   if (cost === undefined || cost < 0) return { ok: false, message: "Enter the buying cost, zero or more." };
 
   const { error } = await supabase.rpc("set_receipt_item_cost", { p_receipt_item_id: receiptItemId, p_unit_cost: cost });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Cost saved." };
@@ -121,7 +121,7 @@ export async function correctStockReceiptAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!z.uuid().safeParse(receiptId).success) return { ok: false, message: "Delivery not found." };
 
   const reason = String(formData.get("reason") ?? "").trim();
@@ -158,7 +158,7 @@ export async function correctStockReceiptAction(
     p_items: items,
     p_reason: reason
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   redirect(`/b/${slug}/stock/receipts/${receiptId}?corrected=1`);

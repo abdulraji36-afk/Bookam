@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "New empty exchange" };
 
 async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchange">, "params">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const [data, { data: holdings }] = await Promise.all([
     getReturnsFormData(supabase, org.id),
@@ -32,7 +32,7 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchange">
       <PageTitle
         sub={
           org.sells_drinks
-            ? "Record the empties the supplier took away, with their delivery reference. Only the empties taken come off your store count."
+            ? t("Record the empties the supplier took away, with their delivery reference. Only the empties taken come off your store count.")
             : "Record what your supplier took away. It comes off what you have in store."
         }
       >

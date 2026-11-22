@@ -17,7 +17,7 @@ async function Receipts({
   searchParams,
 }: PageProps<"/b/[slug]/stock/receipts">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   const base = `/b/${org.slug}/stock/receipts`;
   const search = readListSearch(query, 30);
   const showVoided = query.status === "voided";
@@ -188,7 +188,7 @@ async function Receipts({
                 ? [
                     {
                       header: org.sells_drinks
-                        ? "Empties given"
+                        ? t("Empties given")
                         : "Returnables given",
                       align: "right" as const,
                       cell: (receipt: Receipt) =>

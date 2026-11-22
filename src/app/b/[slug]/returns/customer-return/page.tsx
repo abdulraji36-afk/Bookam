@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Customer brought back empties" };
 
 async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/customer-return">, "params">) {
   const { slug } = await params;
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const base = `/b/${org.slug}`;
   if (!org.sells_drinks) redirect(`${base}/returns`);
 
@@ -35,12 +35,12 @@ async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/cust
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageTitle sub="For empties a customer still owes from an order that came back short. They pay off that order only, and go into the store count.">
-        Customer brought back empties
+      <PageTitle sub={t("For empties a customer still owes from an order that came back short. They pay off that order only, and go into the store count.")}>
+        {t("Customer brought back empties")}
       </PageTitle>
       {shortages.length === 0 ? (
-        <EmptyState title="Nobody owes empties">
-          No order is waiting for empties right now.{" "}
+        <EmptyState title={t("Nobody owes empties")}>
+          {t("No order is waiting for empties right now.")}{" "}
           <Link href={`${base}/returns/shortages`} className="font-bold underline underline-offset-4">
             See every shortage
           </Link>

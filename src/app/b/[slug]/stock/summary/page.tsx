@@ -71,7 +71,7 @@ async function StockSummary({
   searchParams,
 }: PageProps<"/b/[slug]/stock/summary">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
   const today = todayIn(org.timezone, await requestNow());
@@ -129,6 +129,7 @@ async function StockSummary({
   if (org.sells_drinks) {
     return (
       <DrinksStockSummary
+        t={t}
         base={base}
         day={day}
         today={today}
@@ -508,7 +509,7 @@ async function StockSummary({
                     cell: ([label]) => label,
                   },
                   {
-                    header: "Empties",
+                    header: t("Empties"),
                     align: "right",
                     phone: "badge",
                     cell: ([, value]) => (

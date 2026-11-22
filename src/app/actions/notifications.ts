@@ -11,12 +11,12 @@ export async function startTelegramLinkAction(
   slug: string,
   _previous: ActionState<TelegramLinks>
 ): Promise<ActionState<TelegramLinks>> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const config = getTelegramConfig();
   if (!config) return { ok: false, message: "Telegram is not set up for BukAm yet." };
 
   const { data: code, error } = await supabase.rpc("start_telegram_link", { p_organization_id: org.id });
-  if (error || !code) return { ok: false, message: describeDbError(error) };
+  if (error || !code) return { ok: false, message: t(describeDbError(error)) };
 
   return {
     ok: true,
@@ -57,23 +57,23 @@ export async function setNotificationsEnabledAction(
   isEnabled: boolean,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const { error } = await supabase.rpc("set_notifications_enabled", {
     p_organization_id: org.id,
     p_is_enabled: isEnabled
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/settings`);
   return { ok: true, message: isEnabled ? "Notifications resumed." : "Notifications paused." };
 }
 
 export async function disconnectTelegramAction(slug: string, _previous: ActionState): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const { error } = await supabase.rpc("disconnect_telegram", { p_organization_id: org.id });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}/settings`);
   return { ok: true, message: "Telegram disconnected." };

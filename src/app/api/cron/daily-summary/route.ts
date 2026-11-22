@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { depotWords, say } from "@/lib/depot-words";
 import { todayIn } from "@/lib/format";
 import { formatDailyOperations } from "@/lib/reports/daily-telegram";
 import { dayBounds, getDrinksDaily } from "@/lib/reports/drinks-daily";
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
   // the shared types; the secret-key client can read it.
   const { data, error } = await supabase
     .from("organization_notifications")
-    .select("organization_id, telegram_chat_id, daily_summary_sent_for, organizations!inner (name, timezone, sells_drinks)")
+    .select("organization_id, telegram_chat_id, daily_summary_sent_for, organizations!inner (*)")
     .eq("is_enabled", true)
     .not("telegram_chat_id", "is", null)
     .eq("organizations.sells_drinks", true);
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     organization_id: string;
     telegram_chat_id: number | null;
     daily_summary_sent_for: string | null;
-    organizations: { name: string; timezone: string; sells_drinks: boolean } | null;
+    organizations: { name: string; timezone: string; sells_drinks: boolean; trade?: string } | null;
   }[];
 
   const now = Date.now();
@@ -88,7 +89,20 @@ export async function GET(request: NextRequest) {
       results.push({ organization: target.organization_id, day, sent: false });
       continue;
     }
-    const text = formatDailyOperations({
+    // A goods depot gets the summary in its own words (Returnable, its own name).
+    let pool: string | null = null;
+    if (org.trade === "goods") {
+      const { data: item } = await supabase
+        .from("returnable_items")
+        .select("name")
+        .eq("organization_id", target.organization_id)
+        .order("created_at")
+        .limit(1)
+        .maybeSingle();
+      pool = item?.name ?? null;
+    }
+    const words = depotWords(org.trade, pool);
+    const drinksText = formatDailyOperations({
       businessName: org.name,
       day,
       timeZone: org.timezone,
@@ -97,6 +111,7 @@ export async function GET(request: NextRequest) {
       outstandingEmpties: (shortages.data ?? []).reduce((sum, row) => sum + Number(row.outstanding), 0),
       corrections: corrections.count ?? 0
     });
+    const text = say(words, drinksText);
     const sent = await sendTelegramMessage(Number(target.telegram_chat_id), text);
     if (sent && !asked) {
       await supabase

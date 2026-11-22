@@ -26,7 +26,7 @@ const INPUT =
  */
 async function AuditLog({ params, searchParams }: PageProps<"/b/[slug]/activity">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const path = `/b/${org.slug}/activity`;
   const range = readDateRange(query, org.timezone, await requestNow());
   const page = readListSearch(query, PAGE_SIZE);
@@ -86,7 +86,7 @@ async function AuditLog({ params, searchParams }: PageProps<"/b/[slug]/activity"
               <option value="">All actions</option>
               {AUDIT_ACTIONS.map(([key, label]) => (
                 <option key={key} value={key}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
@@ -133,7 +133,7 @@ async function AuditLog({ params, searchParams }: PageProps<"/b/[slug]/activity"
                 wrap: true,
                 cell: (entry) => (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-extrabold">{describeAction(entry.action)}</span>
+                    <span className="font-extrabold">{t(describeAction(entry.action))}</span>
                     {isCorrection(entry.action) ? <Badge tone="accent">Undo</Badge> : null}
                   </span>
                 )

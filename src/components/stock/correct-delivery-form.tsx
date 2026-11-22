@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { useRef, useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ type Props = {
  * stock and the reports follow.
  */
 export function CorrectDeliveryForm({ action, products, currency, today, referenceRequired, defaults }: Props) {
+  const t = useSay();
   const { state, pending, form } = useFormAction(action);
   const nextKey = useRef(defaults.lines.length);
   const [lines, setLines] = useState<Line[]>(
@@ -128,7 +130,7 @@ export function CorrectDeliveryForm({ action, products, currency, today, referen
         label="Reason for the correction"
         name="reason"
         maxLength={500}
-        placeholder="e.g. 12 crates broken, handed back to the supplier"
+        placeholder={t("e.g. 12 crates broken, handed back to the supplier")}
         hint="At least 10 characters. Kept with the delivery."
         required
       />

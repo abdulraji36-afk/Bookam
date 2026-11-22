@@ -24,7 +24,7 @@ export async function recordTripReturnsAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
   if (!idSchema.safeParse(tripId).success) return { ok: false, message: "Trip not found." };
 
   // One row per customer and returnable item, sent as parallel fields.
@@ -40,7 +40,7 @@ export async function recordTripReturnsAction(
       quantity: quantities[index]?.trim() === "" ? undefined : quantities[index]
     }))
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("record_trip_returns", {
     p_trip_id: tripId,
@@ -51,9 +51,9 @@ export async function recordTripReturnsAction(
       quantity: line.quantity
     }))
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => {
+  notify({ supabase, org, t }, async () => {
     const [{ data: trip }, { data: lines }] = await Promise.all([
       supabase.from("dispatch_trips").select("trip_no").eq("id", tripId).maybeSingle(),
       supabase.from("trip_return_lines").select("expected_quantity, returned_quantity").eq("trip_id", tripId)
@@ -76,7 +76,7 @@ export async function recordSupplierExchangeAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug);
+  const { supabase, org, t } = await requireOrg(slug);
 
   const parsed = supplierExchangeSchema.safeParse({
     locationId: text(formData, "locationId"),
@@ -89,7 +89,7 @@ export async function recordSupplierExchangeAction(
     note: text(formData, "note"),
     cratesDelivered: text(formData, "cratesDelivered")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { data, error } = await supabase.rpc("record_empty_exchange", {
     p_organization_id: org.id,
@@ -104,9 +104,9 @@ export async function recordSupplierExchangeAction(
     p_note: parsed.data.note || null
   });
   const exchange = data?.[0];
-  if (error || !exchange) return { ok: false, message: describeDbError(error) };
+  if (error || !exchange) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => [
+  notify({ supabase, org, t }, async () => [
     `Supplier exchange ${exchange.exchange_no}`,
     `The supplier took ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
     parsed.data.supplierName && `Supplier: ${parsed.data.supplierName}`,
@@ -123,7 +123,7 @@ export async function recordAdjustmentAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = returnableAdjustmentSchema.safeParse({
     locationId: text(formData, "locationId"),
@@ -135,7 +135,7 @@ export async function recordAdjustmentAction(
     customerId: text(formData, "customerId"),
     note: text(formData, "note")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("record_returnable_adjustment", {
     p_organization_id: org.id,
@@ -148,9 +148,9 @@ export async function recordAdjustmentAction(
     p_customer_id: parsed.data.customerId || null,
     p_note: parsed.data.note || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, async () => {
+  notify({ supabase, org, t }, async () => {
     const reason = new Map([...ADD_REASONS, ...SUBTRACT_REASONS]).get(parsed.data.reason);
     return [
       `${parsed.data.direction === "add" ? "Added" : "Subtracted"} ${formatQuantity(parsed.data.quantity)} ${await returnableName(supabase, parsed.data.returnableItemId)}`,
@@ -167,7 +167,7 @@ export async function recordOpeningDebtAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = openingDebtSchema.safeParse({
     customerId: text(formData, "customerId"),
@@ -175,7 +175,7 @@ export async function recordOpeningDebtAction(
     quantity: text(formData, "quantity"),
     note: text(formData, "note")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("record_customer_opening_debt", {
     p_organization_id: org.id,
@@ -184,7 +184,7 @@ export async function recordOpeningDebtAction(
     p_quantity: parsed.data.quantity,
     p_note: parsed.data.note || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Old debt recorded on the customer's balance." };
@@ -207,7 +207,7 @@ export async function recordEmptiesFollowupAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = followupSchema.safeParse({
     lineId: text(formData, "lineId"),
@@ -216,7 +216,7 @@ export async function recordEmptiesFollowupAction(
     note: text(formData, "note"),
     returnTo: text(formData, "returnTo")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("record_empties_followup", {
     p_line_id: parsed.data.lineId,
@@ -224,7 +224,7 @@ export async function recordEmptiesFollowupAction(
     p_received_date: parsed.data.receivedDate,
     p_note: parsed.data.note || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   const { data: line } = await supabase
     .from("empty_shortage_lines")
@@ -232,7 +232,7 @@ export async function recordEmptiesFollowupAction(
     .eq("id", parsed.data.lineId)
     .maybeSingle();
 
-  notify({ supabase, org }, async () => [
+  notify({ supabase, org, t }, async () => [
     `${line?.customer_name ?? "A customer"} brought back ${formatQuantity(parsed.data.quantity)} ${line?.returnable_name ?? "empties"} for ${line?.order_no ?? "an order"}`,
     line && (Number(line.outstanding) > 0 ? `Still owed: ${formatQuantity(Number(line.outstanding))}` : "Shortage completed"),
     parsed.data.note && `Note: ${parsed.data.note}`
@@ -259,14 +259,14 @@ export async function setOpeningEmptiesAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const parsed = openingEmptiesSchema.safeParse({
     locationId: text(formData, "locationId"),
     returnableItemId: text(formData, "returnableItemId"),
     date: text(formData, "date"),
     quantity: text(formData, "quantity").trim() === "" ? undefined : text(formData, "quantity")
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("set_opening_empties", {
     p_organization_id: org.id,
@@ -275,9 +275,9 @@ export async function setOpeningEmptiesAction(
     p_quantity: parsed.data.quantity,
     p_date: parsed.data.date
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
-  notify({ supabase, org }, () => [`Opening empties set to ${formatQuantity(parsed.data.quantity)}`]);
+  notify({ supabase, org, t }, () => [`Opening empties set to ${formatQuantity(parsed.data.quantity)}`]);
   revalidatePath(`/b/${slug}`, "layout");
-  return { ok: true, message: `Opening empties set to ${formatQuantity(parsed.data.quantity)}.` };
+  return { ok: true, message: t(`Opening empties set to ${formatQuantity(parsed.data.quantity)}.`) };
 }

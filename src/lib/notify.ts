@@ -12,7 +12,10 @@ type Lines = (string | null | undefined | false)[];
  * never delays or breaks the action itself. `build` is only called when the
  * business has a chat linked and notifications switched on.
  */
-export function notify(context: Pick<OrgContext, "supabase" | "org">, build: () => Promise<Lines> | Lines) {
+export function notify(
+  context: Pick<OrgContext, "supabase" | "org"> & { t?: (text: string) => string },
+  build: () => Promise<Lines> | Lines
+) {
   if (!getTelegramConfig()) return;
 
   after(async () => {
@@ -23,7 +26,9 @@ export function notify(context: Pick<OrgContext, "supabase" | "org">, build: () 
       const target = data?.[0];
       if (!target) return;
 
-      const lines = (await build()).filter((line): line is string => Boolean(line));
+      // In the business's own words (a goods depot says Returnable, not RGB).
+      const say = context.t ?? ((text: string) => text);
+      const lines = (await build()).filter((line): line is string => Boolean(line)).map(say);
       if (lines.length === 0) return;
 
       await sendTelegramMessage(

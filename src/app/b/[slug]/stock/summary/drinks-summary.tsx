@@ -45,7 +45,9 @@ export function DrinksStockSummary({
   saved,
   empties,
   error,
+  t,
 }: {
+  t: (text: string) => string;
   base: string;
   day: string;
   today: string;
@@ -104,7 +106,7 @@ export function DrinksStockSummary({
         // the usual ones, then its own (Beer, Malt...).
         ...[...new Set(rows.map(categoryOf))]
           .sort((x, y) => categoryOrder(x) - categoryOrder(y) || x.localeCompare(y))
-          .map((category): [string, string] => [`${category} stock`, value(categoryTotal(category))]),
+          .map((category): [string, string] => [t(`${category} stock`), value(categoryTotal(category))]),
       ];
 
   return (
@@ -124,7 +126,7 @@ export function DrinksStockSummary({
         {cards.map(([label, number, strong]) => (
           <SummaryCard
             key={label}
-            label={label}
+            label={t(label)}
             value={number}
             strong={strong}
           />
@@ -132,7 +134,7 @@ export function DrinksStockSummary({
       </div>
       {manager ? null : (
         <SummaryCard
-          label="Total empties in depot"
+          label={t("Total empties in depot")}
           value={
             empties ? formatQuantity(Number(empties.in_store)) : "Unavailable"
           }
@@ -229,7 +231,7 @@ export function DrinksStockSummary({
                   </span>
                 ),
               },
-              { header: "Category", cell: (row) => categoryOf(row) },
+              { header: "Category", cell: (row) => t(categoryOf(row)) },
               { header: "Unit", cell: (row) => row.unit },
               {
                 header: "Status",

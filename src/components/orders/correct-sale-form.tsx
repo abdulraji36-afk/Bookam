@@ -1,5 +1,6 @@
 "use client";
 
+import { useSay } from "@/components/business/words-context";
 import { useState } from "react";
 import { FormMessage } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function CorrectSaleForm({
   lines: { productId: string; quantity: number }[];
   kind: "RGB" | "PET";
 }) {
+  const t = useSay();
   const { state, pending, form } = useFormAction(action);
   const [lines, setLines] = useState<Line[]>(
     initial.map((line) => ({ productId: line.productId, quantity: String(line.quantity) })),
@@ -47,7 +49,7 @@ export function CorrectSaleForm({
       <form {...form} className="space-y-4 border-t-2 border-ink p-4">
         <p className="text-sm font-medium text-ink-soft">
           Change the {kind} products and quantities as they really went out. Stock
-          {kind === "RGB" ? ", the empties the customer owes and the empties expected back" : ""} follow
+          {kind === "RGB" ? t(", the empties the customer owes and the empties expected back") : ""} follow
           the corrected figures. Prices stay as sold.
         </p>
         <input type="hidden" name="items" value={JSON.stringify(items)} />

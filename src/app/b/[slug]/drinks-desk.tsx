@@ -14,11 +14,13 @@ export async function DrinksCards({
   organizationId,
   today,
   manager,
+  t,
 }: {
   supabase: ServerClient;
   organizationId: string;
   today: string;
   manager: boolean;
+  t: (text: string) => string;
 }) {
   const [sold, openTrips, empties, stockIn] = await Promise.all([
     supabase
@@ -63,17 +65,17 @@ export async function DrinksCards({
     <SummaryCards columns={4}>
       {manager ? (
         <>
-          <SummaryCard label="PET sold today" value={show(soldOf(false))} />
-          <SummaryCard label="Open RGB trips" value={show(openTrips.count ?? 0)} />
-          <SummaryCard label="RGB sold today" value={show(soldOf(true))} />
-          <SummaryCard label="Empty balance" value={show(emptyBalance)} strong />
+          <SummaryCard label={t("PET sold today")} value={show(soldOf(false))} />
+          <SummaryCard label={t("Open RGB trips")} value={show(openTrips.count ?? 0)} />
+          <SummaryCard label={t("RGB sold today")} value={show(soldOf(true))} />
+          <SummaryCard label={t("Empty balance")} value={show(emptyBalance)} strong />
         </>
       ) : (
         <>
           <SummaryCard label="Stock in entries" value={show(stockIn.count ?? 0)} />
-          <SummaryCard label="Open RGB" value={show(openTrips.count ?? 0)} />
-          <SummaryCard label="PET sold today" value={show(soldOf(false))} />
-          <SummaryCard label="RGB sold today" value={show(soldOf(true))} strong />
+          <SummaryCard label={t("Open RGB")} value={show(openTrips.count ?? 0)} />
+          <SummaryCard label={t("PET sold today")} value={show(soldOf(false))} />
+          <SummaryCard label={t("RGB sold today")} value={show(soldOf(true))} strong />
         </>
       )}
     </SummaryCards>
@@ -105,9 +107,11 @@ function DeskLinks({
 export function DrinksDesk({
   base,
   manager,
+  t,
 }: {
   base: string;
   manager: boolean;
+  t: (text: string) => string;
 }) {
   if (manager) {
     return (
@@ -118,12 +122,12 @@ export function DrinksDesk({
             {
               href: `${base}/records/open-work`,
               title: "Incomplete work",
-              body: "Monitor unfinished PET and RGB sales and open dispatch work.",
+              body: t("Monitor unfinished PET and RGB sales and open dispatch work."),
             },
             {
               href: `${base}/records`,
               title: "Transactions",
-              body: "Review stock in, empty exchanges, PET sales and RGB sales.",
+              body: t("Review stock in, empty exchanges, PET sales and RGB sales."),
             },
             {
               href: `${base}/records/voided`,
@@ -142,8 +146,8 @@ export function DrinksDesk({
             },
             {
               href: `${base}/returns/adjustments`,
-              title: "Empty balance",
-              body: "Review opening empties, adjustments and the current depot balance.",
+              title: t("Empty balance"),
+              body: t("Review opening empties, adjustments and the current depot balance."),
             },
             {
               href: `${base}/manage`,
@@ -173,18 +177,18 @@ export function DrinksDesk({
             },
             {
               href: `${base}/records/pet`,
-              title: "PET history",
-              body: "Review PET sales.",
+              title: t("PET history"),
+              body: t("Review PET sales."),
             },
             {
               href: `${base}/records/rgb`,
-              title: "RGB sales",
-              body: "Review RGB sales.",
+              title: t("RGB sales"),
+              body: t("Review RGB sales."),
             },
             {
               href: `${base}/returns/adjustments`,
-              title: "Empty adjustments",
-              body: "Review changes to the empties count.",
+              title: t("Empty adjustments"),
+              body: t("Review changes to the empties count."),
             },
           ]}
         />
@@ -196,9 +200,9 @@ export function DrinksDesk({
         />
         <ol className="space-y-2 font-medium text-ink-soft">
           <li>1. Confirm stock before selling.</li>
-          <li>2. Dispatch recorded PET sales when the truck is ready.</li>
-          <li>3. Close RGB returns after empties are counted.</li>
-          <li>4. Record empties handed to the supplier clearly.</li>
+          <li>{t("2. Dispatch recorded PET sales when the truck is ready.")}</li>
+          <li>{t("3. Close RGB returns after empties are counted.")}</li>
+          <li>{t("4. Record empties handed to the supplier clearly.")}</li>
         </ol>
       </Card>
     </div>

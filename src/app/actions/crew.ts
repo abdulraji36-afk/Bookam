@@ -20,7 +20,7 @@ export async function saveWorkerAction(
   formData: FormData
 ): Promise<ActionState> {
   if (workerId !== null && !z.uuid().safeParse(workerId).success) return { ok: false, message: "Not found." };
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const parsed = workerSchema.safeParse({
     name: String(formData.get("name") ?? ""),
     role: String(formData.get("role") ?? ""),
@@ -35,7 +35,7 @@ export async function saveWorkerAction(
     p_role: parsed.data.role,
     p_phone: parsed.data.phone || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: workerId ? "Saved." : `${parsed.data.name} added.` };
@@ -47,11 +47,11 @@ export async function setWorkerActiveAction(
   isActive: boolean,
   _previous: ActionState
 ): Promise<ActionState> {
-  const { supabase } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!z.uuid().safeParse(workerId).success) return { ok: false, message: "Not found." };
 
   const { error } = await supabase.rpc("set_dispatch_worker_active", { p_worker_id: workerId, p_is_active: isActive });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: isActive ? "Switched back on." : "Switched off." };

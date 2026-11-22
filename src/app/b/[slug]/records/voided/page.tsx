@@ -22,7 +22,7 @@ async function VoidedSales({
   searchParams,
 }: PageProps<"/b/[slug]/records/voided">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   if (!org.sells_drinks) notFound();
   const base = `/b/${org.slug}`;
   const range = readDateRange(query, org.timezone, await requestNow());
@@ -79,7 +79,7 @@ async function VoidedSales({
     <div className="space-y-5">
       <PageHeader
         title="Voided sales"
-        sub="Read-only history of PET and RGB sales reversed by an owner or admin."
+        sub={t("Read-only history of PET and RGB sales reversed by an owner or admin.")}
         actions={
           <Link
             href={`${base}/records`}
@@ -91,8 +91,8 @@ async function VoidedSales({
       />
       <SummaryCards columns={3}>
         <SummaryCard label="Voided sales" value={formatQuantity(rows.length)} />
-        <SummaryCard label="PET voids" value={formatQuantity(rows.length - rgbVoids)} />
-        <SummaryCard label="RGB voids" value={formatQuantity(rgbVoids)} />
+        <SummaryCard label={t("PET voids")} value={formatQuantity(rows.length - rgbVoids)} />
+        <SummaryCard label={t("RGB voids")} value={formatQuantity(rgbVoids)} />
       </SummaryCards>
       <RecordFilter
         action={`${base}/records/voided`}
@@ -106,7 +106,7 @@ async function VoidedSales({
         </Alert>
       ) : rows.length === 0 ? (
         <EmptyState title="No voided sales">
-          Voided PET and RGB sales for the selected period will appear here.
+          {t("Voided PET and RGB sales for the selected period will appear here.")}
         </EmptyState>
       ) : (
         <TableCard title="Voided sale history">
@@ -127,7 +127,7 @@ async function VoidedSales({
               {
                 header: "Type",
                 phone: "badge",
-                cell: (row) => <Badge>{row.type}</Badge>,
+                cell: (row) => <Badge>{t(row.type)}</Badge>,
               },
               {
                 header: "Sale no.",

@@ -37,7 +37,7 @@ async function StockValue({
   searchParams,
 }: PageProps<"/b/[slug]/reports/stock-value">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
   const today = todayIn(org.timezone, await requestNow());
   const asked = typeof query.asAt === "string" ? query.asAt : "";
   const asAt = DAY.test(asked) && asked <= today ? asked : today;
@@ -206,7 +206,7 @@ async function StockValue({
                   className="rounded-md border-2 border-line px-4 py-3"
                 >
                   <p className="text-sm font-bold uppercase tracking-wide text-ink-soft">
-                    {category} stock value
+                    {t(category)} stock value
                   </p>
                   <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
                     {money(value)}
@@ -234,7 +234,7 @@ async function StockValue({
               columns={[
                 { header: "Product code", cell: (row) => row.code ?? "—" },
                 { header: "Product name", wrap: true, cell: (row) => row.name },
-                { header: "Category", cell: (row) => row.category },
+                { header: "Category", cell: (row) => t(row.category) },
                 { header: "Unit", cell: (row) => row.unit },
                 {
                   header: "Current stock",

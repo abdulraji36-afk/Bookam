@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Customers" };
 
 async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customers">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}/customers`;
   const manager = canManage(role);
   const search = readListSearch(query, 50);
@@ -101,7 +101,7 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
       {org.sells_drinks ? (
         <SummaryCards columns={3}>
           <SummaryCard label="Total customers" value={formatQuantity((activeCount.count ?? 0) + (offCount.count ?? 0))} />
-          <SummaryCard label="Bought PET / RGB" value={`${formatQuantity(petBuyers)} / ${formatQuantity(rgbBuyers)}`} />
+          <SummaryCard label={t("Bought PET / RGB")} value={`${formatQuantity(petBuyers)} / ${formatQuantity(rgbBuyers)}`} />
           <SummaryCard label="Both channels" value={formatQuantity(bothBuyers)} />
         </SummaryCards>
       ) : null}

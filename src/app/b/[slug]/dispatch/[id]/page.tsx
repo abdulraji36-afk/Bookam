@@ -35,7 +35,7 @@ async function Trip({
   params,
 }: Pick<PageProps<"/b/[slug]/dispatch/[id]">, "params">) {
   const { slug, id } = await params;
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
   const [tripResult, ordersResult, returnLinesResult] = await Promise.all([
@@ -210,7 +210,7 @@ async function Trip({
                     {line.name}
                     {org.sells_drinks ? (
                       <span className="ml-2 rounded-full bg-chip px-2 py-0.5 text-xs font-bold text-ink-soft">
-                        {line.rgb ? "RGB" : "PET"}
+                        {t(line.rgb ? "RGB" : "PET")}
                       </span>
                     ) : null}
                   </span>

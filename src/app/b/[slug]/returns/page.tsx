@@ -31,7 +31,7 @@ async function Returns({
   searchParams,
 }: PageProps<"/b/[slug]/returns">) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
   const word = org.sells_drinks ? "Empties" : "Returns";
@@ -123,7 +123,7 @@ async function Returns({
     ...SUBTRACT_REASONS,
   ]);
   if (org.sells_drinks)
-    reasonLabels.set("opening_count", "Opening empties (already in store)");
+    reasonLabels.set("opening_count", t("Opening empties (already in store)"));
   const reasonById = new Map(
     (adjustments ?? []).map((item) => [item.id, reasonLabels.get(item.reason)]),
   );
@@ -158,7 +158,7 @@ async function Returns({
         <PageHeader title={word} />
         <EmptyState title="Nothing to track yet">
           {org.sells_drinks
-            ? "Add an RGB drink first; its empties are counted here."
+            ? t("Add an RGB drink first; its empties are counted here.")
             : "None of your products need anything brought back."}
         </EmptyState>
       </div>
@@ -188,7 +188,7 @@ async function Returns({
                   href={`${base}/returns/customer-return`}
                   className={buttonClass("primary")}
                 >
-                  Customer brought back empties
+                  {t("Customer brought back empties")}
                 </Link>
               ) : null
             ) : (
@@ -212,7 +212,7 @@ async function Returns({
                 href={`${base}/returns/exchange`}
                 className={buttonClass("ghost")}
               >
-                Empty exchange
+                {t("Empty exchange")}
               </Link>
             ) : null}
           </>
@@ -289,7 +289,7 @@ async function Returns({
 
       {org.sells_drinks ? (
         <TableCard
-          title="Empty shortages"
+          title={t("Empty shortages")}
           action={
             <Link
               href={`${base}/returns/shortages`}
@@ -304,7 +304,7 @@ async function Returns({
             rows={openShortages.slice(0, 10)}
             rowKey={(line) => line.id}
             rowHref={(line) => `${base}/orders/${line.order_id}`}
-            empty="No order is waiting for empties."
+            empty={t("No order is waiting for empties.")}
             columns={[
               {
                 header: "Customer",
@@ -414,7 +414,7 @@ async function Returns({
                     {move.source_type === "empties_followup"
                       ? "Brought back later (follow-up)"
                       : move.source_type === "drinks_no_credit"
-                        ? "Extra empties are not credit"
+                        ? t("Extra empties are not credit")
                         : MOVEMENT_LABELS[move.movement_type]}
                     {reasonById.get(move.source_id)
                       ? `: ${reasonById.get(move.source_id)}`

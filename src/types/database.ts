@@ -64,6 +64,7 @@ export type Database = {
           does_delivery: boolean;
           sells_drinks: boolean;
           product_order: string[];
+          trade: "drinks" | "goods";
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -1316,6 +1317,10 @@ export type Database = {
       };
       correct_order: {
         Args: { p_order_id: string; p_items: { product_id: string; quantity: number }[]; p_reason: string };
+        Returns: undefined;
+      };
+      set_depot_trade: {
+        Args: { p_organization_id: string; p_trade: "drinks" | "goods"; p_returnable_name?: string | null; p_has_returnables?: boolean };
         Returns: undefined;
       };
       save_product_order: {

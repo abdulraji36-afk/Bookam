@@ -6,7 +6,7 @@ import { describeDbError, type ActionState } from "@/lib/action-state";
 import { requireUser } from "@/lib/auth/session";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { businessSchema, firstIssue, locationSchema } from "@/lib/validation";
+import { businessSchema, firstIssue, locationSchema, safeText } from "@/lib/validation";
 import type { SellingMode } from "@/types/database";
 
 /** The answers to "How do you sell?" and its follow-ups, or null if not chosen. */
@@ -51,6 +51,16 @@ export async function createBusinessAction(
         }
       : readSelling(formData);
   if (!selling) return { ok: false, message: "Choose how you sell." };
+  // A goods business runs on the depot workspace (the same engine as drinks).
+  if (workspace === "other" && selling.p_selling_mode === "quantity") {
+    selling.p_sells_drinks = true;
+    selling.p_tracks_returns = true;
+    selling.p_tracks_serials = false;
+    const name = String(formData.get("returnableName") ?? "");
+    if (formData.get("tracksReturns") === "on" && (name.trim().length < 2 || !safeText().safeParse(name).success)) {
+      return { ok: false, message: "Say what customers bring back, such as Empty cylinders." };
+    }
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_organization", {
@@ -62,6 +72,20 @@ export async function createBusinessAction(
   const created = data?.[0];
   if (error || !created) return { ok: false, message: describeDbError(error) };
 
+  // A business that counts its goods gets the depot workspace in goods words:
+  // returnable goods work like RGB (with its own name for what comes back),
+  // the rest like PET.
+  if (workspace === "other" && selling.p_selling_mode === "quantity") {
+    const comesBack = formData.get("tracksReturns") === "on";
+    const { error: tradeError } = await supabase.rpc("set_depot_trade", {
+      p_organization_id: created.id,
+      p_trade: "goods",
+      p_returnable_name: comesBack ? String(formData.get("returnableName") ?? "").slice(0, 40) : null,
+      p_has_returnables: comesBack
+    });
+    if (tradeError) console.error("Goods depot setup failed:", tradeError.message);
+  }
+
   redirect(`/b/${created.slug}`);
 }
 
@@ -70,20 +94,20 @@ export async function updateBusinessAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = businessSchema.safeParse({
     name: formData.get("name"),
     businessType: formData.get("businessType") ?? undefined
   });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("update_organization", {
     p_organization_id: org.id,
     p_name: parsed.data.name,
     p_business_type: parsed.data.businessType || null
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: "Business details saved." };
@@ -94,16 +118,16 @@ export async function createLocationAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const parsed = locationSchema.safeParse({ name: formData.get("name") });
-  if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
+  if (!parsed.success) return { ok: false, message: t(firstIssue(parsed.error)) };
 
   const { error } = await supabase.rpc("create_location", {
     p_organization_id: org.id,
     p_name: parsed.data.name
   });
-  if (error) return { ok: false, message: describeDbError(error) };
+  if (error) return { ok: false, message: t(describeDbError(error)) };
 
   revalidatePath(`/b/${slug}`, "layout");
   return { ok: true, message: `${parsed.data.name} added.` };
@@ -114,7 +138,7 @@ export async function setBusinessFeaturesAction(
   _previous: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
 
   const selling = readSelling(formData);
   if (!selling) return { ok: false, message: "Choose how you sell." };
@@ -122,6 +146,42 @@ export async function setBusinessFeaturesAction(
   const { error } = await supabase.rpc("set_business_features", {
     p_organization_id: org.id,
     ...selling
+  });
+  if (error) return { ok: false, message: t(describeDbError(error)) };
+
+  revalidatePath(`/b/${slug}`, "layout");
+  return { ok: true, message: "Saved. The menus and forms now match what you sell." };
+}
+
+/** Settings for a goods depot: what comes back and what it is called, and delivery. */
+export async function setGoodsDepotAction(
+  slug: string,
+  _previous: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const { supabase, org, t } = await requireOrg(slug, MANAGER_ROLES);
+  if (!org.sells_drinks || org.trade !== "goods") return { ok: false, message: "This is not a goods business." };
+  const comesBack = formData.get("tracksReturns") === "on";
+  const name = String(formData.get("returnableName") ?? "");
+  if (comesBack && (name.trim().length < 2 || !safeText().safeParse(name).success)) {
+    return { ok: false, message: "Say what customers bring back, such as Empty cylinders." };
+  }
+
+  // Delivery first (the depot keeps its returnable pool either way), then what comes back.
+  const { error: featuresError } = await supabase.rpc("set_business_features", {
+    p_organization_id: org.id,
+    p_selling_mode: "quantity",
+    p_sells_drinks: true,
+    p_tracks_returns: true,
+    p_tracks_serials: false,
+    p_does_delivery: formData.get("doesDelivery") === "on"
+  });
+  if (featuresError) return { ok: false, message: t(describeDbError(featuresError)) };
+  const { error } = await supabase.rpc("set_depot_trade", {
+    p_organization_id: org.id,
+    p_trade: "goods",
+    p_returnable_name: comesBack ? name.slice(0, 40) : null,
+    p_has_returnables: comesBack
   });
   if (error) return { ok: false, message: describeDbError(error) };
 
