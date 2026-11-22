@@ -6,14 +6,15 @@ import { correctOrderAction, voidEmptiesFollowupAction, voidOrderAction } from "
 import { CorrectSaleForm } from "@/components/orders/correct-sale-form";
 import { getSavedProductOrder, sortByProductMasterOrder } from "@/lib/product-order";
 import { cancelOrderAction, handOverOrderAction } from "@/app/actions/orders";
-import { recordEmptiesFollowupAction } from "@/app/actions/returns";
+import { recordEmptiesFollowupAction, recordTripReturnsAction } from "@/app/actions/returns";
 import { ReasonForm } from "@/components/corrections/reason-form";
+import { TripReturnsForm, type ReturnLine } from "@/components/returns/trip-returns-form";
 import { FollowupForm } from "@/components/returns/followup-form";
 import { OrderStatusBadge } from "@/components/orders/status-badge";
 import { ActionButton } from "@/components/team/action-button";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { Badge, Card, PageSkeleton, PageTitle } from "@/components/ui/card";
+import { Badge, Card, PageSkeleton, PageTitle, CardHeader } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { ActionsPanel } from "@/components/ui/page-header";
 import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS, todayIn } from "@/lib/format";
@@ -26,14 +27,14 @@ export const metadata: Metadata = { title: "Order" };
 
 async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]">) {
   const [{ slug, id }, query] = await Promise.all([params, searchParams]);
-  const { supabase, org, role, t } = await requireOrg(slug);
+  const { supabase, org, role, t, words: depotWordList } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
 
   const [orderResult, summaryResult, returnResult] = await Promise.all([
     supabase
       .from("orders")
       .select(
-        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, buyer_name, buyer_phone, handed_over_at, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, product_id, quantity, unit_price, line_total, products (name, unit), returnable_items (name)), product_units (id, product_id, serial_no, colour)"
+        "id, order_no, order_date, status, payment_type, note, voided_at, void_reason, buyer_name, buyer_phone, handed_over_at, customers (name, area, phone), locations (name), profiles!orders_created_by_fkey (full_name), order_items (id, product_id, quantity, unit_price, line_total, returnable_item_id, products (name, unit), returnable_items (name)), product_units (id, product_id, serial_no, colour)"
       )
       .eq("organization_id", org.id)
       .eq("id", id)
@@ -77,6 +78,41 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
   // A waiting order is simply cancelled; voiding is for one that has already gone out.
   const canVoid = canManage(role) && order.status !== "cancelled" && order.status !== "pending";
   const returnLines = returnResult.data ?? [];
+  // Handed over at the counter and waiting for what comes back: recorded here,
+  // the same way a trip's returns are (the order sits on a Counter trip).
+  // Handed over at the counter: the order went out on a Counter trip.
+  const atCounter = Boolean(order.handed_over_at && summary?.trip_id);
+  const counterTrip =
+    org.sells_drinks && order.status === "dispatched" && !order.voided_at && summary?.trip_id
+      ? (
+          await supabase
+            .from("dispatch_trips")
+            .select("id, driver_name, status, dispatch_date")
+            .eq("id", summary.trip_id)
+            .eq("driver_name", "Counter")
+            .eq("status", "dispatched")
+            .maybeSingle()
+        ).data
+      : null;
+  const counterLines: ReturnLine[] = counterTrip
+    ? [
+        ...order.order_items
+          .filter((item) => item.returnable_item_id)
+          .reduce((byItem, item) => {
+            const key = item.returnable_item_id as string;
+            const current = byItem.get(key) ?? {
+              orderId: order.id,
+              returnableItemId: key,
+              customerName: order.customers?.name ?? "Customer",
+              returnableName: item.returnable_items?.name ?? depotWordList.pool,
+              expected: 0
+            };
+            current.expected += Number(item.quantity);
+            return byItem.set(key, current);
+          }, new Map<string, ReturnLine>())
+          .values()
+      ]
+    : [];
   const manager = canManage(role);
   const today = todayIn(org.timezone, await requestNow());
   // Bilikis's admin correction of a drinks sale that has already gone out.
@@ -125,7 +161,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
               <dd className="font-semibold">{value}</dd>
             </div>
           ))}
-          {summary?.trip_id ? (
+          {summary?.trip_id && !atCounter ? (
             <div>
               <dt className="text-sm font-bold uppercase tracking-wide text-ink-soft">Dispatch trip</dt>
               <dd>
@@ -207,6 +243,22 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
         />
       </TableCard>
 
+      {counterTrip && counterLines.length > 0 ? (
+        <Card>
+          <CardHeader
+            title={t("Record what came back")}
+            description={t("Handed over at the counter. Count the empties the customer brought back and enter it, 0 if none.")}
+          />
+          <TripReturnsForm
+            action={recordTripReturnsAction.bind(null, org.slug, counterTrip.id)}
+            lines={counterLines}
+            today={today}
+            dispatchDate={counterTrip.dispatch_date}
+            counter
+          />
+        </Card>
+      ) : null}
+
       {returnLines.map((line) => {
         const followups = line.empties_followups.filter((followup) => !followup.voided_at);
         const followupTotal = followups.reduce((sum, followup) => sum + Number(followup.quantity), 0);
@@ -222,11 +274,11 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
           ["Result", difference < 0 ? `Short ${formatQuantity(-difference)}` : difference > 0 ? `Extra ${formatQuantity(difference)}` : "Balanced"]
         ];
         const details: [string, string][] = [
-          ["Returned with the trip", formatQuantity(initial)],
-          ["Short at the trip", formatQuantity(Math.max(expected - initial, 0))],
+          [atCounter ? "Returned at the counter" : "Returned with the trip", formatQuantity(initial)],
+          [atCounter ? "Short at the counter" : "Short at the trip", formatQuantity(Math.max(expected - initial, 0))],
           ["Follow-up returned", formatQuantity(followupTotal)],
           ["Outstanding", formatQuantity(outstanding)],
-          ["Trip return recorded", formatDateTime(line.dispatch_trips?.returns_recorded_at ?? null, org.timezone) ?? "—"]
+          [atCounter ? "Return recorded" : "Trip return recorded", formatDateTime(line.dispatch_trips?.returns_recorded_at ?? null, org.timezone) ?? "—"]
         ];
         const shortAtTrip = initial < expected;
         return (

@@ -168,6 +168,32 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   assert.deepEqual(leftovers, [], "drinks words on goods screens:\n" + leftovers.join("\n"));
   ok("every screen speaks of goods: Returnable, Non-returnable and Empty cylinders, never RGB, PET or empties");
 
+  // 7. At the counter: no delivery. A returnable order handed over waits for what comes back.
+  await go("/settings");
+  await vis(a.getByLabel("We deliver to customers")).uncheck();
+  await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
+  await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  await go("");
+  assert.equal(await menu(a).getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
+  const [counterOrder] = await newOrders(a, BASE + base, "rgb", [{ customer: "Chika Kitchen", lines: [["Gas refill 12.5kg", 5]] }]);
+  await go("/orders/" + counterOrder);
+  await vis(a.getByRole("button", { name: "Handed over now" })).click();
+  await a.getByRole("button", { name: /^Yes, / }).click();
+  await a.getByRole("heading", { name: "Record what came back" }).waitFor();
+  await a.getByText("Should bring back 5 Empty cylinders").waitFor();
+  await vis(a.getByLabel("Returned by Chika Kitchen")).fill("3");
+  await vis(a.getByRole("button", { name: "Record what came back" })).click();
+  await vis(a.getByText("Completed", { exact: true })).first().waitFor();
+  await a.screenshot({ path: `${SHOTS}/38-counter-returns.png`, fullPage: true });
+  await go("/returns/shortages");
+  const counterLine = a.locator("tr", { hasText: "Chika Kitchen" }).filter({ hasText: "Open" });
+  assert.deepEqual(
+    (await counterLine.locator("td").allInnerTexts()).slice(3, 7).map((text) => text.trim()),
+    ["5", "3", "0", "2"],
+    "expected, returned at the counter, follow-up, outstanding"
+  );
+  ok("at the counter: a returnable order handed over waits for what comes back, and the 2 short show as a shortage");
+
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));
   console.log("browser errors:", real.length ? real : "none");

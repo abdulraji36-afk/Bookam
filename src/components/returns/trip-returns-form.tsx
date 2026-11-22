@@ -22,9 +22,11 @@ type Props = {
   lines: ReturnLine[];
   today: string;
   dispatchDate: string;
+  /** At the counter there is no trip: "Date they brought them back", "Record what came back". */
+  counter?: boolean;
 };
 
-export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
+export function TripReturnsForm({ action, lines, today, dispatchDate, counter = false }: Props) {
   const { state, pending, form } = useFormAction(action);
   // Every box starts empty, so nothing is saved by a careless click: staff
   // must count each one, 0 included.
@@ -55,7 +57,7 @@ export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
   return (
     <form {...form} onSubmit={onSubmit} className="space-y-5">
       <TextField
-        label="Date the trip came back"
+        label={counter ? "Date they brought them back" : "Date the trip came back"}
         name="returnedDate"
         type="date"
         defaultValue={today}
@@ -124,7 +126,7 @@ export function TripReturnsForm({ action, lines, today, dispatchDate }: Props) {
 
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel="Saving…">
-        Record returns and complete trip
+        {counter ? "Record what came back" : "Record returns and complete trip"}
       </SubmitButton>
     </form>
   );
