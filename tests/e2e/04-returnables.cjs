@@ -45,6 +45,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.goto(BASE + "/signup");
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
+  await a.getByText("Another kind of business").click();
   await a.getByText("I count my goods").click();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);

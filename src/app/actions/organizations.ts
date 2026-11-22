@@ -36,13 +36,27 @@ export async function createBusinessAction(
     businessType: formData.get("businessType") ?? undefined
   });
   if (!parsed.success) return { ok: false, message: firstIssue(parsed.error) };
-  if (!readSelling(formData)) return { ok: false, message: "Choose how you sell." };
+  const workspace = formData.get("workspace");
+  if (workspace !== "drinks" && workspace !== "other") return { ok: false, message: "Choose your workspace." };
+
+  // The Drinks depot workspace: everything for a drinks depot, switched on together.
+  const selling =
+    workspace === "drinks"
+      ? {
+          p_selling_mode: "quantity" as SellingMode,
+          p_sells_drinks: true,
+          p_tracks_returns: true,
+          p_tracks_serials: false,
+          p_does_delivery: true
+        }
+      : readSelling(formData);
+  if (!selling) return { ok: false, message: "Choose how you sell." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_organization", {
     p_name: parsed.data.name,
-    p_business_type: parsed.data.businessType || null,
-    ...readSelling(formData)!
+    p_business_type: workspace === "drinks" ? "Drinks depot" : parsed.data.businessType || null,
+    ...selling
   });
 
   const created = data?.[0];

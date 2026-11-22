@@ -59,11 +59,16 @@ let dbg;
   await a.getByText(`We sent a confirmation link to ${owner}`).waitFor();
   await a.goto(await emailLink(owner, /confirm/i));
   await a.waitForURL("**/onboarding");
+  // First the workspace: Drinks depot, or another kind of business.
+  await a.getByText("Choose your workspace").waitFor();
+  assert.equal(await a.getByText("How do you sell?").count(), 0);
+  await a.getByText("Another kind of business").click();
   await a.getByText("How do you sell?").waitFor();
   // The follow-up questions only appear once the first choice is made.
   assert.equal(await a.getByLabel("Customers bring things back to me").count(), 0);
   await a.getByText("I count my goods").click();
-  assert.equal(await a.getByLabel("I sell drinks (RGB crates and PET packs)").isChecked(), false);
+  // Drinks is its own workspace, so it is not asked again here.
+  assert.equal(await a.getByLabel("I sell drinks (RGB crates and PET packs)").count(), 0);
   assert.equal(await a.getByLabel("I also sell some items with serial numbers").isChecked(), false);
   assert.equal(await a.getByLabel("We deliver to customers").isChecked(), true, "a goods business delivers by default");
   await a.screenshot({ path: `${SHOTS}/80-onboarding-questions.png`, fullPage: true });

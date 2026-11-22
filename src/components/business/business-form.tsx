@@ -46,20 +46,112 @@ export function BusinessForm({ action, submitLabel, pendingLabel, defaults, askF
         maxLength={80}
         required
       />
-      <SelectField label="What kind of business is it?" name="businessType" defaultValue={defaults?.businessType ?? ""}>
-        <option value="">Choose one (optional)</option>
-        {types.map((type) => (
-          <option key={type} value={type}>
-            {type}
-          </option>
-        ))}
-      </SelectField>
-      {askFeatures ? <SellingQuestions /> : null}
+      {askFeatures ? (
+        <WorkspaceChoice types={types.filter((type) => type !== "Drinks depot")} />
+      ) : (
+        <SelectField label="What kind of business is it?" name="businessType" defaultValue={defaults?.businessType ?? ""}>
+          <option value="">Choose one (optional)</option>
+          {types.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </SelectField>
+      )}
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel={pendingLabel}>
         {submitLabel}
       </SubmitButton>
     </form>
+  );
+}
+
+const DRINKS_INCLUDES = [
+  "RGB and PET orders for several customers at once, with stock left on every product",
+  "Trips with a driver and workers, and the empties each customer brings back",
+  "Empty shortages per order, follow-ups, empty exchanges and the empty balance",
+  "Stock in, stock summary, inventory value, daily report and transaction records",
+  "Any brand of drink, with the NBC (Coca-Cola) list ready to add from"
+];
+
+/**
+ * At sign-up, the first choice: the Drinks depot workspace, everything for a
+ * drinks depot switched on in one go, or another kind of business, which
+ * answers the usual questions about how it sells.
+ */
+function WorkspaceChoice({ types }: { types: string[] }) {
+  const [workspace, setWorkspace] = useState<"drinks" | "other" | null>(null);
+  const options = [
+    {
+      value: "drinks" as const,
+      title: "Drinks depot",
+      detail: "RGB crates and empties, PET packs, trips and empty shortages, the Bilikis way."
+    },
+    {
+      value: "other" as const,
+      title: "Another kind of business",
+      detail: "Shops, phones and gadgets, gas, building materials, warehouses and more."
+    }
+  ];
+
+  return (
+    <div className="space-y-4">
+      <fieldset>
+        <legend className="mb-2 text-lg font-extrabold">Choose your workspace</legend>
+        <div className="grid gap-3">
+          {options.map((option) => (
+            <label
+              key={option.value}
+              className={`block cursor-pointer rounded-md border-2 p-4 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ink ${
+                workspace === option.value ? "border-ink bg-ink text-white" : "border-field bg-white text-ink hover:border-ink"
+              }`}
+            >
+              <input
+                type="radio"
+                name="workspace"
+                value={option.value}
+                checked={workspace === option.value}
+                onChange={() => setWorkspace(option.value)}
+                required
+                className="sr-only"
+              />
+              <span className="block text-lg font-extrabold">{option.title}</span>
+              <span className={`block text-sm ${workspace === option.value ? "text-nav" : "text-ink-soft"}`}>{option.detail}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {workspace === "drinks" ? (
+        <div className="space-y-3 rounded-md border-2 border-ink p-4">
+          <input type="hidden" name="businessType" value="Drinks depot" />
+          <p className="text-lg font-extrabold">Your drinks depot comes with</p>
+          <ul className="space-y-2 text-sm">
+            {DRINKS_INCLUDES.map((line) => (
+              <li key={line} className="flex gap-2">
+                <span aria-hidden className="font-extrabold text-success">✓</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-ink-soft">You can change this later in Settings.</p>
+        </div>
+      ) : null}
+
+      {workspace === "other" ? (
+        <>
+          <SelectField label="What kind of business is it?" name="businessType" defaultValue="">
+            <option value="">Choose one (optional)</option>
+            {types.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </SelectField>
+          <SellingQuestions offerDrinks={false} />
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -69,6 +161,8 @@ type SellingDefaults = {
   serials?: boolean;
   delivery?: boolean;
   drinks?: boolean;
+  /** At sign-up the drinks depot is its own workspace, so it is not asked again here. */
+  offerDrinks?: boolean;
 };
 
 /**
@@ -80,7 +174,8 @@ export function SellingQuestions({
   returns = false,
   serials = false,
   delivery,
-  drinks = false
+  drinks = false,
+  offerDrinks = true
 }: SellingDefaults) {
   const [mode, setMode] = useState<SellingMode | null>(initialMode ?? null);
   // Until the person answers it themselves, delivery follows the usual case:
@@ -126,12 +221,14 @@ export function SellingQuestions({
           <legend className="px-1 text-lg font-extrabold">A few more questions</legend>
           {mode === "quantity" ? (
             <>
-              <CheckboxField
-                label="I sell drinks (RGB crates and PET packs)"
-                name="sellsDrinks"
-                defaultChecked={drinks}
-                hint="Soft drinks, beer, water. RGB crates must come back as empties; PET packs, cans and cartons do not. BukAm keeps one count of your empties."
-              />
+              {offerDrinks ? (
+                <CheckboxField
+                  label="I sell drinks (RGB crates and PET packs)"
+                  name="sellsDrinks"
+                  defaultChecked={drinks}
+                  hint="Soft drinks, beer, water. RGB crates must come back as empties; PET packs, cans and cartons do not. BukAm keeps one count of your empties."
+                />
+              ) : null}
               {returns && !drinks ? (
                 // Kept for businesses that already track other returnables.
                 <CheckboxField

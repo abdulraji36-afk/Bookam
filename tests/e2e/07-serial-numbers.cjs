@@ -46,6 +46,7 @@ let dbg;
   await a.goto(BASE + "/signup");
   await signUp(a, "Femi Ade", owner, "**/onboarding");
   await a.getByLabel("Business name").fill(`Femi Gadgets ${run}`);
+  await a.getByText("Another kind of business").click();
   await a.getByText("I sell items with serial numbers").click();
   // A phone shop is asked about delivery, which starts unticked; not about returns.
   assert.equal(await a.getByLabel("We deliver to customers").isChecked(), false);

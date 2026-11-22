@@ -64,7 +64,8 @@ async function signUp(page, name, email, expectUrl) {
   await a.goto(BASE + "/signup");
   await signUp(a, "Ada Obi", ada, "**/onboarding");
   await a.getByLabel("Business name").fill(`Ada Drinks ${run}`);
-  await a.getByLabel("What kind of business is it?").selectOption("Drinks depot");
+  await a.getByText("Another kind of business").click();
+  await a.getByLabel("What kind of business is it?").selectOption("Warehouse");
   await a.getByText("I count my goods").click();
   await a.getByRole("button", { name: "Create business" }).click();
   await a.waitForURL(/\/b\/ada-drinks-/);
@@ -129,6 +130,7 @@ async function signUp(page, name, email, expectUrl) {
   await b.goto(BASE + "/signup");
   await signUp(b, "Bola Ade", bola, "**/onboarding");
   await b.getByLabel("Business name").fill(`Bola Gas ${run}`);
+  await b.getByText("Another kind of business").click();
   await b.getByText("I count my goods").click();
   await b.getByRole("button", { name: "Create business" }).click();
   await b.waitForURL(/\/b\/bola-gas-/);
