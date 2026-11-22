@@ -1,10 +1,10 @@
 const { chromium } = require("playwright");
-const { pick, addCrew, newOrders, receiveCards } = require("./helpers.cjs");
+const { addCrew, newOrders, receiveCards } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const run = Date.now().toString(36);
-const ada = `ada4-${run}@example.com`, chidi = `chidi4-${run}@example.com`;
+const ada = `ada4-${run}@example.com`;
 let passed = 0;
 const ok = (name) => { passed++; console.log("PASS", name); };
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;

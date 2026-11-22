@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, receiveCards, newOrders } = require("./helpers.cjs");
+const { receiveCards, newOrders } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const TG = process.env.E2E_TELEGRAM_MOCK_URL ?? "http://127.0.0.1:8099";

@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const { createClient } = require("@supabase/supabase-js");
-const { pick, receiveCards, newOrders } = require("./helpers.cjs");
+const { receiveCards, newOrders } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
