@@ -88,7 +88,7 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   // The category starts empty and is required, so it is picked on purpose.
   assert.equal(await a.getByLabel("Category").getAttribute("required"), "");
   assert.equal(await a.getByLabel("Category").inputValue(), "");
-  await a.getByLabel("Category").selectOption("PET");
+  await a.getByLabel("Category").fill("PET");
   await a.getByRole("button", { name: "Save product" }).click();
   await a.waitForURL(new RegExp(base + "/products$"));
   await a.locator("li, tr", { hasText: "Water 75cl" }).getByText("PET", { exact: true }).waitFor();

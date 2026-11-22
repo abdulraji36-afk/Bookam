@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { describeDbError, type ActionState } from "@/lib/action-state";
 import { MANAGER_ROLES, requireOrg } from "@/lib/org";
+import { DRINK_CATEGORIES } from "@/lib/format";
 import { NBC_PRODUCTS } from "@/lib/nbc-products";
-import { customerSchema, firstIssue, productSchema, readQuantity } from "@/lib/validation";
+import { customerSchema, firstIssue, productSchema, readQuantity, safeText } from "@/lib/validation";
 
 const idSchema = z.uuid();
 
@@ -36,12 +37,32 @@ export async function saveProductAction(
   }
   // Drinks: RGB or PET is always chosen, and a PET drink always has a category.
   const drinkKind = String(formData.get("drinkKind") ?? "");
-  const category = String(formData.get("category") ?? "").trim().slice(0, 30);
+  const typed = String(formData.get("category") ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
   if (org.sells_drinks && drinkKind !== "rgb" && drinkKind !== "pet") {
     return { ok: false, message: "Choose whether this drink is RGB or PET." };
   }
-  if (org.sells_drinks && drinkKind === "pet" && !category) {
-    return { ok: false, message: "Choose a category for this drink." };
+  if (org.sells_drinks && drinkKind === "pet" && !typed) {
+    return { ok: false, message: "Choose a category for this drink, or type your own." };
+  }
+  // A drink's own category (Beer, Malt...) is fine; RGB is only for crates that come back.
+  if (org.sells_drinks && drinkKind === "pet" && typed.toUpperCase() === "RGB") {
+    return { ok: false, message: "RGB is for drinks whose crates come back. Choose RGB above, or another category." };
+  }
+  if (!safeText().safeParse(typed).success) {
+    return { ok: false, message: "Remove the hidden formatting characters from the category." };
+  }
+  // "pet" or "juice" is filed with the usual PET or Juice, and a category the
+  // business already uses keeps its spelling, so lists do not split in two.
+  let category = typed;
+  if (org.sells_drinks && typed) {
+    const { data: used } = await supabase
+      .from("products")
+      .select("category")
+      .eq("organization_id", org.id)
+      .not("category", "is", null)
+      .limit(1000);
+    const known = [...DRINK_CATEGORIES, ...(used ?? []).map((row) => row.category as string)];
+    category = known.find((name) => name.toLowerCase() === typed.toLowerCase()) ?? typed;
   }
 
   const { error } = await supabase.rpc("save_product", {

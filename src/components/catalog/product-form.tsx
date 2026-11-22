@@ -47,6 +47,8 @@ type Props = {
     drinks?: boolean;
   };
   defaults?: ProductDefaults;
+  /** Drinks: categories this business already uses, offered with the usual ones. */
+  categories?: string[];
 };
 
 export function ProductForm({
@@ -55,6 +57,7 @@ export function ProductForm({
   returnables,
   features,
   defaults,
+  categories = [],
 }: Props) {
   const { state, pending, form } = useFormAction(action);
   const [requiresReturn, setRequiresReturn] = useState(
@@ -152,6 +155,7 @@ export function ProductForm({
           }}
           defaultReturnable={defaults?.returnItemName}
           defaultCategory={defaults?.category}
+          categories={categories}
         />
       ) : features.returns || requiresReturn ? (
         <div className="space-y-4 rounded-md border-2 border-ink p-4">
@@ -224,13 +228,24 @@ function DrinkKind({
   onChange,
   defaultReturnable,
   defaultCategory,
+  categories,
 }: {
   returnables: string[];
   kind: "rgb" | "pet" | null;
   onChange: (kind: "rgb" | "pet") => void;
   defaultReturnable?: string;
   defaultCategory?: string;
+  categories: string[];
 }) {
+  // The usual drink categories, then any of the business's own (Beer, Malt...).
+  const suggestions = [
+    ...DRINK_CATEGORIES,
+    ...categories.filter(
+      (name) =>
+        name.toUpperCase() !== "RGB" &&
+        !DRINK_CATEGORIES.some((usual) => usual.toLowerCase() === name.toLowerCase()),
+    ),
+  ];
   const requiresReturn = kind === "rgb";
   const options = [
     {
@@ -277,23 +292,26 @@ function DrinkKind({
         ))}
       </div>
       {kind === "pet" ? (
-        <SelectField
-          label="Category"
-          name="category"
-          defaultValue={
-            defaultCategory && defaultCategory !== "RGB" ? defaultCategory : ""
-          }
-          required
-        >
-          <option value="" disabled>
-            Choose a category
-          </option>
-          {DRINK_CATEGORIES.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </SelectField>
+        <>
+          <TextField
+            label="Category"
+            name="category"
+            list="drink-categories"
+            defaultValue={
+              defaultCategory && defaultCategory !== "RGB" ? defaultCategory : ""
+            }
+            placeholder="Choose or type a category"
+            hint="Pick one, or type your own, such as Beer, Malt or Sachet water."
+            maxLength={30}
+            autoComplete="off"
+            required
+          />
+          <datalist id="drink-categories">
+            {suggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </>
       ) : null}
       {requiresReturn ? (
         <>

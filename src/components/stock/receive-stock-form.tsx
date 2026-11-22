@@ -80,13 +80,13 @@ export function ReceiveStockForm({ action, products, locations, today, drinks }:
           label={drinks ? "Supplier" : "Supplier (optional)"}
           name="supplierName"
           maxLength={80}
-          placeholder={drinks ? "e.g. NBC" : undefined}
+          placeholder={drinks ? "e.g. NBC or Nigerian Breweries" : undefined}
         />
         {drinks ? (
           <TextField
             label="Supplier delivery reference"
             name="reference"
-            hint="The NBC (or other supplier) delivery ref on the waybill."
+            hint="The supplier's delivery reference on the waybill."
             maxLength={80}
             required
           />

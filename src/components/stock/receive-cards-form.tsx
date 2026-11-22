@@ -117,11 +117,11 @@ export function ReceiveCardsForm({ action, products, locations, stock, today }: 
         ) : (
           <input type="hidden" name="locationId" value={locationId} />
         )}
-        <TextField label="Supplier" name="supplierName" maxLength={80} placeholder="e.g. NBC" />
+        <TextField label="Supplier" name="supplierName" maxLength={80} placeholder="e.g. NBC or Nigerian Breweries" />
         <TextField
           label="Supplier delivery reference"
           name="reference"
-          hint="The NBC (or other supplier) delivery ref on the waybill."
+          hint="The supplier's delivery reference on the waybill."
           maxLength={80}
           required
         />

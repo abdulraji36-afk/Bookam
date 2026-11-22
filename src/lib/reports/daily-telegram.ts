@@ -62,7 +62,7 @@ export function formatDailyOperations({
   const empties: string[] = [];
   if (t.tripReturns > 0) empties.push(`Trip returns: +${number(t.tripReturns)}`);
   if (t.followups > 0) empties.push(`Shortage follow-ups: +${number(t.followups)}`);
-  if (t.givenToSupplier > 0) empties.push(`Given to NBC: -${number(t.givenToSupplier)}`);
+  if (t.givenToSupplier > 0) empties.push(`Given to supplier: -${number(t.givenToSupplier)}`);
   if (t.adjustmentRecords > 0) empties.push(`Adjustments: ${counted(t.adjustmentRecords, "record")} / ${signed(t.adjustmentTotal)}`);
 
   const closing = byCategory((row) => row.closing).map(

@@ -79,11 +79,35 @@ let dbg;
   assert.equal(await vis(a.getByLabel(/^PET, can or carton/)).isChecked(), false);
   await vis(a.getByLabel(/^PET, can or carton/)).check();
   assert.equal(await vis(a.getByLabel("Category")).inputValue(), "", "the category starts empty");
-  await vis(a.getByLabel("Category")).selectOption("PET");
+  await vis(a.getByLabel("Category")).fill("PET");
   await vis(a.getByRole("button", { name: "Save product" })).click();
   await a.waitForURL(new RegExp(base + "/products$"));
   await a.locator("li, tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("RGB", { exact: true }).waitFor();
   await a.locator("li, tr", { hasText: "Coca-Cola 50cl PET" }).getByText("PET", { exact: true }).waitFor();
+  // A business's own drinks, not only Coca-Cola: any category can be typed.
+  await go("/products/new");
+  await vis(a.getByLabel("Product name")).fill("Maltina Classic 33cl");
+  await vis(a.getByLabel(/Selling price/)).fill("6000");
+  await vis(a.getByLabel(/Buying cost/)).fill("5400");
+  await vis(a.getByLabel(/^PET, can or carton/)).check();
+  await vis(a.getByLabel("Category")).fill("Malt");
+  await vis(a.getByRole("button", { name: "Save product" })).click();
+  await a.waitForURL(new RegExp(base + "/products$"));
+  await a.locator("li, tr", { hasText: "Maltina Classic 33cl" }).getByText("Malt", { exact: true }).waitFor();
+  // Typed in small letters, a usual category keeps its usual spelling.
+  await go("/products/new");
+  await vis(a.getByLabel("Product name")).fill("Fearless Energy 50cl");
+  await vis(a.getByLabel(/Selling price/)).fill("4000");
+  await vis(a.getByLabel(/Buying cost/)).fill("3600");
+  await vis(a.getByLabel(/^PET, can or carton/)).check();
+  await vis(a.getByLabel("Category")).fill("energy");
+  await vis(a.getByRole("button", { name: "Save product" })).click();
+  await a.waitForURL(new RegExp(base + "/products$"));
+  await a.locator("li, tr", { hasText: "Fearless Energy 50cl" }).getByText("Energy", { exact: true }).waitFor();
+  // The business's own category is offered next time.
+  await go("/products/new");
+  await vis(a.getByLabel(/^PET, can or carton/)).check();
+  assert.ok((await a.locator("#drink-categories option").evaluateAll((options) => options.map((o) => o.value))).includes("Malt"));
   ok("each drink is RGB or PET, and cannot be saved without its price and cost");
 
   // The NBC list: tick, enter price and cost, add.
@@ -108,9 +132,9 @@ let dbg;
   // Products as in Bilikis: pictures, cards and a saved display order.
   await go("/products");
   const productCard = (label) => a.locator("[data-summary-card]", { hasText: label });
-  assert.match(await productCard("Total products").innerText(), /4$/);
-  assert.match(await productCard("PET vs RGB").innerText(), /2 \/ 2$/);
-  assert.match(await productCard("Costed / priced").innerText(), /4 \/ 4$/);
+  assert.match(await productCard("Total products").innerText(), /6$/);
+  assert.match(await productCard("PET vs RGB").innerText(), /4 \/ 2$/);
+  assert.match(await productCard("Costed / priced").innerText(), /6 \/ 6$/);
   assert.match(
     await a.locator("tr", { hasText: "FANTA ULTRA 50CL X24 RGB" }).locator("img").getAttribute("src"),
     /\/images\/products\/F_RGB\.webp$/
@@ -420,13 +444,13 @@ let dbg;
     (await activity.locator("tr", { hasText: label }).locator("td").allInnerTexts()).map((text) => text.trim());
   assert.deepEqual((await activityRow("Initial RGB returns")).slice(1, 4), ["1", "30 empties received", "50 empties expected at closure"]);
   assert.deepEqual((await activityRow("Empty return follow-ups")).slice(1, 3), ["2", "20 empties received"]);
-  assert.deepEqual((await activityRow("NBC empty exchange")).slice(1, 4), ["1", "250 empties out", "500 RGB cases delivered by NBC"]);
+  assert.deepEqual((await activityRow("Empty exchange")).slice(1, 4), ["1", "250 empties out", "500 RGB cases delivered by the supplier"]);
   assert.deepEqual((await activityRow("RGB sales recorded")).slice(1, 3), ["1", "50 crates"]);
   assert.deepEqual((await activityRow("PET sales recorded")).slice(1, 3), ["2", "15 packs"]);
   // Empty movements: in with the trip and later, out to NBC.
   const empties = a.locator("section", { hasText: "Empty movements on" });
   await empties.locator("tr", { hasText: "RGB trip return" }).getByText("+30").waitFor();
-  await empties.locator("tr", { hasText: "NBC empty exchange" }).getByText("−250").waitFor();
+  await empties.locator("tr", { hasText: "Empty exchange" }).getByText("−250").waitFor();
   await empties.locator("tr", { hasText: "Empty adjustment" }).getByText("+500").waitFor();
   assert.equal(await empties.locator("tr", { hasText: "Return follow-up" }).count(), 2);
   // One trip carried both.
@@ -517,7 +541,7 @@ let dbg;
   const cardIs = async (label, value) => assert.match(await summary(label).innerText(), new RegExp(`${value}$`));
   await cardIs("Opening empties", "500");
   await cardIs("Trip returns", "50"); // 30 with the trip, 20 brought back later
-  await cardIs("NBC handoffs", "250");
+  await cardIs("Supplier handoffs", "250");
   await cardIs("Depot empties", "300");
   // Setting the opening count again changes that one record, not a second one.
   assert.equal(await vis(a.getByLabel("Opening empties")).inputValue(), "500");
@@ -584,7 +608,7 @@ let dbg;
   assert.ok(dailyText, "the daily summary reached the chat");
   assert.match(dailyText, /\nACTIVITY\nStock received: 1 record \/ 528 units\n- RGB: 488 crates\n- PET: 40 packs\n/);
   assert.match(dailyText, /\nRGB sales recorded: 1 sale \/ 52 crates\nPET dispatched: 1 trip \/ 5 packs\nRGB dispatched: 1 trip \/ 52 crates\n/);
-  assert.match(dailyText, /\nEMPTY MOVEMENT\nTrip returns: \+30\nShortage follow-ups: \+20\nGiven to NBC: -250\nAdjustments: 1 record \/ \+510\n/);
+  assert.match(dailyText, /\nEMPTY MOVEMENT\nTrip returns: \+30\nShortage follow-ups: \+20\nGiven to supplier: -250\nAdjustments: 1 record \/ \+510\n/);
   assert.match(dailyText, /- EMPTY BALANCE: 310\n/);
   assert.match(dailyText, /\nOPEN WORK\nPET sales waiting: 1\nOutstanding shortage cases: 1\nOutstanding empties: 2\n/);
   assert.match(dailyText, /\nADMIN ACTIVITY\nCorrections: 4\nVoided sales: 1\n/);

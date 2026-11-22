@@ -123,7 +123,7 @@ export function DrinksDesk({
             {
               href: `${base}/records`,
               title: "Transactions",
-              body: "Review stock in, empty exchange, PET sales and RGB sales.",
+              body: "Review stock in, empty exchanges, PET sales and RGB sales.",
             },
             {
               href: `${base}/records/voided`,
@@ -198,7 +198,7 @@ export function DrinksDesk({
           <li>1. Confirm stock before selling.</li>
           <li>2. Dispatch recorded PET sales when the truck is ready.</li>
           <li>3. Close RGB returns after empties are counted.</li>
-          <li>4. Record NBC empty handoffs clearly.</li>
+          <li>4. Record empties handed to the supplier clearly.</li>
         </ol>
       </Card>
     </div>

@@ -14,7 +14,7 @@ type Props = {
   returnables: Choice[];
   locations: Choice[];
   today: string;
-  /** A drinks business records it the Bilikis way: NBC reference required, RGB crates delivered. */
+  /** A drinks business records it the Bilikis way: the supplier's reference required, RGB crates delivered. */
   drinks?: boolean;
   /** How many are in store now, per location. */
   inStore?: Record<string, number>;
@@ -73,14 +73,14 @@ export function ExchangeForm({
           }
           name="reference"
           maxLength={80}
-          placeholder={drinks ? "e.g. the NBC waybill number" : undefined}
+          placeholder={drinks ? "e.g. the waybill number" : undefined}
           required={drinks}
         />
         <TextField
           label="Supplier (optional)"
           name="supplierName"
           maxLength={80}
-          defaultValue={drinks ? "NBC" : undefined}
+          placeholder={drinks ? "e.g. NBC or Nigerian Breweries" : undefined}
         />
         {drinks ? (
           <TextField

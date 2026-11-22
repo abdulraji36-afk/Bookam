@@ -128,7 +128,7 @@ export function CorrectDeliveryForm({ action, products, currency, today, referen
         label="Reason for the correction"
         name="reason"
         maxLength={500}
-        placeholder="e.g. 12 crates broken, handed back to NBC"
+        placeholder="e.g. 12 crates broken, handed back to the supplier"
         hint="At least 10 characters. Kept with the delivery."
         required
       />

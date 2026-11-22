@@ -135,7 +135,7 @@ async function EmptyBalance({
           <SummaryCard label="Trip returns" value={formatQuantity(tripReturns)} />
           <SummaryCard label="Adjustments" value={signed(otherAdjustments)} />
           <SummaryCard
-            label="NBC handoffs"
+            label="Supplier handoffs"
             value={formatQuantity(Number(summary?.taken_by_supplier ?? 0))}
           />
           <SummaryCard

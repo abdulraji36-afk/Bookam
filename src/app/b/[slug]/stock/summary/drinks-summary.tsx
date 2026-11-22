@@ -3,7 +3,7 @@ import { DataTable, TableCard } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { buttonClass } from "@/components/ui/button";
-import { formatDay, formatQuantity } from "@/lib/format";
+import { categoryOrder, formatDay, formatQuantity } from "@/lib/format";
 import { sortByProductMasterOrder } from "@/lib/product-order";
 import type { Database } from "@/types/database";
 
@@ -83,7 +83,7 @@ export function DrinksStockSummary({
             : "Unavailable",
         ],
         [
-          "Empties given to NBC",
+          "Empties given to supplier",
           empties
             ? formatQuantity(Number(empties.taken_by_supplier))
             : "Unavailable",
@@ -100,11 +100,11 @@ export function DrinksStockSummary({
       ]
     : [
         ["Tracked products", value(rows.length)],
-        ["RGB stock", value(categoryTotal("RGB"))],
-        ["PET stock", value(categoryTotal("PET"))],
-        ["Energy stock", value(categoryTotal("Energy"))],
-        ["Juice stock", value(categoryTotal("Juice"))],
-        ["Can stock", value(categoryTotal("Can"))],
+        // One card per category the business has: RGB and PET first, then
+        // the usual ones, then its own (Beer, Malt...).
+        ...[...new Set(rows.map(categoryOf))]
+          .sort((x, y) => categoryOrder(x) - categoryOrder(y) || x.localeCompare(y))
+          .map((category): [string, string] => [`${category} stock`, value(categoryTotal(category))]),
       ];
 
   return (

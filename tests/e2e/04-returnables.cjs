@@ -64,7 +64,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
       await vis(a.getByLabel(/^RGB/)).check(); // the empty crate comes back
     } else if (await vis(a.getByLabel(/^PET, can or carton/)).count()) {
       await vis(a.getByLabel(/^PET, can or carton/)).check();
-      await vis(a.getByLabel("Category")).selectOption("PET");
+      await vis(a.getByLabel("Category")).fill("PET");
     }
     await vis(a.getByRole("button", { name: "Save product" })).click();
     await a.waitForURL(new RegExp(base + "/products$"));

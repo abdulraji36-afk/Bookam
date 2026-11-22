@@ -252,7 +252,7 @@ export async function getDrinksDaily(
     supabase
       .from("supplier_exchanges")
       .select(
-        "id, exchange_no, reference, crates_delivered, quantity_taken, note, created_at",
+        "id, exchange_no, reference, supplier_name, crates_delivered, quantity_taken, note, created_at",
       )
       .eq("organization_id", organizationId)
       .eq("exchange_date", day)
@@ -491,10 +491,10 @@ export async function getDrinksDaily(
       detail: "Later collections from previously short customer returns",
     },
     {
-      activity: "NBC empty exchange",
+      activity: "Empty exchange",
       records: exchangeRows.length,
       quantity: `${count(sum(exchangeRows, (row) => Number(row.quantity_taken)))} empties out`,
-      detail: `${count(sum(exchangeRows, (row) => Number(row.crates_delivered ?? 0)))} RGB cases delivered by NBC`,
+      detail: `${count(sum(exchangeRows, (row) => Number(row.crates_delivered ?? 0)))} RGB cases delivered by the supplier`,
     },
     {
       activity: "Empty adjustments",
@@ -542,11 +542,11 @@ export async function getDrinksDaily(
       note: row.note ?? "",
     })),
     ...exchangeRows.map((row) => ({
-      activity: "NBC empty exchange",
+      activity: "Empty exchange",
       at: row.created_at,
       time: time(row.created_at),
       reference: row.exchange_no || row.reference || "—",
-      party: "NBC",
+      party: row.supplier_name || "Supplier",
       quantity: -Number(row.quantity_taken),
       note: row.note ?? "",
     })),

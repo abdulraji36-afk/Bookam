@@ -15,6 +15,11 @@ const asText = (value: number | null | undefined) => (value == null ? "" : Strin
 async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">, "params">) {
   const { slug, id } = await params;
   const { supabase, org } = await requireOrg(slug, MANAGER_ROLES);
+  // A drinks business's own categories (Beer, Malt...), offered again.
+  const { data: categoryRows } = org.sells_drinks
+    ? await supabase.from("products").select("category").eq("organization_id", org.id).not("category", "is", null).limit(1000)
+    : { data: [] };
+  const categories = [...new Set((categoryRows ?? []).map((row) => row.category as string))].sort();
 
   const [productResult, costResult, returnablesResult] = await Promise.all([
     supabase
@@ -39,6 +44,7 @@ async function EditProduct({ params }: Pick<PageProps<"/b/[slug]/products/[id]">
       </div>
       <Card>
         <ProductForm
+          categories={categories}
           action={saveProductAction.bind(null, org.slug, product.id)}
           currency={org.currency_code}
           returnables={(returnablesResult.data ?? []).map((item) => item.name)}
