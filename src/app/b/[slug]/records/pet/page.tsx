@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/ui/card";
+import { requireOrg } from "@/lib/org";
 import { SalesHistory } from "../sales-history";
 
-export const metadata: Metadata = { title: "PET transaction history" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/records/pet">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("PET transaction history") };
+}
 
 async function History({
   params,

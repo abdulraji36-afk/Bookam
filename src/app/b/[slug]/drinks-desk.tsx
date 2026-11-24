@@ -137,7 +137,7 @@ export function DrinksDesk({
             {
               href: `${base}/stock/summary`,
               title: "Stock summary",
-              body: "Review the stock position, low stock and the empty balance.",
+              body: t("Review the stock position, low stock and the empty balance."),
             },
             {
               href: `${base}/reports/daily`,

@@ -570,11 +570,11 @@ async function DailyReport({
 
           {org.tracks_returns ? (
             <TableCard
-              title={t(`${org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges"} (${exchangeRows.length})`)}
+              title={t(`${org.sells_drinks ? t("Empty exchanges") : t("Supplier exchanges")} (${exchangeRows.length})`)}
             >
               <DataTable
                 label={
-                  org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges"
+                  org.sells_drinks ? t("Empty exchanges") : t("Supplier exchanges")
                 }
                 rows={exchangeRows}
                 rowKey={(exchange) => exchange.id}
@@ -584,7 +584,7 @@ async function DailyReport({
                 empty="The supplier took nothing on this day."
                 columns={[
                   {
-                    header: "Exchange no.",
+                    header: t("Exchange no."),
                     cell: (exchange) => (
                       <span className="tabular-nums">
                         {exchange.exchange_no}

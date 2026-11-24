@@ -150,7 +150,7 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
   // 6. No drinks words anywhere a goods business looks.
   const leftovers = [];
-  const DRINKS = /\bRGB\b|\bPET\b|\bEmpties\b|\bempties\b|\bcrates?\b|\bdrinks?\b|\bNBC\b/;
+  const DRINKS = /\bRGB\b|\bPET\b|\bEmpties\b|\bempties\b|\bcrates?\b|\bdrinks?\b|\bNBC\b|\b[Ee]xchanges?\b|\b[Ee]mpty (balance|shortage|adjustment|movement)/;
   for (const path of [
     "", "/orders", "/orders/new", "/orders/new?kind=pet", "/orders/" + gasOrder, "/dispatch", "/stock", "/stock/summary",
     "/stock/receive", "/returns", "/returns/shortages", "/returns/exchanges", "/returns/exchange", "/returns/adjustments",

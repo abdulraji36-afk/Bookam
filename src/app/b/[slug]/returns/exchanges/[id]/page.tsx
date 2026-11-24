@@ -41,7 +41,7 @@ async function Exchange({ params, searchParams }: PageProps<"/b/[slug]/returns/e
       ) : null}
       <PageHeader
         title={exchange.exchange_no}
-        sub={`${formatQuantity(Number(exchange.quantity_taken))} ${name} taken by the supplier`}
+        sub={t(`${formatQuantity(Number(exchange.quantity_taken))} ${name} taken by the supplier`)}
         actions={exchange.voided_at ? <Badge tone="danger">Voided</Badge> : null}
       />
       <Card>
@@ -74,18 +74,18 @@ async function Exchange({ params, searchParams }: PageProps<"/b/[slug]/returns/e
         <ActionsPanel>
           <ReasonForm
             action={voidSupplierExchangeAction.bind(null, org.slug, exchange.id)}
-            trigger="Void this exchange"
-            explanation={`Use this when the exchange was recorded by mistake. The ${name.toLowerCase()} go back into the store count.`}
-            submitLabel="Void exchange"
+            trigger={t("Void this exchange")}
+            explanation={t(`Use this when the exchange was recorded by mistake. The ${name.toLowerCase()} go back into the store count.`)}
+            submitLabel={t("Void exchange")}
           />
         </ActionsPanel>
       ) : null}
       <div className="flex flex-wrap gap-3">
         <Link href={`/b/${org.slug}/returns/exchanges`} className={buttonClass("secondary")}>
-          Back to all exchanges
+          {t("Back to all exchanges")}
         </Link>
         <Link href={`/b/${org.slug}/returns/exchange`} className={buttonClass("ghost")}>
-          Record another exchange
+          {t("Record another exchange")}
         </Link>
       </div>
     </div>

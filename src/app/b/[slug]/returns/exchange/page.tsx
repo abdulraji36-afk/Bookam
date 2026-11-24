@@ -10,7 +10,12 @@ import { requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { getReturnsFormData } from "@/lib/returnables";
 
-export const metadata: Metadata = { title: "New empty exchange" };
+/** The tab title in the business's own words ("New supplier return" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns/exchange">): Promise<Metadata> {
+  const { slug } = await params;
+  const { org, t } = await requireOrg(slug);
+  return { title: org.sells_drinks ? t("New empty exchange") : "Supplier exchange" };
+}
 
 async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchange">, "params">) {
   const { slug } = await params;
@@ -36,10 +41,10 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchange">
             : "Record what your supplier took away. It comes off what you have in store."
         }
       >
-        {org.sells_drinks ? "New empty exchange" : "Supplier exchange"}
+        {org.sells_drinks ? t("New empty exchange") : t("Supplier exchange")}
       </PageTitle>
       {data.returnables.length === 0 ? (
-        <EmptyState title="Nothing to exchange">None of your products have a returnable item yet.</EmptyState>
+        <EmptyState title={t("Nothing to exchange")}>None of your products have a returnable item yet.</EmptyState>
       ) : (
         <Card>
           <ExchangeForm
@@ -53,7 +58,7 @@ async function Exchange({ params }: Pick<PageProps<"/b/[slug]/returns/exchange">
         </Card>
       )}
       <Link href={`${base}/returns/exchanges`} className={buttonClass("secondary")}>
-        See all exchanges
+        {t("See all exchanges")}
       </Link>
     </div>
   );

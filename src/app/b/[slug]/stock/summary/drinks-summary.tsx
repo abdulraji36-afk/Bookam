@@ -115,7 +115,7 @@ export function DrinksStockSummary({
         title="Stock summary"
         sub={
           manager
-            ? "Review stock levels and the empty balance."
+            ? t("Review stock levels and the empty balance.")
             : "Check current stock before selling."
         }
       />
@@ -147,7 +147,7 @@ export function DrinksStockSummary({
           title="Stock as at"
           description={
             manager
-              ? "Choose a date to see stock and empty balances at the close of that day."
+              ? t("Choose a date to see stock and empty balances at the close of that day.")
               : "Choose a date to see the stock balance at the close of that day."
           }
         />

@@ -137,7 +137,7 @@ async function Customers({ params, searchParams }: PageProps<"/b/[slug]/customer
               ...(org.tracks_returns
                 ? [
                     {
-                      header: org.sells_drinks ? "Empties" : "Returnables",
+                      header: org.sells_drinks ? t("Empties") : "Returnables",
                       phone: "badge" as const,
                       cell: (customer: Customer) => {
                         const owed = balances.get(customer.id) ?? [];

@@ -39,7 +39,7 @@ async function EditCustomer({ params }: Pick<PageProps<"/b/[slug]/customers/[id]
       </div>
       {(balances ?? []).length > 0 ? (
         <Card>
-          <CardHeader title={org.sells_drinks ? "Empties" : "Returnables"} />
+          <CardHeader title={org.sells_drinks ? t("Empties") : "Returnables"} />
           <ul className="-my-2 divide-y divide-line">
             {(balances ?? []).map((balance) => (
               <li key={balance.returnable_name} className="flex items-center justify-between gap-3 py-2">

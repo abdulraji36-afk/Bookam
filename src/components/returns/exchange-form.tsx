@@ -139,7 +139,7 @@ export function ExchangeForm({
       <TextField label="Note (optional)" name="note" maxLength={500} />
       <FormMessage state={state} />
       <SubmitButton pending={pending} pendingLabel="Saving…">
-        Save exchange
+        {t("Save exchange")}
       </SubmitButton>
     </form>
   );

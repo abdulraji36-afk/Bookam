@@ -17,7 +17,12 @@ import {
 import { canManage, requireOrg } from "@/lib/org";
 import { getShortageLines } from "@/lib/shortages";
 
-export const metadata: Metadata = { title: "Empties" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("Empties") };
+}
 
 const signed = (value: number) =>
   value === 0 ? (
@@ -34,7 +39,7 @@ async function Returns({
   const { supabase, org, role, t } = await requireOrg(slug);
   const base = `/b/${org.slug}`;
   const manager = canManage(role);
-  const word = org.sells_drinks ? "Empties" : "Returns";
+  const word = org.sells_drinks ? t("Empties") : "Returns";
 
   const [
     totalsResult,
@@ -196,7 +201,7 @@ async function Returns({
                 href={`${base}/returns/exchange`}
                 className={buttonClass("primary")}
               >
-                Supplier exchange
+                {t("Supplier exchange")}
               </Link>
             )}
             {manager ? (
@@ -300,7 +305,7 @@ async function Returns({
           }
         >
           <DataTable
-            label="Open empty shortages"
+            label={t("Open empty shortages")}
             rows={openShortages.slice(0, 10)}
             rowKey={(line) => line.id}
             rowHref={(line) => `${base}/orders/${line.order_id}`}

@@ -141,7 +141,7 @@ async function AuditLog({ params, searchParams }: PageProps<"/b/[slug]/activity"
               {
                 header: "Record",
                 wrap: true,
-                cell: (entry) => describeRecord(entry.entity_type, entry.entity_id, entry.new_values, entry.old_values)
+                cell: (entry) => describeRecord(entry.entity_type, entry.entity_id, [entry.new_values, entry.old_values], t)
               },
               {
                 header: "Actor",

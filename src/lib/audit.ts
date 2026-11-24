@@ -81,8 +81,14 @@ const RECORD_LABELS: Record<string, string> = {
 };
 
 /** "Order ORD-20261116-0003", or the record type and a short id. */
-export function describeRecord(entityType: string, entityId: string, ...values: (Json | null)[]) {
-  const label = RECORD_LABELS[entityType] ?? entityType.replace(/_/g, " ");
+export function describeRecord(
+  entityType: string,
+  entityId: string,
+  values: (Json | null)[],
+  t: (text: string) => string = (text) => text
+) {
+  // Only the record type is put in the depot's words, never a name someone typed.
+  const label = t(RECORD_LABELS[entityType] ?? entityType.replace(/_/g, " "));
   for (const value of values) {
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const record = value as Record<string, Json | undefined>;

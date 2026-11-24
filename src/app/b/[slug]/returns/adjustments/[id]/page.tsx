@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Adjustment" };
 
 async function Adjustment({ params }: Pick<PageProps<"/b/[slug]/returns/adjustments/[id]">, "params">) {
   const { slug, id } = await params;
-  const { supabase, org, role } = await requireOrg(slug);
+  const { supabase, org, role, t } = await requireOrg(slug);
   const { data: adjustment } = await supabase
     .from("returnable_adjustments")
     .select("id, adjustment_date, returnable_item_id, quantity_delta, reason, customer_id, note, created_by, created_at, voided_at, void_reason")
@@ -81,7 +81,7 @@ async function Adjustment({ params }: Pick<PageProps<"/b/[slug]/returns/adjustme
         href={`/b/${org.slug}/returns${org.sells_drinks ? "/adjustments" : ""}`}
         className={buttonClass("secondary")}
       >
-        Back to {org.sells_drinks ? (canManage(role) ? "empty balance" : "empty adjustments") : "returns"}
+        Back to {org.sells_drinks ? (canManage(role) ? t("empty balance") : t("empty adjustments")) : "returns"}
       </Link>
     </div>
   );

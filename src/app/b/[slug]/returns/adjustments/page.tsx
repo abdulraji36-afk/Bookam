@@ -22,7 +22,12 @@ import { formatTime } from "@/lib/records";
 import { requestNow } from "@/lib/request-time";
 import { getDrinksStock } from "@/lib/returnables";
 
-export const metadata: Metadata = { title: "Empty balance" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns/adjustments">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("Empty balance") };
+}
 
 const signed = (value: number) =>
   value > 0
@@ -116,7 +121,7 @@ async function EmptyBalance({
               href={`${base}/returns/adjust`}
               className={buttonClass("secondary")}
             >
-              Record empty adjustment
+              {t("Record empty adjustment")}
             </Link>
           ) : null
         }
@@ -124,7 +129,7 @@ async function EmptyBalance({
 
       {error ? (
         <Alert tone="error">
-          The empty balance could not be loaded. Please refresh the page. If
+          {t("The empty balance could not be loaded. Please refresh the page. If")}
           this keeps happening, the database may be missing its latest update.
         </Alert>
       ) : null}
@@ -181,7 +186,7 @@ async function EmptyBalance({
           rows={adjustments}
           rowKey={(row) => row.id}
           rowHref={(row) => `${base}/returns/adjustments/${row.id}`}
-          empty="No empty adjustments yet."
+          empty={t("No empty adjustments yet.")}
           columns={[
             { header: "Date", cell: (row) => formatDay(row.adjustment_date) },
             {

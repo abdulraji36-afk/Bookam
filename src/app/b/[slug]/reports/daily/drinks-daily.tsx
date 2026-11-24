@@ -104,7 +104,7 @@ export function DrinksDailyReport({
         sub={
           manager
             ? "Review the day’s stock, sales, dispatch, return and depot activity."
-            : "Stock, sales, dispatches and empty returns for the day."
+            : t("Stock, sales, dispatches and empty returns for the day.")
         }
       />
 
@@ -228,7 +228,7 @@ export function DrinksDailyReport({
                 ...(manager ? [money(row.value)] : []),
                 t(row.status),
               ])}
-              empty={`No ${kind} sales recorded`}
+              empty={t(`No ${kind} sales recorded`)}
             />
           ))}
 
@@ -273,7 +273,7 @@ export function DrinksDailyReport({
               signed(row.quantity),
               ...(manager ? [t(row.note || "—")] : []),
             ])}
-            empty="No empty movements"
+            empty={t("No empty movements")}
           />
 
           {manager ? (

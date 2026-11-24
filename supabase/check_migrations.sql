@@ -50,7 +50,9 @@ with
       ('20261206090000_empty_balance', exists (select 1 from fn where name = 'set_opening_empties')),
       ('20261207090000_product_display_order', exists (select 1 from col where t = 'organizations' and c = 'product_order')),
       ('20261208090000_correct_sale', exists (select 1 from fn where name = 'correct_order')),
-      ('20261209090000_daily_summary', exists (select 1 from col where t = 'organization_notifications' and c = 'daily_summary_sent_for'))
+      ('20261209090000_daily_summary', exists (select 1 from col where t = 'organization_notifications' and c = 'daily_summary_sent_for')),
+      ('20261210090000_goods_depot', exists (select 1 from col where t = 'organizations' and c = 'trade')),
+      ('20261211090000_counter_returns', exists (select 1 from fn where name = 'hand_over_order' and src like '%Counter%'))
   )
 select migration, applied
 from checks

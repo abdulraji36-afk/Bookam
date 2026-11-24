@@ -11,7 +11,12 @@ import { MANAGER_ROLES, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { getShortageLines } from "@/lib/shortages";
 
-export const metadata: Metadata = { title: "Customer brought back empties" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns/customer-return">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("Customer brought back empties") };
+}
 
 async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/customer-return">, "params">) {
   const { slug } = await params;
@@ -56,7 +61,7 @@ async function CustomerReturn({ params }: Pick<PageProps<"/b/[slug]/returns/cust
         </Card>
       )}
       <Link href={`${base}/returns/shortages`} className={buttonClass("secondary")}>
-        Back to empty shortages
+        {t("Back to empty shortages")}
       </Link>
     </div>
   );

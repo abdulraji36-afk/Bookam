@@ -11,7 +11,12 @@ import { formatDay, formatQuantity } from "@/lib/format";
 import { requireOrg } from "@/lib/org";
 import { matchAny, readListSearch } from "@/lib/search";
 
-export const metadata: Metadata = { title: "Empty exchanges" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns/exchanges">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("Empty exchanges") };
+}
 
 /** Every time the supplier took empties away, each its own record (like Bilikis's empty exchange history). */
 async function Exchanges({
@@ -23,7 +28,7 @@ async function Exchanges({
   const base = `/b/${org.slug}/returns/exchanges`;
   const search = readListSearch(query, 30);
   const showVoided = query.status === "voided";
-  const title = org.sells_drinks ? t("Empty exchanges") : "Supplier exchanges";
+  const title = org.sells_drinks ? t("Empty exchanges") : t("Supplier exchanges");
 
   let listQuery = supabase
     .from("supplier_exchanges")
@@ -96,7 +101,7 @@ async function Exchanges({
             href={`/b/${org.slug}/returns/exchange`}
             className={buttonClass("primary")}
           >
-            + New exchange
+            {t("+ New exchange")}
           </Link>
         }
       />
@@ -104,22 +109,22 @@ async function Exchanges({
         <SearchForm
           action={base}
           q={search.q}
-          label="Search exchanges"
-          placeholder="Search by exchange number, reference or supplier"
+          label={t("Search exchanges")}
+          placeholder={t("Search by exchange number, reference or supplier")}
         />
         <StatusTabs
-          label="Exchange status"
+          label={t("Exchange status")}
           current={showVoided ? "voided" : "kept"}
           hrefFor={(value) => href(value)}
           tabs={[
-            { value: "kept", label: "Exchanges", count: kept.count ?? 0 },
+            { value: "kept", label: t("Exchanges"), count: kept.count ?? 0 },
             { value: "voided", label: "Voided", count: voided.count ?? 0 },
           ]}
         />
       </FilterBar>
       {error ? (
         <Alert tone="error">
-          The exchanges could not be loaded. Please refresh the page. If this
+          {t("The exchanges could not be loaded. Please refresh the page. If this")}
           keeps happening, the database may be missing its latest update.
         </Alert>
       ) : null}
@@ -131,14 +136,14 @@ async function Exchanges({
           rowHref={(row) => `${base}/${row.id}`}
           empty={
             search.q
-              ? "No exchange matches that search."
+              ? t("No exchange matches that search.")
               : showVoided
-                ? "No voided exchanges."
-                : "No exchanges yet."
+                ? t("No voided exchanges.")
+                : t("No exchanges yet.")
           }
           columns={[
             {
-              header: "Exchange no.",
+              header: t("Exchange no."),
               cell: (row) => (
                 <span className="font-extrabold tabular-nums">
                   {row.exchange_no}

@@ -17,7 +17,12 @@ import {
   shortageSummary,
 } from "@/lib/shortages";
 
-export const metadata: Metadata = { title: "Empty shortages" };
+/** The tab title in the business's own words ("Return shortages" for goods). */
+export async function generateMetadata({ params }: PageProps<"/b/[slug]/returns/shortages">): Promise<Metadata> {
+  const { slug } = await params;
+  const { t } = await requireOrg(slug);
+  return { title: t("Empty shortages") };
+}
 
 const PAGE_SIZE = 20;
 const isDay = (value: unknown): value is string =>
@@ -159,7 +164,7 @@ async function Shortages({
         </Alert>
       ) : null}
 
-      <TableCard title="Customer empty shortage history">
+      <TableCard title={t("Customer empty shortage history")}>
         <DataTable
           label={t("Empty shortages")}
           rows={page}

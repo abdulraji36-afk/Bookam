@@ -50,7 +50,7 @@ async function newOrders(page, businessUrl, kind, rows, options = {}) {
   await page.goto(businessUrl + "/orders/new" + (kind === "pet" ? "?kind=pet" : ""));
   // Drinks say RGB / PET; a goods depot says Returnable / Non-returnable.
   await page
-    .getByRole("heading", { name: kind === "pet" ? /^New (PET|Non-returnable) orders$/ : /^New (RGB|Returnable) orders$/ })
+    .getByRole("heading", { name: kind === "pet" ? /^New (PET|Non-returnable) orders$/i : /^New (RGB|Returnable) orders$/i })
     .waitFor();
   for (const [i, row] of rows.entries()) {
     if (i > 0) await vis(page.getByRole("button", { name: "Add customer" })).click();

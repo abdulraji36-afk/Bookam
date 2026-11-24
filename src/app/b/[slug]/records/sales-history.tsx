@@ -150,7 +150,7 @@ export async function SalesHistory({
           keeps happening, the database may be missing its latest update.
         </Alert>
       ) : rows.length === 0 ? (
-        <EmptyState title={`No ${label} sales`}>
+        <EmptyState title={t(`No ${kind} sales`)}>
           {label} sales delivered between {formatDay(range.from)} and{" "}
           {formatDay(range.to)} will appear here.
         </EmptyState>

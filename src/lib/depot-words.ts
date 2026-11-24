@@ -25,6 +25,12 @@ export function depotWords(trade: string | null | undefined, poolName?: string |
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** True where a word starts a heading, a label or a sentence, or stands on its own. */
+function startsPhrase(whole: string, offset: number) {
+  const before = whole.slice(0, offset).trimEnd();
+  return before === "" || /[.:(/\n!?·—-]$/.test(before);
+}
+
 /** Keeps the first letter's case of the word it replaces. */
 function cased(replacement: string, original: string) {
   if (original[0] === original[0]?.toUpperCase() && original[0] !== original[0]?.toLowerCase()) {
@@ -43,16 +49,22 @@ export function say(words: DepotWords, text: string): string {
   const pool = words.pool;
   const poolLower = pool.toLowerCase();
   // Longest phrases first, so "Empty shortages" is not read as "Empty" + "shortages".
-  const rules: [RegExp, (match: string) => string][] = [
+  const rules: [RegExp, (match: string, offset: number, whole: string) => string][] = [
     [/\b(an?) RGB\b/gi, (m) => cased("a returnable", m)],
     [/\b(an?) PET\b/gi, (m) => cased("a non-returnable", m)],
-    [/\bRGB (crates|cases)\b/gi, (m) => cased("returnable goods", m)],
-    [/\bRGB crate\b/gi, (m) => cased("returnable item", m)],
-    [/\bRGB\b/g, () => "Returnable"],
-    [/\bPET\b/g, () => "Non-returnable"],
+    [/\bRGB (crates|cases)\b/gi, (_m, offset, whole) => (startsPhrase(whole, offset) ? "Returnable goods" : "returnable goods")],
+    [/\bRGB crate\b/gi, (_m, offset, whole) => (startsPhrase(whole, offset) ? "Returnable item" : "returnable item")],
+    [/\bRGB returns\b/gi, (_m, offset, whole) => (startsPhrase(whole, offset) ? pool : poolLower)],
+    [/\bRGB empty returns\b/gi, () => `${poolLower} coming back`],
+    // Mid-sentence it is "returnable"; as a heading, a label or on its own, "Returnable".
+    [/\bRGB\b/g, (_m, offset, whole) => (startsPhrase(whole, offset) ? "Returnable" : "returnable")],
+    [/\bPET\b/g, (_m, offset, whole) => (startsPhrase(whole, offset) ? "Non-returnable" : "non-returnable")],
     [/\bempty (shortages?)\b/gi, (m) => cased(`return ${m.split(" ")[1].toLowerCase()}`, m)],
-    [/\bempty (exchanges?)\b/gi, (m) => cased(`supplier ${m.split(" ")[1].toLowerCase() === "exchanges" ? "returns" : "return"}`, m)],
-    [/\bempty (balance|adjustments?|movements?|return follow-ups?)\b/gi, (m) => cased(`returns ${m.slice(6).toLowerCase()}`, m)],
+    [/\b(supplier|empty) (exchanges)\b/gi, (m) => cased("supplier returns", m)],
+    [/\b(supplier|empty) (exchange)\b/gi, (m) => cased("supplier return", m)],
+    [/\bexchanges\b/gi, (m) => cased("supplier returns", m)],
+    [/\bexchange\b/gi, (m) => cased("supplier return", m)],
+    [/\bempty (balances?|adjustments?|movements?|return follow-ups?)\b/gi, (m) => cased(`returns ${m.slice(6).toLowerCase()}`, m)],
     [/\bopening empties\b/gi, (m) => cased(`opening ${poolLower}`, m)],
     [/\bempties\b/gi, (m) => (m[0] === "E" ? pool : poolLower)],
     [/\bempty crates?\b/gi, (m) => (m[0] === "E" ? pool : poolLower)],
@@ -65,7 +77,7 @@ export function say(words: DepotWords, text: string): string {
     [/\bdrink\b/gi, (m) => cased("product", m)]
   ];
   let out = text;
-  for (const [pattern, replace] of rules) out = out.replace(pattern, replace);
+  for (const [pattern, replace] of rules) out = out.replace(pattern, (match, ...rest) => replace(match, rest[rest.length - 2] as number, rest[rest.length - 1] as string));
   return out;
 }
 
