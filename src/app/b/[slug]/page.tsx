@@ -5,7 +5,7 @@ import { WeekChart, type DayCount } from "@/components/dashboard/week-chart";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
-import { describeOwed, formatDay, formatQuantity, ROLE_LABELS, todayIn } from "@/lib/format";
+import { describeOwed, formatDay, formatQuantity, ROLE_LABELS, todayIn, unitWord } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { saleWords } from "@/lib/selling";
@@ -336,7 +336,7 @@ async function Dashboard({ params }: Pick<PageProps<"/b/[slug]">, "params">) {
                 phone: "badge",
                 cell: (row) => (
                   <span className="text-lg font-extrabold">
-                    {formatQuantity(row.onHand)} <span className="text-sm font-medium text-ink-soft">{row.unit}</span>
+                    {formatQuantity(row.onHand)} <span className="text-sm font-medium text-ink-soft">{unitWord(row.onHand, row.unit)}</span>
                   </span>
                 )
               }

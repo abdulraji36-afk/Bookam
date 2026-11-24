@@ -11,6 +11,7 @@ import type { ActionState } from "@/lib/action-state";
 import { formatMoney, formatQuantity, PAYMENT_LABELS } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
 import type { PaymentType } from "@/types/database";
+import { CardRail } from "@/components/ui/card-rail";
 
 export type BatchProduct = {
   id: string;
@@ -264,7 +265,7 @@ export function BatchOrderForm({ action, customers, products, locations, stock, 
                   {visible.length === 0 ? (
                     <p className="text-sm font-medium text-ink-soft">No products in stock here.</p>
                   ) : (
-                    <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 pb-2">
+                    <CardRail label="products">
                       <ul className="flex w-max gap-3">
                         {visible.map((product) => {
                           const active = card.order.includes(product.id);
@@ -344,7 +345,7 @@ export function BatchOrderForm({ action, customers, products, locations, stock, 
                           );
                         })}
                       </ul>
-                    </div>
+                    </CardRail>
                   )}
                   {note(`products-${card.key}`)}
                 </div>

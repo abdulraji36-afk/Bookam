@@ -23,7 +23,7 @@ type Props = {
 };
 
 /**
- * Phone navigation: a bar fixed to the bottom of the screen, where thumbs
+ * Phone and tablet navigation: a bar fixed to the bottom of the screen, where thumbs
  * reach, with the less-used pages in a sheet that slides up from it.
  */
 export function MobileNav({ primary, more, quick, businessName }: Props) {
@@ -38,7 +38,7 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
     <>
       <nav
         aria-label="Business"
-        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch gap-1 border-t border-white/10 bg-ink px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5 md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch gap-1 border-t border-white/10 bg-ink px-2 pb-[max(0.375rem,env(safe-area-inset-bottom))] pt-1.5 lg:hidden"
       >
         {primary.map((item) => (
           <TabLink key={item.href} item={item} />
@@ -67,7 +67,7 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
         onClick={(event) => {
           if (event.target === event.currentTarget) close();
         }}
-        className="m-0 mt-auto max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-0 text-ink open:animate-sheet-up md:hidden"
+        className="m-0 mt-auto max-h-[85dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-0 text-ink open:animate-sheet-up sm:mx-auto sm:max-w-2xl lg:hidden"
       >
         <div className="px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
           <div
@@ -112,7 +112,7 @@ export function MobileNav({ primary, more, quick, businessName }: Props) {
                   {group.label}
                 </p>
               ) : null}
-              <ul className="grid grid-cols-3 gap-2">
+              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {group.items.map((item) => {
                   const Icon = NAV_ICONS[item.icon];
                   const isActive = isActivePath(pathname, item);

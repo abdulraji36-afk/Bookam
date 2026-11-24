@@ -31,7 +31,7 @@ export function NavLink({ item }: { item: NavItem }) {
       aria-current={isActive ? "page" : undefined}
       // One line, same weight selected or not, so a label never wraps or
       // changes the row's height when it turns yellow.
-      className={`flex min-h-10 items-center gap-3 rounded-md px-3.5 text-[0.9375rem] font-bold ${
+      className={`flex min-h-9 items-center gap-3 rounded-md px-3.5 text-[0.9375rem] font-bold ${
         isActive
           ? "bg-accent text-accent-ink"
           : "text-nav hover:bg-white/10 hover:text-white"

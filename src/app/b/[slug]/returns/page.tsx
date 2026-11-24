@@ -215,7 +215,7 @@ async function Returns({
             {org.sells_drinks ? (
               <Link
                 href={`${base}/returns/exchange`}
-                className={buttonClass("ghost")}
+                className={buttonClass("secondary")}
               >
                 {t("Empty exchange")}
               </Link>

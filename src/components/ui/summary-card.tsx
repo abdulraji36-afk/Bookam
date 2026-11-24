@@ -13,14 +13,15 @@ export function SummaryCard({
   return (
     <div
       data-summary-card
-      className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
+      className={`@container rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
     >
       <p
         className={`text-sm font-bold uppercase tracking-wide ${strong ? "text-nav" : "text-ink-soft"}`}
       >
         {label}
       </p>
-      <p className="mt-2 text-3xl font-extrabold leading-none tabular-nums sm:text-4xl">
+      {/* Sized to the card, so a long amount such as ₦1,781,400 never runs out of it. */}
+      <p className="mt-2 text-2xl font-extrabold leading-none tabular-nums [overflow-wrap:anywhere] @[11rem]:text-3xl @[14rem]:text-4xl">
         {value}
       </p>
     </div>

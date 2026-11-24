@@ -39,6 +39,19 @@ export function formatQuantity(quantity: number) {
   return new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 }).format(quantity);
 }
 
+/**
+ * The unit's name for this many: 1 crate, 5 crates, 2 boxes. Short units such
+ * as kg, cl or pcs, and words that are already plural, stay as they are.
+ */
+export function unitWord(quantity: number, unit: string | null | undefined) {
+  const word = (unit ?? "").trim();
+  if (!word || Math.abs(quantity) === 1) return word;
+  if (/^(kg|g|mg|l|ml|cl|cm|m|mm|pc|pcs|oz|lb|ltr|doz)$/i.test(word) || /[^a-z ]/i.test(word) || /s$/i.test(word)) return word;
+  if (/(x|ch|sh|z)$/i.test(word)) return `${word}es`;
+  if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+  return `${word}s`;
+}
+
 /** Today's date (YYYY-MM-DD) in the business's time zone. */
 export function todayIn(timeZone: string, now: number) {
   return new Intl.DateTimeFormat("en-CA", { timeZone, dateStyle: "short" }).format(new Date(now));

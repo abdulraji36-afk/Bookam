@@ -230,7 +230,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save correction" })).click();
   await a.waitForURL(/\?corrected=1/);
   await a.getByText("Correction saved. Stock and the reports have been updated.").waitFor();
-  await a.locator("section", { hasText: "Corrections" }).locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("500 → 488 crate").waitFor();
+  await a.locator("section", { hasText: "Corrections" }).locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("500 → 488 crates").waitFor();
   await go("/returns");
   await card.locator("div", { hasText: "In store" }).getByText("250", { exact: true }).waitFor();
   ok("an NBC delivery adds stock, and the empties taken are recorded on their own exchange sheet");
@@ -529,7 +529,7 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save correction" })).click();
   await a.getByText("Sale corrected.", { exact: false }).waitFor();
   await a.reload();
-  await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("52 crate", { exact: true }).first().waitFor();
+  await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("52 crates", { exact: true }).first().waitFor();
   // The 50 brought back now leave 2 owed on this order.
   await go("/records/rgb");
   await a.locator("tr", { hasText: "Mama Tunde Stores" }).getByText("Short 2").waitFor();

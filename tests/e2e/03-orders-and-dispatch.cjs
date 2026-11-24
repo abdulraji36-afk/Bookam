@@ -161,7 +161,7 @@ let dbg;
   await vis(a.getByLabel("Quantity")).fill("20");
   await vis(a.getByRole("button", { name: "Save changes" })).click();
   await a.waitForURL(/\/orders\/[0-9a-f-]{36}\?saved=1/);
-  await a.locator("tr", { hasText: "Water 75cl" }).getByText("20 pack", { exact: true }).waitFor();
+  await a.locator("tr", { hasText: "Water 75cl" }).getByText("20 packs", { exact: true }).waitFor();
   await a.goto(BASE + base + "/stock/summary");
   await a.locator("li, tr", { hasText: "Water 75cl" }).locator("[data-current-stock]").getByText("20", { exact: true }).waitFor();
   ok("editing a waiting order adjusts the stock it holds");

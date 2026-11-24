@@ -52,3 +52,19 @@ describe("names and phone numbers", () => {
     for (const bad of ["abc", "0803abc4567", "12345", "+234 803 123 4567 999 99", "0803‮1234567"]) expect(phone(bad), bad).toBe(false);
   });
 });
+
+describe("unitWord", () => {
+  it("says the unit for how many there are", async () => {
+    const { unitWord } = await import("../../src/lib/format");
+    expect(unitWord(1, "crate")).toBe("crate");
+    expect(unitWord(5, "crate")).toBe("crates");
+    expect(unitWord(0, "pack")).toBe("packs");
+    expect(unitWord(2, "box")).toBe("boxes");
+    expect(unitWord(3, "battery")).toBe("batteries");
+    expect(unitWord(4, "kg")).toBe("kg");
+    expect(unitWord(4, "pcs")).toBe("pcs");
+    expect(unitWord(4, "50cl bottle")).toBe("50cl bottle");
+    expect(unitWord(4, "")).toBe("");
+    expect(unitWord(2, "gas cylinder")).toBe("gas cylinders");
+  });
+});

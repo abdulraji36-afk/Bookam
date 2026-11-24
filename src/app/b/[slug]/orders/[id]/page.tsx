@@ -17,7 +17,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, PageSkeleton, PageTitle, CardHeader } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { ActionsPanel } from "@/components/ui/page-header";
-import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS, todayIn } from "@/lib/format";
+import { describeUnit, formatDay, formatMoney, formatQuantity, PAYMENT_LABELS, todayIn, unitWord } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 import { formatDateTime } from "@/lib/shortages";
@@ -215,7 +215,7 @@ async function Order({ params, searchParams }: PageProps<"/b/[slug]/orders/[id]"
             {
               header: "Quantity",
               align: "right",
-              cell: (item) => `${formatQuantity(Number(item.quantity))} ${item.products?.unit ?? ""}`
+              cell: (item) => `${formatQuantity(Number(item.quantity))} ${unitWord(Number(item.quantity), item.products?.unit)}`
             },
             { header: "Price", align: "right", cell: (item) => formatMoney(Number(item.unit_price), org.currency_code) },
             ...(order.order_items.some((item) => item.returnable_items)

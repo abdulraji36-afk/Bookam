@@ -9,7 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Card, PageSkeleton, PageTitle } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { ActionsPanel } from "@/components/ui/page-header";
-import { describeUnit, formatDate, formatMoney, formatQuantity } from "@/lib/format";
+import { describeUnit, formatDate, formatMoney, formatQuantity, unitWord } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 
 export const metadata: Metadata = { title: "Stock receipt" };
@@ -130,7 +130,7 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
               cell: (item) => (
                 <span className="text-lg font-extrabold">
                   +{formatQuantity(Number(item.quantity))}{" "}
-                  <span className="text-sm font-medium text-ink-soft">{item.products?.unit}</span>
+                  <span className="text-sm font-medium text-ink-soft">{unitWord(Number(item.quantity), item.products?.unit)}</span>
                 </span>
               )
             },
@@ -165,7 +165,7 @@ async function Receipt({ params, searchParams }: PageProps<"/b/[slug]/stock/rece
                 align: "right",
                 phone: "badge",
                 cell: (change) =>
-                  `${formatQuantity(Number(change.old_quantity))} → ${formatQuantity(Number(change.new_quantity))} ${change.products?.unit ?? ""}`
+                  `${formatQuantity(Number(change.old_quantity))} → ${formatQuantity(Number(change.new_quantity))} ${unitWord(Number(change.new_quantity), change.products?.unit)}`
               },
               { header: "Reason", wrap: true, cell: (change) => change.reason },
               { header: "By", cell: (change) => change.profiles?.full_name ?? "" },

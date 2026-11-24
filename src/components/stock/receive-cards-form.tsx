@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import type { ActionState } from "@/lib/action-state";
 import { formatQuantity } from "@/lib/format";
 import { useFormAction } from "@/lib/use-form-action";
+import { CardRail } from "@/components/ui/card-rail";
 
 export type ReceiveCardProduct = {
   id: string;
@@ -154,7 +155,7 @@ export function ReceiveCardsForm({ action, products, locations, stock, today }: 
             </div>
           ) : null}
 
-          <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 pb-2">
+          <CardRail label="products">
             <ul className="flex w-max gap-3">
               {visible.map((product) => {
                 const active = order.includes(product.id);
@@ -226,7 +227,7 @@ export function ReceiveCardsForm({ action, products, locations, stock, today }: 
                 );
               })}
             </ul>
-          </div>
+          </CardRail>
           {missing ? (
             <p role="alert" className="rounded-md border-2 border-danger bg-danger-soft px-3 py-2 text-sm font-bold text-danger">
               Add at least one product. Tap Add, then enter how many came in.

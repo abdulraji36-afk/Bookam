@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/card";
 import { DataTable, TableCard } from "@/components/ui/data-table";
 import { ActionsPanel } from "@/components/ui/page-header";
-import { formatDay, formatQuantity, todayIn } from "@/lib/format";
+import { formatDay, formatQuantity, todayIn, unitWord } from "@/lib/format";
 import { canManage, requireOrg } from "@/lib/org";
 import { requestNow } from "@/lib/request-time";
 
@@ -224,7 +224,7 @@ async function Trip({
                   <span className="text-xl font-extrabold">
                     {formatQuantity(line.quantity)}{" "}
                     <span className="text-sm font-medium text-ink-soft">
-                      {line.unit}
+                      {unitWord(line.quantity, line.unit)}
                     </span>
                   </span>
                 ),

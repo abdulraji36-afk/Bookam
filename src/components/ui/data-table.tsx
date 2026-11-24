@@ -32,7 +32,8 @@ type Props<T> = {
 /**
  * The table every list uses. On a tablet or computer it is a plain table;
  * on a phone each row becomes a small card (see .data-table in globals.css),
- * so nothing has to scroll sideways.
+ * so nothing has to scroll sideways. When a wide table does not fit, a
+ * shadow on its edge shows there is more to scroll to (.table-scroll).
  */
 export function DataTable<T>({ columns, rows, rowKey, rowHref, empty, footer, label }: Props<T>) {
   if (rows.length === 0 && empty) {
@@ -40,7 +41,7 @@ export function DataTable<T>({ columns, rows, rowKey, rowHref, empty, footer, la
   }
 
   return (
-    <div className="md:overflow-x-auto">
+    <div className="table-scroll md:overflow-x-auto">
     <table className="data-table w-full" aria-label={label}>
       <thead>
         <tr className="border-b border-line">
@@ -48,7 +49,7 @@ export function DataTable<T>({ columns, rows, rowKey, rowHref, empty, footer, la
             <th
               key={column.header}
               scope="col"
-              className={`whitespace-nowrap px-4 py-2.5 text-xs font-extrabold uppercase tracking-wide text-ink-soft first:pl-5 last:pr-5 ${
+              className={`whitespace-nowrap px-3 py-2.5 text-xs font-extrabold uppercase tracking-wide text-ink-soft first:pl-5 last:pr-5 ${
                 column.align === "right" ? "text-right" : "text-left"
               }`}
             >
@@ -67,7 +68,7 @@ export function DataTable<T>({ columns, rows, rowKey, rowHref, empty, footer, la
                   key={column.header}
                   data-label={column.header}
                   data-phone={column.phone ?? (index === 0 ? "title" : "detail")}
-                  className={`px-4 py-3 align-middle first:pl-5 last:pr-5 ${column.wrap ? "" : "whitespace-nowrap"} ${
+                  className={`px-3 py-3 align-middle first:pl-5 last:pr-5 ${column.wrap ? "md:min-w-40" : "whitespace-nowrap"} ${
                     column.align === "right" ? "text-right tabular-nums" : ""
                   } ${column.className ?? ""}`}
                 >

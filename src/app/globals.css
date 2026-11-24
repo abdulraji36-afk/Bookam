@@ -157,6 +157,21 @@
   }
 
   /*
+   * A wide table on a tablet or computer: a soft shadow appears on the edge
+   * that has more columns beyond it, and goes once you reach that end. The
+   * white covers scroll with the table; the shadows stay on the box's edges.
+   */
+  @media (min-width: 768px) {
+    .table-scroll {
+      background:
+        linear-gradient(to right, #fff 40%, rgb(255 255 255 / 0)) left center / 2.5rem 100% no-repeat local,
+        linear-gradient(to left, #fff 40%, rgb(255 255 255 / 0)) right center / 2.5rem 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgb(11 31 51 / 0.18), transparent) left center / 0.875rem 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgb(11 31 51 / 0.18), transparent) right center / 0.875rem 100% no-repeat scroll;
+    }
+  }
+
+  /*
    * Tables (DataTable). On a phone each row turns into a card: the title cell
    * and its badge on top, the other cells as "label  value" lines below.
    */

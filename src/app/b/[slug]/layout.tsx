@@ -4,6 +4,7 @@ import { MobileNav } from "@/components/business/mobile-nav";
 import { WordsProvider } from "@/components/business/words-context";
 import type { NavGroup, NavItem } from "@/components/business/nav-items";
 import { NavLink } from "@/components/business/nav-link";
+import { SideMenuScroll } from "@/components/business/side-menu-scroll";
 import { Logo } from "@/components/logo";
 import { LogoutButton } from "@/components/logout-button";
 import { PageSkeleton } from "@/components/ui/card";
@@ -206,10 +207,10 @@ async function BusinessShell({
   ];
 
   return (
-    <div className="flex flex-1 flex-col md:flex-row">
-      {/* Tablet and up: a side menu that stays in place while the page scrolls. */}
-      <aside className="hidden bg-ink text-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:shrink-0 md:flex-col">
-        <div className="px-5 pb-2 pt-6">
+    <div className="flex flex-1 flex-col lg:flex-row">
+      {/* Laptops and up: a side menu that stays in place while the page scrolls. Phones and tablets use the bars. */}
+      <aside className="hidden bg-ink text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-60 lg:shrink-0 lg:flex-col">
+        <div className="px-5 pb-1 pt-5">
           <Logo href={base} tone="light" />
           <Link
             href="/businesses?all=1"
@@ -219,7 +220,7 @@ async function BusinessShell({
             {org.name}
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-2 px-3 pb-1 pt-3">
+        <div className="grid grid-cols-1 gap-2 px-3 pb-1 pt-2.5">
           {quick.map((action, index) => (
             <Link
               key={action.href}
@@ -234,14 +235,11 @@ async function BusinessShell({
             </Link>
           ))}
         </div>
-        <nav
-          aria-label="Business"
-          className="menu-scroll flex-1 overflow-y-auto px-3 py-3"
-        >
+        <SideMenuScroll>
           {groups.map((group) => (
-            <div key={group.label ?? "home"} className="mb-2">
+            <div key={group.label ?? "home"} className="mb-1.5">
               {group.label ? (
-                <p className="px-3.5 pb-0.5 pt-1.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.12em] text-nav/70">
+                <p className="px-3.5 pb-0.5 pt-1 text-[0.6875rem] font-extrabold uppercase tracking-[0.12em] text-nav/70">
                   {group.label}
                 </p>
               ) : null}
@@ -252,14 +250,14 @@ async function BusinessShell({
               </div>
             </div>
           ))}
-        </nav>
-        <div className="border-t border-white/10 px-3 py-4">
+        </SideMenuScroll>
+        <div className="border-t border-white/10 px-3 py-3">
           <LogoutButton />
         </div>
       </aside>
 
-      {/* Phone: a slim bar that stays at the top; the menu is at the bottom. */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-ink px-4 py-2.5 text-white md:hidden">
+      {/* Phones and tablets: a slim bar that stays at the top; the menu is at the bottom. */}
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-ink px-4 py-2.5 text-white lg:hidden">
         <Logo href={base} tone="light" />
         <span className="min-w-0 truncate text-sm font-semibold text-nav">
           {org.name}
@@ -274,8 +272,8 @@ async function BusinessShell({
               : "Your free trial has ended."}
           </p>
         ) : null}
-        {/* Extra room at the bottom on phones so the tab bar never covers content. */}
-        <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-8">
+        {/* Extra room at the bottom on phones and tablets so the tab bar never covers content. */}
+        <main className="w-full max-w-5xl flex-1 px-4 pb-28 pt-5 md:px-8 md:pt-8 lg:pb-10 xl:max-w-6xl">
           <WordsProvider words={depotWordList}>{children}</WordsProvider>
         </main>
       </div>
