@@ -141,8 +141,24 @@
     .page-head > div + div {
       width: 100%;
     }
+    /* Buttons share a row; one too long for half the row takes a row of its own. */
     .page-head > div + div > a {
-      flex: 1 1 0%;
+      flex: 1 1 auto;
+    }
+  }
+
+  /*
+   * On a touch screen, small underlined links ("See all", trip numbers) get
+   * an invisible touch area around them, so a thumb does not have to be exact.
+   */
+  @media (pointer: coarse) {
+    a.underline:not([class*="after:"]) {
+      position: relative;
+    }
+    a.underline:not([class*="after:"])::after {
+      content: "";
+      position: absolute;
+      inset: -0.75rem -0.375rem;
     }
   }
 
@@ -196,7 +212,8 @@
     }
     .data-table td[data-phone="title"] {
       order: -2;
-      flex: 1 1 0%;
+      /* Its own width first, so a long badge drops to the next line instead of cutting the title. */
+      flex: 1 1 auto;
       min-width: 0;
       font-size: 1.0625rem;
     }

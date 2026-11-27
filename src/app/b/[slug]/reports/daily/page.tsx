@@ -33,9 +33,9 @@ function Figure({
 }) {
   return (
     <div
-      className={`rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
+      className={`@container rounded-md px-5 py-4 ${strong ? "bg-ink text-white" : "bg-white"}`}
     >
-      <p className="text-3xl font-extrabold leading-none tabular-nums sm:text-4xl">
+      <p className="whitespace-nowrap text-[clamp(1.125rem,15cqi,2.25rem)] font-extrabold leading-none tabular-nums">
         {value}
       </p>
       <p

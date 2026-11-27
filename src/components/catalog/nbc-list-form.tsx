@@ -24,9 +24,10 @@ export function NbcListForm({ action, products, currency }: Props) {
 
   return (
     <form {...form} className="space-y-4">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem]">
-          <thead>
+      {/* A table on a tablet or computer; on a phone each drink is a block with its two prices under its name. */}
+      <div className="md:overflow-x-auto">
+        <table className="w-full max-md:block md:min-w-[40rem]">
+          <thead className="max-md:hidden">
             <tr className="border-b border-line text-left text-xs font-extrabold uppercase tracking-wide text-ink-soft">
               <th scope="col" className="px-3 py-2.5">Add</th>
               <th scope="col" className="px-3 py-2.5">Product</th>
@@ -34,15 +35,19 @@ export function NbcListForm({ action, products, currency }: Props) {
               <th scope="col" className="px-3 py-2.5">Buying cost ({currency})</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody className="divide-y divide-line max-md:block">
             {products.map((product) => {
               const on = picked.has(product.code);
               return (
-                <tr key={product.code} className={on ? "bg-paper" : undefined}>
-                  <td className="px-3 py-2">
+                <tr
+                  key={product.code}
+                  className={`max-md:grid max-md:grid-cols-[2.5rem_1fr_1fr] max-md:gap-x-2 max-md:py-1 ${on ? "bg-paper" : ""}`}
+                >
+                  <td className="px-3 py-2 max-md:pr-0">
                     {product.added ? null : (
                       <input
                         type="checkbox"
+                        id={`pick-${product.code}`}
                         name={`pick-${product.code}`}
                         aria-label={`Add ${product.name}`}
                         checked={on}
@@ -59,14 +64,20 @@ export function NbcListForm({ action, products, currency }: Props) {
                       />
                     )}
                   </td>
-                  <td className="px-3 py-2">
-                    <span className="block font-extrabold">{product.name}</span>
-                    <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink-soft">
-                      {product.category} · per {product.unit}
-                      {product.added ? <Badge tone="success">Already added</Badge> : null}
-                    </span>
+                  <td className="px-3 py-2 max-md:col-span-2 max-md:pl-1">
+                    {/* Tapping the name ticks the box too: a bigger target than the box alone. */}
+                    <label htmlFor={product.added ? undefined : `pick-${product.code}`} className={product.added ? undefined : "cursor-pointer"}>
+                      <span className="block font-extrabold">{product.name}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink-soft">
+                        {product.category} · per {product.unit}
+                        {product.added ? <Badge tone="success">Already added</Badge> : null}
+                      </span>
+                    </label>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={`px-3 py-2 max-md:col-start-2 max-md:pl-1 max-md:pr-0 max-md:pt-0 ${product.added ? "max-md:hidden" : ""}`}>
+                    <span aria-hidden className="mb-1 block text-xs font-bold text-ink-soft md:hidden">
+                      Selling price
+                    </span>
                     <input
                       name={`price-${product.code}`}
                       inputMode="decimal"
@@ -76,7 +87,10 @@ export function NbcListForm({ action, products, currency }: Props) {
                       className={INPUT}
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className={`px-3 py-2 max-md:pl-1 max-md:pt-0 ${product.added ? "max-md:hidden" : ""}`}>
+                    <span aria-hidden className="mb-1 block text-xs font-bold text-ink-soft md:hidden">
+                      Buying cost
+                    </span>
                     <input
                       name={`cost-${product.code}`}
                       inputMode="decimal"

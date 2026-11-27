@@ -623,6 +623,18 @@ let dbg;
   assert.equal((await chatMessages()).length, before + 1, "one summary for yesterday, not two");
   ok("the end-of-day Telegram summary is sent as in Bilikis, once per day, with quantities only");
 
+  // The smallest phones (320px): no screen may be wider than the phone. A wider
+  // page makes the phone zoom out and pushes the tab bar off the bottom.
+  await a.setViewportSize({ width: 320, height: 640 });
+  for (const path of ["", "/orders", "/orders/new", "/stock/receive", "/stock/summary", "/returns", "/returns/shortages", "/records", "/products/nbc", "/reports/stock-value", "/reports/daily"]) {
+    await go(path);
+    await a.waitForLoadState("networkidle");
+    const width = await a.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(width <= 320, `${path || "dashboard"} is ${width}px wide on a 320px phone`);
+  }
+  await a.setViewportSize({ width: 1280, height: 800 });
+  ok("every drinks screen fits a 320px phone without scrolling sideways");
+
   await browser.close();
   const real = errors.filter((e) => !/404|Failed to load resource/.test(e));
   console.log("browser errors:", real.length ? real : "none");

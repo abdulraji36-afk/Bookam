@@ -24,7 +24,8 @@ export default function LandingPage() {
         <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4">
           <Logo tone="light" />
           <nav className="flex items-center gap-2">
-            <Link href="/login" className={buttonClass("inverse", "sm")}>
+            {/* Below 360px the bar only fits one button; Log in is also just below. */}
+            <Link href="/login" className={`${buttonClass("inverse", "sm")} max-[359px]:hidden`}>
               Log in
             </Link>
             <Link href="/signup" className={buttonClass("primary", "sm")}>

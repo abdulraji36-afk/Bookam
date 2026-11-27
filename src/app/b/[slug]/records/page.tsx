@@ -106,7 +106,8 @@ async function Records({ params }: PageProps<"/b/[slug]/records">) {
           <h2 className="mb-2 text-xs font-extrabold uppercase tracking-[0.14em] text-ink-soft">
             {group.label}
           </h2>
-          <div className="grid grid-cols-2 gap-3">
+          {/* One tile per row on a narrow phone, so the descriptions are not squeezed. */}
+          <div className="grid gap-3 min-[420px]:grid-cols-2">
             {group.links.map((item) => (
               <Link
                 key={item.href}

@@ -15,7 +15,10 @@ export function WeekChart({ days }: { days: DayCount[] }) {
   return (
     <figure className="m-0">
       <div aria-hidden className="flex h-40 items-end gap-1 border-b-2 border-line sm:gap-3">
-        {days.map((day) => {
+        {days.map((day, index) => {
+          // The first and last bars' tooltips line up with the chart's edge, so they never run off a phone screen.
+          const tip =
+            index < 2 ? "left-0" : index > days.length - 3 ? "right-0" : "left-1/2 -translate-x-1/2";
           const labelled = day.count > 0 && (day.isToday || day.day === peak.day);
           return (
             <div
@@ -23,7 +26,7 @@ export function WeekChart({ days }: { days: DayCount[] }) {
               tabIndex={0}
               className="group relative flex h-full flex-1 cursor-default flex-col items-center justify-end rounded-t outline-none focus-visible:bg-paper"
             >
-              <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-ink px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+              <span className={`pointer-events-none absolute -top-1 z-10 ${tip} whitespace-nowrap rounded bg-ink px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100`}>
                 <strong className="font-extrabold">{formatQuantity(day.count)}</strong> order{day.count === 1 ? "" : "s"} ·{" "}
                 {day.dateLabel}
               </span>
@@ -51,7 +54,9 @@ export function WeekChart({ days }: { days: DayCount[] }) {
         ))}
       </div>
 
-      <table className="sr-only">
+      {/* A table ignores sr-only's 1px width, so the wrapper hides it instead. */}
+      <div className="sr-only">
+      <table>
         <caption>Orders recorded on each of the last seven days</caption>
         <thead>
           <tr>
@@ -68,6 +73,7 @@ export function WeekChart({ days }: { days: DayCount[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </figure>
   );
 }

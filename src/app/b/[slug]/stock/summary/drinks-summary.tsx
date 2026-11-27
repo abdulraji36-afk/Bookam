@@ -207,7 +207,7 @@ export function DrinksStockSummary({
                   <span className="font-bold">{row.sku ?? "—"}</span>
                 ),
               },
-              { header: "Product name", wrap: true, cell: (row) => row.name },
+              { header: "Product name", wrap: true, phone: "title", cell: (row) => row.name },
               {
                 header: "Total in",
                 align: "right",

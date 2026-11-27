@@ -203,12 +203,12 @@ async function StockValue({
                 <div
                   key={category}
                   data-summary-card
-                  className="rounded-md border-2 border-line px-4 py-3"
+                  className="@container rounded-md border-2 border-line px-4 py-3"
                 >
                   <p className="text-sm font-bold uppercase tracking-wide text-ink-soft">
                     {t(category)} stock value
                   </p>
-                  <p className="mt-1.5 text-2xl font-extrabold tabular-nums">
+                  <p className="mt-1.5 whitespace-nowrap text-[clamp(1rem,14cqi,1.5rem)] font-extrabold tabular-nums">
                     {money(value)}
                   </p>
                 </div>

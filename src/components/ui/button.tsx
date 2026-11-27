@@ -13,7 +13,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
 
 export function buttonClass(variant: ButtonVariant = "primary", size: "md" | "sm" = "md") {
   return [
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-extrabold uppercase tracking-wide",
+    // A label too long for a phone wraps onto two lines instead of pushing the page sideways.
+    "inline-flex items-center justify-center gap-2 rounded-md text-center font-extrabold uppercase tracking-wide [text-wrap:balance]",
     "transition-[transform,background-color,border-color,color] duration-150 active:scale-[0.97]",
     "focus-visible:outline-2 focus-visible:outline-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100",

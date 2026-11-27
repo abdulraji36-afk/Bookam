@@ -20,8 +20,8 @@ export function SummaryCard({
       >
         {label}
       </p>
-      {/* Sized to the card, so a long amount such as ₦1,781,400 never runs out of it. */}
-      <p className="mt-2 text-2xl font-extrabold leading-none tabular-nums [overflow-wrap:anywhere] @[11rem]:text-3xl @[14rem]:text-4xl">
+      {/* Sized to the card's width, so a long amount such as ₦1,781,400 stays on one line inside it. */}
+      <p className="mt-2 whitespace-nowrap text-[clamp(1.125rem,15cqi,2.25rem)] font-extrabold leading-none tabular-nums">
         {value}
       </p>
     </div>
