@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "next typegen && tsc --noEmit",
-    "test:e2e": "node tests/e2e/run.cjs"
+    "test:e2e": "node tests/e2e/run.cjs",
+    "test:e2e:phone": "E2E_DEVICE=phone node tests/e2e/run.cjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

@@ -3,7 +3,7 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const { createClient } = require("@supabase/supabase-js");
-const { receiveCards, newOrders } = require("./helpers.cjs");
+const { receiveCards, newOrders, contextOptions, openMenu, closeMenu, logOut } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
@@ -14,7 +14,6 @@ const NEW_PASSWORD = "battery-staple-42";
 let passed = 0;
 const ok = (name) => { passed++; console.log("PASS", name); };
 const vis = (locator) => locator.filter({ visible: true });
-const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
 /** The link in the newest email to `email` whose subject matches. */
 async function emailLink(email, subject) {
@@ -42,7 +41,7 @@ let dbg;
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const page = await (await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } })).newPage();
+    const page = await (await browser.newContext(contextOptions(viewport))).newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     return page;
@@ -82,10 +81,12 @@ let dbg;
   const slug = base.split("/")[2];
   const go = (path) => a.goto(BASE + base + path);
 
-  await menu(a).getByRole("link", { name: "Orders", exact: true }).waitFor();
-  assert.equal(await menu(a).getByRole("link", { name: "Returns", exact: true }).count(), 0);
-  assert.equal(await menu(a).getByRole("link", { name: "Returnables", exact: true }).count(), 0);
-  assert.equal(await menu(a).getByRole("link", { name: "Return shortages", exact: true }).count(), 0);
+  let menu = await openMenu(a);
+  await menu.getByRole("link", { name: "Orders", exact: true }).waitFor();
+  assert.equal(await menu.getByRole("link", { name: "Returns", exact: true }).count(), 0);
+  assert.equal(await menu.getByRole("link", { name: "Returnables", exact: true }).count(), 0);
+  assert.equal(await menu.getByRole("link", { name: "Return shortages", exact: true }).count(), 0);
+  await closeMenu(a);
   await go("/products/new");
   await vis(a.getByLabel("Product name")).fill("Rice 50kg");
   assert.equal(await a.getByLabel("Customers must bring something back").count(), 0);
@@ -182,8 +183,10 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
   await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
   await go("");
-  await menu(a).getByRole("link", { name: "Empty sacks", exact: true }).waitFor();
-  await menu(a).getByRole("link", { name: "Return shortages", exact: true }).waitFor();
+  menu = await openMenu(a);
+  await menu.getByRole("link", { name: "Empty sacks", exact: true }).waitFor();
+  await menu.getByRole("link", { name: "Return shortages", exact: true }).waitFor();
+  await closeMenu(a);
   // A product can now be Returnable.
   await go("/products/new");
   await a.getByText("Does anything come back with it?").waitFor();
@@ -194,11 +197,12 @@ let dbg;
   await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
   await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
   await go("");
-  assert.equal(await menu(a).getByRole("link", { name: "Empty sacks", exact: true }).count(), 0);
+  assert.equal(await (await openMenu(a)).getByRole("link", { name: "Empty sacks", exact: true }).count(), 0);
+  await closeMenu(a);
   ok("a goods business names what comes back in Settings, and can switch it off again")
 
   // 5. Forgot password
-  await vis(a.getByRole("button", { name: "Log out" })).click();
+  await logOut(a);
   await a.waitForURL("**/login");
   await a.goto(BASE + "/reset-password");
   await a.getByRole("heading", { name: "Link expired" }).waitFor();
@@ -226,7 +230,7 @@ let dbg;
   await vis(a.getByLabel("Type it again")).fill(NEW_PASSWORD);
   await vis(a.getByRole("button", { name: "Save new password" })).click();
   await a.waitForURL(new RegExp(base + "$"));
-  await vis(a.getByRole("button", { name: "Log out" })).click();
+  await logOut(a);
   await a.waitForURL("**/login");
   await logIn(a, OLD_PASSWORD);
   await a.getByText("That email or password is not correct.").waitFor();

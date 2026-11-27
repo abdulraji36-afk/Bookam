@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { receiveCards } = require("./helpers.cjs");
+const { receiveCards, contextOptions, goTo, PHONE } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -29,13 +29,13 @@ async function signUp(page, name, email, expectUrl) {
   await page.goto(await confirmationLink(email));
   await page.waitForURL(expectUrl);
 }
-const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).getByRole("link", { name, exact: true }).click();
+const nav = (page, name) => goTo(page, name);
 
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const page = await (await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } })).newPage();
+    const page = await (await browser.newContext(contextOptions(viewport))).newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     return page;
@@ -167,7 +167,9 @@ const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).g
   await a.getByRole("link", { name: /STK-\d{8}-0001/ }).waitFor();
   assert.equal(await a.locator("main").getByText("Low stock").filter({ visible: true }).count(), 0, "no stock counts on Stock");
   assert.equal(await a.getByRole("link", { name: "On hand" }).filter({ visible: true }).count(), 0, "no tabs on Stock");
-  assert.equal(await a.locator("aside").getByRole("link", { name: "Stock", exact: true }).getAttribute("aria-current"), "page");
+  // The menu marks Stock as the page you are on (the side menu, or the phone's tab bar).
+  const menuArea = PHONE ? a.getByRole("navigation", { name: "Business" }) : a.locator("aside");
+  assert.equal(await menuArea.getByRole("link", { name: "Stock", exact: true }).getAttribute("aria-current"), "page");
   ok("receiving stock updates the stock on hand and clears the low-stock warning");
 
   // Dashboard reflects it

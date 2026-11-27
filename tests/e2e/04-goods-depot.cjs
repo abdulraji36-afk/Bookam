@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { addCrew, newOrders, receiveCards } = require("./helpers.cjs");
+const { addCrew, newOrders, receiveCards, contextOptions, openMenu, closeMenu } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -30,13 +30,12 @@ async function signUp(page, name, email, expectUrl) {
   await page.goto(await confirmationLink(email));
   await page.waitForURL(expectUrl);
 }
-const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const page = await (await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } })).newPage();
+    const page = await (await browser.newContext(contextOptions(viewport))).newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     return page;
@@ -56,9 +55,11 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await a.waitForURL(/\/b\/ada-gas-/);
   const base = new URL(a.url()).pathname;
   const go = (path) => a.goto(BASE + base + path);
+  const menu = await openMenu(a);
   for (const name of ["Empty cylinders", "Return shortages", "Supplier returns", "Returns balance", "Records"]) {
-    await menu(a).getByRole("link", { name, exact: true }).waitFor();
+    await menu.getByRole("link", { name, exact: true }).waitFor();
   }
+  await closeMenu(a);
   ok("a goods business signs up on the depot workspace, with its own name for what comes back");
 
   // 2. Products: Returnable (comes back) or Non-returnable, each with its unit, price and cost.
@@ -174,7 +175,8 @@ const menu = (page) => page.getByRole("navigation", { name: "Business" });
   await vis(a.getByRole("button", { name: "Save", exact: true })).last().click();
   await a.getByText("Saved. The menus and forms now match what you sell.").waitFor();
   await go("");
-  assert.equal(await menu(a).getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
+  assert.equal(await (await openMenu(a)).getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
+  await closeMenu(a);
   const [counterOrder] = await newOrders(a, BASE + base, "rgb", [{ customer: "Chika Kitchen", lines: [["Gas refill 12.5kg", 5]] }]);
   await go("/orders/" + counterOrder);
   await vis(a.getByRole("button", { name: "Handed over now" })).click();

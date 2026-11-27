@@ -47,6 +47,8 @@ export function InviteForm({ action, businessName, canInviteAdmin }: Props) {
           name="email"
           type="email"
           inputMode="email"
+          // Someone else's email: the phone should not offer yours.
+          autoComplete="off"
           placeholder="name@example.com"
           required
         />

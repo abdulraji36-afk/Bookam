@@ -2,6 +2,7 @@
 //
 //   npm run test:e2e              every walkthrough
 //   npm run test:e2e -- 04 08     only the ones whose file name starts so
+//   npm run test:e2e:phone        every walkthrough on a 390px touch phone
 //
 // Needs: the app running (E2E_BASE_URL, default http://localhost:3000) on a
 // local Supabase (`npx supabase start`), whose Mailpit catches the emails.

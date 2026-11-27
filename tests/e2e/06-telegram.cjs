@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { receiveCards, newOrders } = require("./helpers.cjs");
+const { receiveCards, newOrders, contextOptions } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const TG = process.env.E2E_TELEGRAM_MOCK_URL ?? "http://127.0.0.1:8099";
@@ -43,7 +43,7 @@ let dbg;
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
-  const a = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+  const a = await (await browser.newContext(contextOptions())).newPage();
   dbg = a;
   a.on("pageerror", (e) => errors.push(String(e)));
   a.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });

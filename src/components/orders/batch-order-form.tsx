@@ -138,7 +138,8 @@ export function BatchOrderForm({ action, customers, products, locations, stock, 
       setMissing(problem);
       const box = form.ref.current?.querySelector(`[data-field="${problem.key}"]`);
       box?.scrollIntoView({ block: "center", behavior: "smooth" });
-      box?.querySelector<HTMLElement>("input:not([type=hidden]), button")?.focus({ preventScroll: true });
+      // Not a search box: focusing one opens its list (and a phone's keyboard) over the message.
+      box?.querySelector<HTMLElement>("input:not([type=hidden]):not([role=combobox]), button")?.focus({ preventScroll: true });
       return;
     }
     form.onSubmit(event);

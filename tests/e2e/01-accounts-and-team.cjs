@@ -1,4 +1,5 @@
 const { chromium } = require("playwright");
+const { contextOptions, goTo, logOut } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -41,7 +42,7 @@ async function signUp(page, name, email, expectUrl) {
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const ctx = await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } });
+    const ctx = await browser.newContext(contextOptions(viewport));
     const page = await ctx.newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -76,7 +77,7 @@ async function signUp(page, name, email, expectUrl) {
   ok("owner signs up, creates a business, lands on its dashboard with a 14-day trial (email confirmed via the emailed link)");
 
   // 3. Settings: rename + add location
-  await a.getByRole("link", { name: "Settings" }).click();
+  await goTo(a, "Settings");
   await a.getByRole("heading", { name: "Settings" }).waitFor();
   await a.getByLabel("New location name").fill("Ikeja warehouse");
   await a.getByRole("button", { name: "Add location" }).click();
@@ -91,7 +92,7 @@ async function signUp(page, name, email, expectUrl) {
   ok("owner adds a location; duplicate name is refused with a clear message");
 
   // 4. Team: invite staff
-  await a.getByRole("link", { name: "Team" }).click();
+  await goTo(a, "Team");
   await a.getByRole("heading", { name: "Team", exact: true }).waitFor();
   await a.getByLabel("Email address").fill(chidi);
   await a.getByRole("button", { name: "Create invite" }).click();
@@ -168,7 +169,7 @@ async function signUp(page, name, email, expectUrl) {
   ok("owner removes access and the member is locked out on their next page load");
 
   // 8. Log out / log in
-  await a.getByRole("button", { name: "Log out" }).click();
+  await logOut(a);
   await a.waitForURL("**/login");
   assert.equal(await a.locator("main").count(), 1, "no earlier pages left in the DOM after logout");
   assert.equal(await a.getByText(chidi).count(), 0, "previous user's data is gone after logout");
@@ -183,7 +184,7 @@ async function signUp(page, name, email, expectUrl) {
   ok("wrong password is refused; correct password returns the owner to their business");
 
   // 9. Open redirect guard
-  await a.getByRole("button", { name: "Log out" }).click();
+  await logOut(a);
   await a.waitForURL("**/login");
   await a.goto(BASE + "/login?next=https://evil.example");
   await a.getByLabel("Email").fill(ada);

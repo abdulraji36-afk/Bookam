@@ -45,6 +45,7 @@ in Mailpit at http://127.0.0.1:54324.
 | `npm run typecheck` | Generate route types and run the TypeScript compiler |
 | `npm test` | Database tests: tenant isolation, roles, invitations, plan limits, stock, orders, dispatch, returns, voids, reports, serials and write-offs |
 | `npm run test:e2e` | Browser walkthroughs in `tests/e2e/` against a running app (see below) |
+| `npm run test:e2e:phone` | The same walkthroughs on a 390px touch phone (tab bar and More sheet) |
 
 ### Browser walkthroughs
 
@@ -63,6 +64,7 @@ the app in Chromium, the way a person would. To run them:
    `SUPABASE_SECRET_KEY` to the local secret key (`npx supabase status`).
 3. `npm run build && npm start`, then `npm run test:e2e` in another terminal.
    `npm run test:e2e -- 04 08` runs only the files starting with those numbers.
+   `npm run test:e2e:phone` runs them all again as a phone.
    Screenshots go to `test-results/e2e/`.
 
 The first time on a new machine, install the browser with
@@ -280,4 +282,5 @@ version of the app, so the database can always go first.
 | 35 | Finishing touches for goods depots: browser tab titles, page headings, empty lists, the audit log and the daily report all use the business's own words (returnable / non-returnable mid-sentence, supplier returns instead of exchanges, its own name for what comes back) | Done |
 | 36 | Large-screen pass (desktop, laptop, tablet): tablets in portrait get the full width with the top bar and bottom tabs (the side menu starts at 1024px); the side menu is tighter, scrolls the page you are on into view and fades where more sits below; pages use more of a wide screen; wide tables show a shadow on the edge that has more columns; summary numbers fit their cards; product card rows get ‹ › buttons for a mouse; quantities say 1 crate / 5 crates | Done |
 | 37 | Phone pass (320, 360, 390 and 430 wide, touch on): no screen is wider than the phone (the weekly chart widened the dashboard on small phones, and long button labels now wrap); the NBC list stacks each drink with labelled price and cost boxes and its name ticks the box; card badges drop under the title instead of cutting it; big numbers fit their cards; Records shows one tile per row on narrow phones; small underlined links get a larger touch area; the stock summary cards are headed by the product name | Done |
+| 38 | Forms and buttons on phones: every walkthrough also runs on a 390px touch phone (npm run test:e2e:phone), through the tab bar and the More sheet. A missing customer on a new order no longer opens the customer list (and the keyboard) over its message; the customer and team-invite forms no longer offer to fill in your own phone, address or email. Checked with taps: double-tapping Save records one order, customer or delivery; error messages show on screen above the tab bar; number, phone and email boxes bring up the right keyboard | Done |
 | 6b | Billing for the plans, and what happens when a trial ends | Next |

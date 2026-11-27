@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { pick, addCrew, newOrders, receiveCards } = require("./helpers.cjs");
+const { pick, addCrew, newOrders, receiveCards, contextOptions, goTo } = require("./helpers.cjs");
 const assert = require("node:assert/strict");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
@@ -30,14 +30,14 @@ async function signUp(page, name, email, expectUrl) {
   await page.goto(await confirmationLink(email));
   await page.waitForURL(expectUrl);
 }
-const nav = (page, name) => page.getByRole("navigation", { name: "Business" }).getByRole("link", { name, exact: true }).click();
+const nav = (page, name) => goTo(page, name);
 
 let dbg;
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const page = await (await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } })).newPage();
+    const page = await (await browser.newContext(contextOptions(viewport))).newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     return page;

@@ -175,8 +175,9 @@ export function OrderForm({
         `[data-field="${problem.key}"]`,
       );
       box?.scrollIntoView({ block: "center", behavior: "smooth" });
+      // Not a search box: focusing one opens its list (and a phone's keyboard) over the message.
       box
-        ?.querySelector<HTMLElement>("input:not([type=hidden]), select")
+        ?.querySelector<HTMLElement>("input:not([type=hidden]):not([role=combobox]), select")
         ?.focus({ preventScroll: true });
       return;
     }

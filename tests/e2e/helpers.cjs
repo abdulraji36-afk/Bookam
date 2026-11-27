@@ -77,4 +77,65 @@ async function receiveCards(page, rows) {
   }
 }
 
-module.exports = { pick, addCrew, newOrders, receiveCards };
+/**
+ * Browser settings for a walkthrough: a laptop by default, or with
+ * E2E_DEVICE=phone a 390px touch phone, so every form is also tried the way
+ * it is used on a phone (npm run test:e2e:phone).
+ */
+function contextOptions(viewport) {
+  if (process.env.E2E_DEVICE === "phone") {
+    return { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
+  }
+  return { viewport: viewport ?? { width: 1280, height: 800 } };
+}
+
+const PHONE = process.env.E2E_DEVICE === "phone";
+
+/**
+ * The business menu, ready to look in: the side menu on a laptop; on a phone
+ * the tab bar plus the "More" sheet, which it opens. Close it with closeMenu.
+ */
+async function openMenu(page) {
+  const bar = page.getByRole("navigation", { name: "Business" });
+  if (!PHONE) return bar;
+  const sheet = page.getByRole("dialog", { name: "More pages" });
+  if (!(await sheet.isVisible())) {
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await sheet.waitFor();
+  }
+  return page.locator('nav[aria-label="Business"], dialog[aria-label="More pages"]');
+}
+
+/** Closes the phone's "More" sheet if it is open. */
+async function closeMenu(page) {
+  if (!PHONE) return;
+  const sheet = page.getByRole("dialog", { name: "More pages" });
+  if (await sheet.isVisible()) {
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await sheet.waitFor({ state: "hidden" });
+  }
+}
+
+/** Opens a page from the menu: the side menu, or on a phone a tab or the "More" sheet. */
+async function goTo(page, name) {
+  if (PHONE) {
+    // The phone's first tab says Home where the side menu says Dashboard.
+    if (name === "Dashboard") name = "Home";
+    const tab = page.getByRole("navigation", { name: "Business" }).getByRole("link", { name, exact: true });
+    if (await tab.isVisible()) return tab.click();
+    await openMenu(page);
+    return page.getByRole("dialog", { name: "More pages" }).getByRole("link", { name, exact: true }).click();
+  }
+  return page.getByRole("navigation", { name: "Business" }).getByRole("link", { name, exact: true }).click();
+}
+
+/** Logs out: from the side menu, or on a phone from the "More" sheet. */
+async function logOut(page) {
+  if (PHONE) {
+    await openMenu(page);
+    return page.getByRole("dialog", { name: "More pages" }).getByRole("button", { name: "Log out" }).click();
+  }
+  return page.getByRole("button", { name: "Log out" }).click();
+}
+
+module.exports = { pick, addCrew, newOrders, receiveCards, contextOptions, openMenu, closeMenu, goTo, logOut, PHONE };

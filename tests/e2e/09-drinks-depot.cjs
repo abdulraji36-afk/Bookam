@@ -3,7 +3,7 @@
 // the customer settling it later at the depot.
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
-const { pick, newOrders, receiveCards } = require("./helpers.cjs");
+const { pick, newOrders, receiveCards, contextOptions, openMenu, closeMenu, goTo, PHONE } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const MAIL = `${process.env.E2E_MAILPIT_URL ?? "http://127.0.0.1:54324"}/api/v1`;
@@ -12,7 +12,6 @@ const owner = `bilikis-${run}@example.com`;
 let passed = 0;
 const ok = (name) => { passed++; console.log("PASS", name); };
 const vis = (locator) => locator.filter({ visible: true });
-const menu = (page) => page.getByRole("navigation", { name: "Business" });
 
 async function confirmationLink(email) {
   for (let i = 0; i < 20; i++) {
@@ -30,7 +29,7 @@ let dbg;
 (async () => {
   const browser = await chromium.launch();
   const errors = [];
-  const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+  const page = await (await browser.newContext(contextOptions())).newPage();
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   const a = page;
@@ -55,7 +54,8 @@ let dbg;
   await a.waitForURL(/\/b\/bilikis-drinks-/);
   const base = new URL(a.url()).pathname;
   const go = (path) => a.goto(BASE + base + path);
-  await menu(a).getByRole("link", { name: "Empties", exact: true }).waitFor();
+  await (await openMenu(a)).getByRole("link", { name: "Empties", exact: true }).waitFor();
+  await closeMenu(a);
   await a.getByRole("link", { name: "Count your opening empties" }).waitFor();
   ok("a drinks depot signs up and gets an Empties page and an opening-empties step");
 
@@ -195,10 +195,16 @@ let dbg;
   await a.locator("tr", { hasText: "Coca-Cola 50cl RGB" }).getByText("₦3,900", { exact: true }).waitFor();
 
   // Empty exchanges sits right under Stock in the menu.
-  const menuLabels = (await menu(a).getByRole("link").allInnerTexts()).map((text) => text.trim());
-  assert.equal(menuLabels[menuLabels.indexOf("Stock") + 1], "Empty exchanges");
+  const menuLabels = (await (await openMenu(a)).getByRole("link").allInnerTexts()).map((text) => text.trim());
+  if (PHONE) {
+    // On a phone Stock is a tab; in the More sheet Empty exchanges comes before Stock summary.
+    assert.ok(menuLabels.indexOf("Empty exchanges") < menuLabels.indexOf("Stock summary"));
+  } else {
+    assert.equal(menuLabels[menuLabels.indexOf("Stock") + 1], "Empty exchanges");
+  }
+  await closeMenu(a);
   // The empty exchange, from the Empty exchanges page in the menu.
-  await menu(a).getByRole("link", { name: "Empty exchanges" }).click();
+  await goTo(a, "Empty exchanges");
   await a.getByText("No exchanges yet.").waitFor();
   await a.locator("main").getByRole("link", { name: "+ New exchange" }).click();
   await a.waitForURL(/\/returns\/exchange$/);
@@ -465,7 +471,7 @@ let dbg;
 
   // 12. Transaction records, as in Bilikis
   const summary = (label) => a.locator("[data-summary-card]", { hasText: label });
-  await menu(a).getByRole("link", { name: "Records" }).click();
+  await goTo(a, "Records");
   await a.getByRole("heading", { name: "Transaction records" }).waitFor();
   await a.getByRole("link", { name: /^Sell RGB RGB sales/ }).click();
   await a.getByRole("heading", { name: "RGB transaction history" }).waitFor();
@@ -538,7 +544,7 @@ let dbg;
   ok("an owner corrects a sale that went out; stock and the empties expected back follow");
 
   // 13. Empty balance, as in Bilikis: how the depot's empties add up.
-  await menu(a).getByRole("link", { name: "Empty balance" }).click();
+  await goTo(a, "Empty balance");
   await a.getByRole("heading", { name: "Empty balance" }).waitFor();
   const cardIs = async (label, value) => assert.match(await summary(label).innerText(), new RegExp(`${value}$`));
   await cardIs("Opening empties", "500");

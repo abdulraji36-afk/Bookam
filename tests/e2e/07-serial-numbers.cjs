@@ -1,6 +1,6 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
-const { pick } = require("./helpers.cjs");
+const { pick, contextOptions, openMenu, closeMenu } = require("./helpers.cjs");
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const SHOTS = process.argv[2] ?? require("node:os").tmpdir();
 const run = Date.now().toString(36);
@@ -36,7 +36,7 @@ let dbg;
   const browser = await chromium.launch();
   const errors = [];
   const newPage = async (viewport) => {
-    const page = await (await browser.newContext({ viewport: viewport ?? { width: 1280, height: 800 } })).newPage();
+    const page = await (await browser.newContext(contextOptions(viewport))).newPage();
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     return page;
@@ -55,12 +55,13 @@ let dbg;
   await a.waitForURL(/\/b\/femi-gadgets-/);
   const base = new URL(a.url()).pathname;
   const go = (p) => a.goto(BASE + base + p);
-  const menu = a.getByRole("navigation", { name: "Business" });
+  let menu = await openMenu(a);
 
   // A phone shop's own words and menu: Sales, no Dispatch, serial search up front.
   await menu.getByRole("link", { name: "Sales", exact: true }).waitFor();
   assert.equal(await menu.getByRole("link", { name: "Orders", exact: true }).count(), 0);
   assert.equal(await menu.getByRole("link", { name: "Dispatch", exact: true }).count(), 0);
+  await closeMenu(a);
   await a.locator("main").getByRole("link", { name: "+ New sale" }).waitFor();
   await a.getByLabel("Find a serial number").waitFor();
   await a.getByText("Waiting to be collected").first().waitFor();
@@ -230,7 +231,9 @@ let dbg;
   await selling.getByLabel("We deliver to customers").check();
   await selling.getByRole("button", { name: "Save" }).click();
   await selling.getByText("Saved. The menus and forms now match what you sell.").waitFor();
+  menu = await openMenu(a);
   await menu.getByRole("link", { name: "Dispatch", exact: true }).waitFor();
+  await closeMenu(a);
   await go("/orders/new");
   await vis(a.getByLabel("Deliver on a trip")).waitFor();
   await a.screenshot({ path: `${SHOTS}/76-phone-shop-delivers.png`, fullPage: true });
